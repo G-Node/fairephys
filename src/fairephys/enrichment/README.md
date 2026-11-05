@@ -39,7 +39,23 @@ The YAML files on disk stay the human-curated input; the odML document on disk i
 
 `neo_extract(file, format, block_index=0)` walks the parsed RawIO header (signal channels and streams, spike and event channels), the computed values (duration, sampling rate) and the block's `raw_annotations` generically; the formats are the keys of `fairephys.formats.RAW_FORMATS` (`clock: utc` marks a header time that is UTC rather than local; `header: first sample` marks a header time that stamps the first sample rather than Neo's time 0, so a segment's start is the header time plus its t_start relative to the first segment's).
 
-`neo_enrich_document(doc, neo_data, session_id, subject=None, task=None, runs=None)` finds the session entry (by subject and task when session ids repeat, see `fairephys.metadata.sessions`; an unknown session is an error), fills only empty properties (human values win, filled ones get `value_origin` neo) and stores the extraction as the `Neo Metadata` subsection. `runs` lists the run each Neo segment records; each run's duration then goes to `Neo Metadata/runs`. `Hardware/Recording System 'curated streams'` restricts the streams kept.
+`neo_enrich_document(doc, neo_data, session_id, subject=None, task=None, runs=None, value_origin=None)` finds the session entry (by subject and task when session ids repeat, see `fairephys.metadata.sessions`; an unknown session is an error), fills only empty properties (human values win, filled ones get `value_origin` neo.extract) and stores the extraction as the `Neo Metadata` subsection. `runs` lists the run each Neo segment records; each run's duration then goes to `Neo Metadata/runs`. `Hardware/Recording System 'curated streams'` restricts the streams kept.
+
+### A dataset without a Neo reader
+
+A dataset whose raw files no Neo reader opens builds the `neo_data` dict itself and calls `neo_enrich_document` with its `value_origin` (where the values come from, such as ".mcd header"): the filled session properties, `_neo_fields` and every property of the `Neo Metadata` section then carry it. With `value_origin=None` (Neo's own dicts) the fills carry `neo.extract` and the section's properties no origin. The curated-stream selection, the duration format, the time zone offset and the `runs` entries come from the same code as for Neo. The keys it reads:
+
+| Key | Content |
+|-----|---------|
+| `format`, `block_index`, `nb_block`, `nb_segment` | written when present (no property for a missing key); `nb_segment` > 1 makes the session discontinuous |
+| `signal_streams` | list of `{id, name, sampling_rate, n_channels}`; the first curated stream gives the session's sampling rate |
+| `signal_channels` | list of `{name, id, sampling_rate, dtype, units, gain, offset, stream_id}`, in the recording's channel order; further keys (such as `label`) are kept |
+| `stream_durations_s` | `{stream id: [duration (s) of each segment]}` |
+| `stream_start_times` | `{stream id: [ISO time of the first sample of each segment]}` (optional; local times get the Dataset `time zone`) |
+| `spike_channels`, `event_channels` | optional lists of dicts (`name` and further keys), as `neo_extract` gives them |
+| `annotations` | optional `{"block": {...}, "channel": {stream id: {...}}}`, reduced to the curated streams; not written into the odML |
+
+A float 0.0 (such as an `offset` of 0.0) is stored as an empty property, for Neo's own dicts as well: `odml.Property(value=0.0)` drops it. The library leaves it so; the handling is the dataset's, in its `curate.py`. A dataset whose odML holds 0.0 offsets (dpz-gail, ubremen-kreiter) sets those `offset` properties itself after the call, with `values=[0.0]` and its value origin, so its record keeps them; it does not read an empty offset as 0.0 in Python.
 
 ```bash
 python -m fairephys.enrichment.neo recording.ns5 -f blackrock --json

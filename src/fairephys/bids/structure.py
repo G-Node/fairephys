@@ -48,10 +48,11 @@ def create_dataset_layout(bids_root: Path) -> None:
     write_bidsignore(bids_root)
 
 
-def write_bidsignore(bids_root: Path) -> Path:
-    """.bidsignore: BIDSIGNORE, then the other lines it lists already, each
-    once, so the file is the same whichever writer runs last."""
+def write_bidsignore(bids_root: Path, extra: tuple[str, ...] = ()) -> Path:
+    """.bidsignore: BIDSIGNORE, the dataset's extra lines, then the other
+    lines it lists already, each once, so the file is the same whichever
+    writer runs last."""
     path = Path(bids_root) / ".bidsignore"
     lines = path.read_text().splitlines() if path.exists() else []
-    path.write_text("".join(f"{line}\n" for line in dict.fromkeys([*BIDSIGNORE, *filter(None, lines)])))
+    path.write_text("".join(f"{line}\n" for line in dict.fromkeys([*BIDSIGNORE, *extra, *filter(None, lines)])))
     return path

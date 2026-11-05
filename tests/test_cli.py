@@ -141,3 +141,40 @@ def test_finalize_compilation(make_doc, tmp_path, capsys):
     assert f"1 session probe groups exist under {tmp_path / 'probes'}: --build-probes" in capsys.readouterr().out
     with pytest.raises(ValueError, match="Contact positions must be unique"):
         curation.finalize_compilation(make_doc(), tmp_path / "metadata", "ds", enrich_openminds=False)
+
+
+def test_run_pipeline(tmp_path, capsys):
+    """run_pipeline: the set steps per session on the odML loaded once, --all with a dataset step, one compile for
+    --compile --openminds-enrich, --odml, --list-sessions; export-only runs never call sessions."""
+    calls = []
+    sessions = lambda args: calls.append("sessions") or ["s1", "s2"]
+    compile = lambda enrich_openminds, shared_dir: calls.append(("compile", enrich_openminds)) or tmp_path / "c.xml"
+    flags = ("build_probes", "bids_layout", "convert", "sanity", "video")
+    steps = {flag: lambda doc, session, args, flag=flag: calls.append((flag, doc, session)) for flag in flags}
+    parser = curation.build_parser("T")
+    parser.add_argument("--video", action="store_true")
+
+    def run(*argv, parser=parser):
+        calls.clear()
+        with patch.object(curation, "load_doc", side_effect=lambda path: path.name), \
+                patch.object(curation, "run_export_steps") as export:
+            curation.run_pipeline(parser.parse_args(argv), sessions=sessions, compile=compile, steps=steps,
+                                  odml_path=tmp_path / "d.xml", curated_dir=tmp_path / "cur", validation_dir=tmp_path)
+        return export.call_args.args if export.called else None
+
+    args, odml_path, *dirs = run("--readme")
+    assert calls == [] and args.readme and odml_path == tmp_path / "d.xml" and dirs == [tmp_path / "cur", tmp_path]
+    assert run("--readme", parser=curation.build_parser("T", has_probes=False)) and calls == []
+    assert run("--compile", "--openminds-enrich", "--no-openminds")[1] == tmp_path / "c.xml"
+    assert calls == [("compile", True)]
+    capsys.readouterr()
+    run("--sanity", "--bids-layout", "--odml", str(tmp_path / "o.xml"))
+    assert calls == ["sessions", ("bids_layout", "o.xml", "s1"), ("sanity", "o.xml", "s1"),
+                     ("bids_layout", "o.xml", "s2"), ("sanity", "o.xml", "s2")]
+    assert capsys.readouterr().out == "--- Session: s1 ---\n--- Session: s2 ---\n"
+    args = run("--all")[0]
+    assert calls == [("compile", True), "sessions", *[(f, "c.xml", s) for s in ("s1", "s2") for f in flags]]
+    assert (args.openminds_collection, args.datacite, args.readme, args.validate, args.kg_push) == (
+        True, True, True, "all", False)
+    capsys.readouterr()
+    assert run("--list-sessions") is None and calls == ["sessions"] and capsys.readouterr().out == "  s1\n  s2\n"

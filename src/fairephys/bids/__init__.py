@@ -22,6 +22,7 @@ from .physio import generate_physio_json, write_physio_data
 from .motion import generate_motion_json, generate_motion_channels_tsv, write_motion_data
 from .emg import generate_emg_json, generate_emg_channels_tsv, write_emg_edf
 from .events import generate_events_tsv, generate_events_json
+from .writers import write_session_sidecars, write_run_sidecars, write_dataset_files
 
 __all__ = [
     # Naming
@@ -71,4 +72,8 @@ __all__ = [
     "generate_events_tsv",
     "generate_events_json",
     "extract_events_metadata",
+    # Session, run and dataset files
+    "write_session_sidecars",
+    "write_run_sidecars",
+    "write_dataset_files",
 ]

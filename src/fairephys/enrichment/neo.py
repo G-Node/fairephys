@@ -191,7 +191,8 @@ def _safe_value(obj):
 
 # Enrichment (post-compilation, operates on odML document)
 def enrich_document(doc: odml.Document, neo_data: dict, session_id: str = None,
-                    subject: str = None, task: str = None, runs: list[int] = None):
+                    subject: str = None, task: str = None, runs: list[int] = None,
+                    value_origin: str = None):
     """Fill empty odML properties from Neo-extracted metadata.
 
     Finds the matching session (by session id, and by subject and task when
@@ -208,6 +209,11 @@ def enrich_document(doc: odml.Document, neo_data: dict, session_id: str = None,
     holds several runs (e.g. one TDT block per run). Each run's own duration
     and start time are then kept in Neo Metadata 'runs' (run-level BIDS and
     NWB fields); the session values stay those of the whole recording.
+
+    value_origin: where neo_data comes from, for a dict a dataset builds
+    without a Neo reader (enrichment/README.md lists its keys): the origin of
+    the filled properties and of every property of the Neo Metadata section.
+    None: the filled properties carry "neo.extract", the section's none.
     """
     if session_id is None:
         session_id = Path(neo_data.get("file", "")).stem
@@ -221,32 +227,33 @@ def enrich_document(doc: odml.Document, neo_data: dict, session_id: str = None,
         logger.warning(f"Session {session_id}: Dataset 'time zone' not set; header start "
                        "times are recorded without offset")
 
+    origin = value_origin or "neo.extract"
     filled = []
-    if _fill_property(session, "duration", _format_duration(neo_data.get("duration_s"))):
+    if _fill_property(session, "duration", _format_duration(neo_data.get("duration_s")), origin):
         filled.append("duration")
     if streams := neo_data.get("signal_streams", []):
-        if _fill_property(session, "sampling rate", f"{streams[0]['sampling_rate']:.0f} Hz"):
+        if _fill_property(session, "sampling rate", f"{streams[0]['sampling_rate']:.0f} Hz", origin):
             filled.append("sampling rate")
-    if (n := len(neo_data.get("signal_channels", []))) and _fill_property(session, "number of channels", n):
+    if (n := len(neo_data.get("signal_channels", []))) and _fill_property(session, "number of channels", n, origin):
         filled.append("number of channels")
     continuity = "discontinuous" if neo_data.get("nb_segment", 1) > 1 else "continuous"
-    if _fill_property(session, "continuity", continuity):
+    if _fill_property(session, "continuity", continuity, origin):
         filled.append("continuity")
-    if starts and starts[0] and _fill_property(session, "start time", starts[0]):
+    if starts and starts[0] and _fill_property(session, "start time", starts[0], origin):
         filled.append("start time")
     durations = neo_data.get("segment_durations_s") or []
     if starts and starts[-1] and durations:
         end = datetime.fromisoformat(starts[-1]) + timedelta(seconds=durations[-1])
-        if _fill_property(session, "end time", end.isoformat()):
+        if _fill_property(session, "end time", end.isoformat(), origin):
             filled.append("end time")
 
     if filled:
-        _set_property(session, "_neo_fields", ", ".join(filled))
+        _set_property(session, "_neo_fields", ", ".join(filled), origin)
         logger.info(f"Session {session_id}: filled {filled} from Neo")
 
-    _add_neo_metadata_section(session, neo_data)
+    _add_neo_metadata_section(session, neo_data, value_origin)
     if runs:
-        _add_runs_section(session["Neo Metadata"], neo_data, runs, session_id)
+        _add_runs_section(session["Neo Metadata"], neo_data, runs, session_id, value_origin)
 
 
 def _curated_stream_data(doc: odml.Document, neo_data: dict, session_id: str) -> dict:
@@ -324,7 +331,7 @@ def _with_offset(iso: str | None, tz_name: str | None) -> str | None:
     return dt.isoformat()
 
 
-def _fill_property(section: odml.Section, name: str, value) -> bool:
+def _fill_property(section: odml.Section, name: str, value, origin: str) -> bool:
     """Set a property only if it exists and is currently empty."""
     if value is None:
         return False
@@ -332,17 +339,17 @@ def _fill_property(section: odml.Section, name: str, value) -> bool:
     if prop is None or (prop.values and prop.values[0] not in (None, "", 0)):
         return False
     prop.values = [value]
-    prop.value_origin = "neo.extract"
+    prop.value_origin = origin
     return True
 
 
-def _set_property(section: odml.Section, name: str, value):
+def _set_property(section: odml.Section, name: str, value, origin: str):
     """Set or create a property unconditionally."""
     prop = next((p for p in section.properties if p.name == name), None)
     if prop is not None:
         prop.values = [value]
     else:
-        section.append(odml.Property(name=name, value=value, value_origin="neo.extract"))
+        section.append(odml.Property(name=name, value=value, value_origin=origin))
 
 
 def _format_duration(duration_s: float | None) -> str | None:
@@ -351,27 +358,28 @@ def _format_duration(duration_s: float | None) -> str | None:
     return f"{duration_s:.1f} s" if duration_s < 60 else f"{duration_s / 60:.1f} min"
 
 
-def _add_neo_metadata_section(session: odml.Section, neo_data: dict):
-    """Add or replace Neo Metadata subsection on a session."""
+def _add_neo_metadata_section(session: odml.Section, neo_data: dict, value_origin: str = None):
+    """Add or replace Neo Metadata subsection on a session (its properties
+    with value_origin)."""
     if "Neo Metadata" in session.sections:
         session.remove(session["Neo Metadata"])
 
     neo_sec = odml.Section(name="Neo Metadata", type="neo.recording_metadata")
     # The raw file path is deliberately not recorded: the odML is published
     # and raw paths reveal local directories and animal names.
-    for key in ("format", "block_index", "nb_block", "nb_segment"):
-        neo_sec.append(odml.Property(name=key, value=neo_data.get(key, "")))
-    if "duration_s" in neo_data:
-        neo_sec.append(odml.Property(name="duration_s", value=neo_data["duration_s"]))
+    for key in ("format", "block_index", "nb_block", "nb_segment", "duration_s"):
+        if key in neo_data:
+            neo_sec.append(odml.Property(name=key, value=neo_data[key], value_origin=value_origin))
     if streams := neo_data.get("signal_streams", []):
-        neo_sec.append(odml.Property(name="sampling_rate_hz", value=streams[0]["sampling_rate"]))
+        neo_sec.append(odml.Property(name="sampling_rate_hz", value=streams[0]["sampling_rate"],
+                                     value_origin=value_origin))
 
     # Streams as subsections
     by_stream = neo_data.get("stream_durations_s", {})
     for stream in neo_data.get("signal_streams", []):
         if (durations := by_stream.get(stream["id"])) is not None:
             stream = {**stream, "duration_s": float(sum(durations))}
-        neo_sec.append(_dict_to_section(stream["name"], "neo.signal_stream", stream))
+        neo_sec.append(_dict_to_section(stream["name"], "neo.signal_stream", stream, value_origin))
 
     # Channel groups as subsections of a container
     for group_key, type_name in [
@@ -388,13 +396,14 @@ def _add_neo_metadata_section(session: odml.Section, neo_data: dict):
             name = item["name"]
             seen[name] = seen.get(name, 0) + 1
             sec_name = name if seen[name] == 1 else f"{name}_{seen[name]}"
-            container.append(_dict_to_section(sec_name, type_name, item))
+            container.append(_dict_to_section(sec_name, type_name, item, value_origin))
         neo_sec.append(container)
 
     session.append(neo_sec)
 
 
-def _add_runs_section(neo_sec: odml.Section, neo_data: dict, runs: list[int], session_id: str):
+def _add_runs_section(neo_sec: odml.Section, neo_data: dict, runs: list[int], session_id: str,
+                      value_origin: str = None):
     """Neo Metadata 'runs': per run, its Neo segment, duration and start time
     (ISO with offset), and in 'streams', by stream id, the duration and the
     start time of every stream whose values differ from the curated stream's
@@ -416,7 +425,7 @@ def _add_runs_section(neo_sec: odml.Section, neo_data: dict, runs: list[int], se
         entry = {"run": int(run), "segment_index": index, "duration_s": duration, "continuity": "continuous"}
         if starts[index]:
             entry["start_time"] = starts[index]
-        section = _dict_to_section(f"run {run}", "neo.run", entry)
+        section = _dict_to_section(f"run {run}", "neo.run", entry, value_origin)
         others = {}
         for sid in sorted(set(by_stream) | set(stream_starts)):
             d, s = by_stream.get(sid, []), stream_starts.get(sid, [])
@@ -430,17 +439,17 @@ def _add_runs_section(neo_sec: odml.Section, neo_data: dict, runs: list[int], se
         if others:
             streams = odml.Section(name="streams", type="neo.streams")
             for sid, own in others.items():
-                streams.append(_dict_to_section(sid, "neo.stream", own))
+                streams.append(_dict_to_section(sid, "neo.stream", own, value_origin))
             section.append(streams)
         container.append(section)
     neo_sec.append(container)
 
 
-def _dict_to_section(name: str, section_type: str, data: dict) -> odml.Section:
+def _dict_to_section(name: str, section_type: str, data: dict, value_origin: str = None) -> odml.Section:
     """Convert a flat dict to an odML section with properties."""
     sec = odml.Section(name=name, type=section_type)
     for k, v in data.items():
-        sec.append(odml.Property(name=k, value=v))
+        sec.append(odml.Property(name=k, value=v, value_origin=value_origin))
     return sec
 
 

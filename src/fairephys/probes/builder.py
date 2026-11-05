@@ -1,5 +1,7 @@
 """Build ProbeInterface objects from odML metadata."""
 
+import logging
+import shutil
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -15,6 +17,8 @@ from .library import get_from_library, library_key
 from ..metadata.compiler import parse_value
 from ..odml import props, subsection
 from ..placements import derive_probe_ids, matched_probes, parse_channels, probe_ids
+
+logger = logging.getLogger(__name__)
 
 # Fields that map to Probe attributes (not annotations)
 PROBE_ATTRS = {"name", "manufacturer", "serial number"}
@@ -408,6 +412,20 @@ def save_probe_group(group: ProbeGroup, output_dir: Path, title: str = "Probe Gr
 
     write_probeinterface(output_dir / "probe_group.json", group)
     _plot_group(group, output_dir / "probe_group.png", title)
+
+
+def write_session_probe_group(doc, session, output_dir: Path, title: str = "Probe Group") -> Path:
+    """The session's ProbeInterface group (build_session_probe_group) saved
+    under output_dir (save_probe_group), the folder emptied first so that
+    files of earlier device ids do not stay. Returns its probe_group.json."""
+    group = build_session_probe_group(doc, session)
+    output_dir = Path(output_dir)
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    save_probe_group(group, output_dir, title=title)
+    path = output_dir / "probe_group.json"
+    logger.info(f"Saved: {path}")
+    return path
 
 
 def _plot_probe(probe, path: Path):

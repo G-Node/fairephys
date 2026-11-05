@@ -4,8 +4,10 @@ Dataset-agnostic helpers and pipeline commands used by all curate.py scripts.
 Dataset-specific logic (session discovery, channel mapping, converter setup,
 raw file paths) stays in each dataset's curate.py.
 
-The CLI layer (build_parser, run_export_steps and the *_cmd functions) prints
-its user-facing lines; the library logs (configure_logging).
+The CLI layer (build_parser, run_pipeline, run_export_steps and the *_cmd
+functions) prints its user-facing lines: run_pipeline one line per session
+before its steps. The library functions the steps call (such as
+probes.write_session_probe_group and the bids writers) log (configure_logging).
 """
 
 import argparse
@@ -18,12 +20,12 @@ from pathlib import Path
 import odml
 import yaml
 
-from . import enrichment, metadata, probes
+from . import bids, enrichment, metadata, probes
 from .export import (
     build_collection, save_collection, get_kg_client, push_collection, read_token,
     write_datacite, write_readme,
 )
-from .odml import section_at
+from .odml import prop, section_at
 from .validation import run_validation
 from .validation.sanity import run_sanity_checks  # noqa: F401  (the dataset scripts import it from here)
 
@@ -74,6 +76,45 @@ find_session = metadata.find_session
 
 def odml_yaml_path(odml_path: Path) -> Path:
     return odml_path.with_suffix(".yaml") if odml_path.suffix == ".xml" else odml_path
+
+
+def session_paths(doc: odml.Document, session: odml.Section, curated_dir: Path, *,
+                  acq: str = None, task: str = None, run: int = None) -> dict[str, Path | str | int | None]:
+    """The standard output paths of a session entry, or of one run or probe
+    (acq) of it, under curated_dir: session-level files sub-<sub>_ses-<ses>
+    (channels.tsv with the acq when given), run-level files (ecephys.json,
+    NWB) sub-<sub>_ses-<ses>_task-<task>[_acq-<acq>][_run-<nn>]. The subject
+    is the session's; the task the one given (runs of one entry with
+    different tasks), else the entry's own when it names one, else the
+    Behavioral Protocol's bids task label. Every key is always present, with
+    the task, acq and run that named the files."""
+    sub = get_subject_id(doc, session)
+    ses = str(prop(session, "session id") or "")
+    if not ses:
+        raise ValueError(f"Session {session.name}: no session id")
+    task = task or prop(session, "task") or get_task_label(doc)
+    ses_dir = bids.session_path(curated_dir, sub, ses, "ecephys")
+    prefix = bids.bids_filename(sub, "", "", ses=ses).rstrip("_.")
+    run_prefix = bids.bids_filename(sub, "", "", ses=ses, task=task, acq=acq, run=run).rstrip("_.")
+    channels_prefix = bids.bids_filename(sub, "", "", ses=ses, acq=acq).rstrip("_.")
+    return {
+        "ses_dir": ses_dir,
+        "prefix": prefix,
+        "run_prefix": run_prefix,
+        "probes_dir": f"probes/{prefix}",
+        "probe_group": Path(curated_dir) / "probes" / prefix / "probe_group.json",
+        "probes_tsv": ses_dir / f"{prefix}_probes.tsv",
+        "probes_json": ses_dir / f"{prefix}_probes.json",
+        "electrodes_tsv": ses_dir / f"{prefix}_electrodes.tsv",
+        "electrodes_json": ses_dir / f"{prefix}_electrodes.json",
+        "channels_json": ses_dir / f"{prefix}_channels.json",
+        "channels_tsv": ses_dir / f"{channels_prefix}_channels.tsv",
+        "ecephys_json": ses_dir / f"{run_prefix}_ecephys.json",
+        "nwb": ses_dir / f"{run_prefix}_ecephys.nwb",
+        "task": task,
+        "acq": acq,
+        "run": run,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -274,6 +315,43 @@ def run_export_steps(args, odml_path: Path, curated_data_dir: Path, validation_d
     if scope := getattr(args, "validate", None):
         if validate_cmd(curated_data_dir, validation_dir, getattr(args, "report", None), scope=scope) != 0:
             raise SystemExit(1)
+
+
+def run_pipeline(args, *, sessions, compile, steps: dict, odml_path: Path, curated_dir: Path,
+                 validation_dir: Path) -> None:
+    """The main of a curate.py after parse_args().
+
+    --list-sessions prints the sessions(args) and returns. --all sets
+    --compile, every flag of `steps`, the openMINDS collection, DataCite,
+    README and validation (never --kg-push). One compile(enrich_openminds,
+    shared_dir) when --compile or --openminds-enrich is given. When a flag of
+    `steps` is set (keys are argparse destinations): the odML is loaded once,
+    and for each session of sessions(args) one line is printed and each set
+    step runs as step(doc, session, args); sessions is not called otherwise,
+    so an export-only run discovers nothing. Then run_export_steps.
+    """
+    if args.list_sessions:
+        for session in sessions(args):
+            print(f"  {session}")
+        return
+    if args.all:  # every step and export but kg-push; the openMINDS collection only with a KG token
+                  # (run_export_steps prints one line and goes on without one)
+        args.compile = args.openminds_collection = args.datacite = args.readme = True
+        for flag in steps:
+            setattr(args, flag, True)
+        args.validate = args.validate or "all"
+    odml_path = args.odml or odml_path
+    if args.compile or args.openminds_enrich:
+        odml_path = compile(enrich_openminds=args.openminds_enrich or not args.no_openminds,
+                            shared_dir=args.shared_metadata)
+    if any(getattr(args, flag, False) for flag in steps):
+        doc = load_doc(odml_path)
+        for session in sessions(args):
+            print(f"--- Session: {session} ---")
+            for flag, step in steps.items():
+                if getattr(args, flag, False):
+                    step(doc, session, args)
+    run_export_steps(args, odml_path, curated_dir, validation_dir)
 
 
 # ---------------------------------------------------------------------------
