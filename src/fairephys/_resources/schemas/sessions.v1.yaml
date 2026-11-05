@@ -1,0 +1,57 @@
+# Sessions Template Schema v1
+$schema: https://json-schema.org/draft-07/schema#
+title: Sessions Template
+version: 1
+
+type: object
+required: [Sessions]
+
+properties:
+  _schema:
+    const: sessions.v1
+  _valueOrigin:
+    type: string
+
+  Session Defaults:
+    type: object
+    properties:
+      description: {type: string}
+
+  Sessions:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required: [session id]
+      properties:
+        session id: {type: string, pattern: "^[a-z0-9]+$"}
+        date: {type: [date, string]}
+        session number: {type: integer, minimum: 1}
+        subject: {type: string, pattern: "^[A-Za-z0-9]+$"}  # must equal a Subject.subject id
+        # BIDS task label, when one session recorded several tasks: one entry
+        # per task with the same session id (else the dataset's task applies)
+        task: {type: string, pattern: "^[A-Za-z0-9]+$"}
+        # what the entry's task was (the BIDS TaskDescription of its runs),
+        # when it differs from the Behavioral Protocol's description
+        task description: {type: string}
+        runs: {type: array, items: {type: integer, minimum: 1}}
+        description: {type: string}
+        notes: {type: string}
+        start time: {type: string}        # -> RecordingActivity.start_time
+        end time: {type: string}          # -> RecordingActivity.end_time
+        duration: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(second|minute|hour)|)$"}
+        # Cross-references (link sessions to protocol, hardware, and experimenter)
+        behavioral protocol: {type: string}  # References Behavioral Protocol.name
+        recording system: {type: string}      # References Hardware.Recording System
+        performed by: {type: string}          # Full name -> RecordingActivity.performed_by
+        # Recording metadata (fallback, filled by the Neo enrichment when available)
+        # continuity: one segment (continuous) or several (discontinuous),
+        # the BIDS RecordingType; not the acute/chronic 'recording type'
+        continuity: {enum: [continuous, discontinuous, epoched, ""]}
+        sampling rate: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(hertz|kilohertz)|)$"}
+        number of channels: {type: [integer, "null"], minimum: 1}
+        # Electrode placements go in recordings.yaml (Electrode Placements)
+        # Auxiliary channels available in this session
+        auxiliary channels:
+          type: array
+          items: {type: string}

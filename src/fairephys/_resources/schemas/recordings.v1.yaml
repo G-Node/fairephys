@@ -1,0 +1,109 @@
+# Recordings Template Schema v1
+$schema: https://json-schema.org/draft-07/schema#
+title: Recordings Template
+version: 1
+
+type: object
+required: [Recordings]
+
+properties:
+  _schema:
+    const: recordings.v1
+  _valueOrigin:
+    type: string
+
+  Recording Defaults:
+    type: object
+    properties:
+      recording type: {enum: [acute, chronic]}
+      coordinate system: {type: string}  # Stereotaxic, individual, AllenCCFv3, etc.
+      coordinate reference: {type: string}  # tip, center, base
+      coordinate units: {type: string, enum: [millimeter, micrometer, centimeter, meter, ""], default: millimeter}
+      coordinate system description: {type: string}  # Free-form (required if system is Other)
+      Electrode Placements:
+        type: array
+        description: >-
+          Default electrode placements applied to all sessions. Use for chronic
+          recordings where probe targets are fixed at implant time. Applied by
+          the compiler to each session via Recording Defaults propagation.
+        items:
+          type: object
+          required: [probe, brain region]
+          properties:
+            probe: {type: string}
+            brain region: {type: string}
+            hemisphere: {enum: [left, right, ""]}
+            # the recording stream of the placement (e.g. SpikeGLX imec0)
+            stream: {type: string}
+            atlas area: {type: string}
+            uberon term: {type: string}
+
+  Recordings:
+    type: object
+    additionalProperties:
+      type: object
+      required: [techniques]
+      properties:
+        techniques:
+          type: array
+          items: {type: string}
+          minItems: 1
+        notes: {type: string}
+
+        # One entry per device inserted in the session (compile rejects a
+        # device named twice in a session, or a name missing from Hardware.Probes)
+        Electrode Placements:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [probe, brain region]
+            properties:
+              probe: {type: string, description: Exact name of a Hardware.Probes entry}
+              brain region: {type: string}
+              channels:
+                type: string
+                pattern: "^(\\d+(-\\d+)?(,\\s*\\d+(-\\d+)?)*)?$"
+                description: >-
+                  Acquisition channels of this device in the session, as 1-based
+                  positions in the curated stream ("33-64", "1,3,5"). Default:
+                  the block after the previous placement.
+              # the recording stream of this device, for formats with several
+              # streams per file (e.g. SpikeGLX imec0, imec1)
+              stream: {type: string}
+              DV by run:
+                type: object
+                propertyNames: {pattern: "^\\d+$"}
+                additionalProperties: {type: string, pattern: "^-?\\d+(\\.\\d+)?\\s+(millimeter|micrometer|centimeter)$"}
+                description: >-
+                  Depth per run number, for devices moved during the session;
+                  DV holds the depth of the first run.
+              hemisphere:
+                enum: [left, right, ""]
+                description: >-
+                  Recording hemisphere. Optional when unknown (e.g. chronic arrays
+                  with undetermined laterality). When provided, sets
+                  CustomAnnotation.lateralities on the anatomical entity.
+              # contact ids of the device recorded in this session (e.g. from a Neuropixels IMRO table)
+              electrode identifiers: {type: array, items: {type: string}}
+              # openMINDS annotation overrides (optional)
+              atlas area: {type: string}  # name of the region in the anatomy atlas, when it differs (e.g. "4a")
+              uberon term: {type: string}    # UBERON attr override (e.g. "primary_motor_cortex")
+              # Coordinates: value with expanded unit name, e.g. "3 millimeter", "-4.5 millimeter"
+              AP: {type: string, pattern: "^(-?\\d+(\\.\\d+)?\\s+(millimeter|micrometer|centimeter))?$"}
+              ML: {type: string, pattern: "^(-?\\d+(\\.\\d+)?\\s+(millimeter|micrometer|centimeter))?$"}
+              DV: {type: string, pattern: "^(-?\\d+(\\.\\d+)?\\s+(millimeter|micrometer|centimeter))?$"}
+              quality: {type: [integer, "null"]}  # lab's own label; scale documented per dataset
+              AP angle: {type: [number, "null"]}
+              ML angle: {type: [number, "null"]}
+              rotation angle: {type: [number, "null"]}
+              anatomical reference: {type: string}  # e.g., ear bar zero, Bregma
+              anatomical targets:
+                type: object
+                additionalProperties: {type: string}
+                description: >
+                  Per-contact anatomical structure lookup. Keys are anatomical
+                  terms (e.g., "cortical layer IV", "hippocampal CA1"), values
+                  are contact ranges (e.g., "1-5"). Multiple terms can map to
+                  the same contacts for overlapping annotations.
+              notes: {type: string}

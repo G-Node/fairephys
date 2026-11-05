@@ -1,0 +1,883 @@
+# openMINDS Schema Registry
+#
+# Single source of truth for entity building, metadata enrichment, and odML
+# type assignment. Consumed by:
+#   - fairephys.export.collection  (entity building from odML)
+#   - fairephys.enrichment.openminds  (odML type/section enrichment)
+#   - fairephys.metadata.compiler  (odML section type assignment)
+#
+# ─── Field types ───────────────────────────────────────────────────────────
+#   odml        - simple property from odML section (default)
+#   term        - controlled term (term_class, resolved via fairgraph by_name)
+#   multi_term  - try multiple vocabularies (term_classes[], first match wins)
+#                 merge_fields: collect values from multiple odML fields
+#   link        - reference to previously built entity (index-matched when list;
+#                 match: session | subject picks per-session entities of that
+#                 session or subject instead)
+#   match_link  - link by matching field value (match_field + match_attrs)
+#   literal     - hardcoded value
+#   iri         - IRI value (wraps in fairgraph.IRI)
+#   today       - current date; with `odml`, that property's date when set
+#   datetime    - ISO datetime string from odML
+#   doi_list    - list of DOIs or citations containing a DOI, each DOI becomes core.DOI entity
+#   quantity    - odML property with value + unit -> core.QuantitativeValue
+#   nested_ref  - reference to nested entity built in same schema context
+#   nested_list - list of nested entity references (target: name or [name, ...])
+#   link        - inside nested entities: reference to an already built
+#                 top-level entity (must precede in build_order)
+#   template    - string with {tokens} filled from odML: {Section/path/prop}
+#                 is an absolute odML path, {prop} a property of the current
+#                 section; per_session schemas also get {session_id},
+#                 {subject_id}, {task}, {date_compact} and
+#                 {internal_identifier}; fields built from a session get
+#                 {session_id}, {subject_id} and {task}. {task} is the
+#                 session's own task (sessions.yaml 'task', set when one
+#                 session recorded several tasks), empty otherwise: labels
+#                 add it as "{?_task-{task}}", so the labels of single-task
+#                 sessions keep their form. Values are stripped; a missing
+#                 token skips the field.
+#                 {?token} is optional: it renders empty and
+#                 the whitespace before it is dropped, with parentheses that
+#                 hold nothing else. {?words {token} words} is an optional
+#                 group: the words around one token, left out with it.
+#                 Used for EBRAINS lookup labels / ids, composed names and
+#                 descriptions.
+#
+# ─── Conflict type patterns ───────────────────────────────────────────────
+# Field types imply interoperability conflicts (six-type typology):
+#   term / multi_term   -> vocabulary (controlled terms vs free text)
+#   quantity            -> type, structural (number+unit -> QuantitativeValue object)
+#   iri                 -> type (string -> IRI object)
+#   doi_list            -> type, structural (strings -> DOI entities)
+#   link / match_link   -> structural (inline value -> entity reference)
+#   nested_ref/list     -> structural (flat fields -> nested entities)
+#   datetime            -> type (format conversion)
+#   odml                -> [] (direct passthrough, unless noted)
+#
+# Schema-level conflict_types mark entity-level coverage gaps (concepts
+# that exist in openMINDS but have no NWB/BIDS equivalent).
+#
+# ─── Entity modes ──────────────────────────────────────────────────────────
+#   single              - one entity from one odML section
+#   multiple            - one entity per subsection (e.g. Contributors/*)
+#   per_subject         - one entity per subject (entries of 'Subjects', else 'Subject')
+#   per_session         - one entity per session, base fields from separate section
+#                         (base_section Subject = the session's own subject)
+#                         dedup_by: <session property> = sessions of one subject
+#                         with the same value share one entity
+#                         supports: base_section, dedup_by, lookup_label_template,
+#                         per_session_config (session_date_field,
+#                         relative_time_unit: day|week ->
+#                         relative_time_indication since the subject's first
+#                         dated session; undated sessions get none)
+#   per_session_nested  - one entity per placement of each session (the
+#                         session's Electrode Placements, else the subject's
+#                         Implanted Probes: fairephys.placements.matched_probes)
+#                         fields: match_link links the placement's device by
+#                         its exact name, custom_anatomy the region's entity,
+#                         other fields read the placement's properties
+#                         supports: lookup_label_template (template tokens:
+#                         {dataset}, {session_id}, {subject_id}, {task},
+#                         {probe} (the device name) and the placement's
+#                         properties; a label repeating within a session is
+#                         an error)
+#                         returns list-of-lists for index-matched linking
+#
+# ─── Schema-level options ──────────────────────────────────────────────────
+#   fairgraph_class     - target fairgraph class (e.g. core.Subject)
+#   odml_section        - path to odML section (e.g. Dataset/Contributors)
+#   mode                - entity mode (see above)
+#   kg_lookup.fields    - fields used for KG dedup before creating new
+#   kg_lookup.search_space - the KG space searched: "target" (the push
+#                         space, --kg-space or the collection's kg space),
+#                         "common" (the EBRAINS KG space of the shared
+#                         Organization and Funding nodes), none for every
+#                         readable space
+#   existence_query     - fields fairgraph matches at push to decide whether a
+#                         node without a KG id already exists in the space
+#                         (default: the fairgraph class setting); applied when
+#                         all of them have a value
+#   instance_lookup     - look up standard openMINDS instance by name
+#   condition           - skip building if condition not met
+#   add_to_collection   - false to suppress collection.add() (embedded metadata)
+#   build: false        - skip building entirely (documentary schema)
+#   nested              - dict of nested entities to build before main entity
+#   conflict_types      - entity-level interoperability conflicts
+#
+# ─── Extending this registry ──────────────────────────────────────────────
+# To add a new entity type:
+#   1. Add to build_order (respecting dependencies: build targets before links)
+#   2. Add schema under schemas: with fairgraph_class, mode, and fields
+#   3. Map fields to odML properties (the compiled odML is the source of truth)
+#   4. For controlled terms: use term/multi_term with the fairgraph vocabulary class
+#   5. For cross-entity links: use link (index-matched) or match_link (name-matched)
+#   6. Test: uv run python curate.py --compile --openminds-collection
+
+# odML type assignments (compiler sets section.type from these)
+odml_types:
+  # Top-level
+  Dataset: core.Dataset
+  Subject: core.Subject
+  Hardware: core.Setup
+  Behavioral Protocol: core.BehavioralProtocol
+  Data Processing: computation.DataAnalysis
+  Sessions: ephys.RecordingActivity
+  Session: ephys.RecordingActivity
+  # Nested with openMINDS types
+  Contributors: core.Contribution
+  Contributor: core.Contribution
+  Custodian: core.Person
+  Fundings: core.Funding
+  Funding: core.Funding
+  Probes: ephys.ElectrodeArray
+  Probe: ephys.ElectrodeArray
+  Recording System: core.Setup
+  Electrode Placements: ephys.ElectrodeArrayUsage
+  # Note: specimenprep.TissueSamplePreparation does not exist in fairgraph.
+  # Surgical Preparation is documentary; its sub-sections (Craniotomy, Head Post,
+  # Recording Chamber) map to their own entity types.
+  Surgical Preparation: specimen/preparation
+  Craniotomy: specimenprep.CranialWindowPreparation
+  Auxiliary Device: core.Device
+  Auxiliary Devices: core.Device
+  Head Post: core.Device
+  Recording Chamber: core.Device
+  Implanted Probes: ephys.ElectrodeArrayUsage
+  # Processing (array items get numbered: Data Processing_1, _2, ...
+  # _get_section_type strips suffix -> matches Data Processing above)
+  # No openMINDS correspondence
+  Hardware Filters: hardware/filter
+  Filters: hardware/filter
+  Filters Applied: analysis/filter
+  Software: computation/software
+  Curation Software: computation/software  # versions of the pipeline tools (generated at compile)
+  detection: analysis/detection
+  sorting: analysis/sorting
+  quality control: analysis/qualityControl
+  annotation: analysis/annotation
+  synchronization: analysis/synchronization
+  anatomical targets: controlled_terms.UBERONParcellation
+  Consortium: core.Consortium
+  Project: core.Project
+  affiliation: core.Affiliation
+  digital identifier: core.DigitalIdentifier
+
+build_order:
+  - Consortium         # built first: Custodian affiliations link to it
+  - License
+  - Person             # includes nested: Organization, ORCID, Affiliation
+  - Custodian
+  - Contribution       # contributor roles, links to Person
+  - Funding            # includes nested: Organization (funder)
+  - SubjectState
+  - Subject
+  - BehavioralProtocol
+  - Protocol           # recording methodology - needed by RecordingActivity
+  - ElectrodeArray
+  - Setup               # recording system hardware, links to ElectrodeArray
+  - ElectrodeArrayUsage  # per-session device usage, links to ElectrodeArray
+  - FileRepository     # EBRAINS data bucket (needs repository url)
+  - DatasetVersion     # before Dataset (has_versions dependency)
+  - Dataset            # parent container, links to DatasetVersion
+  - Project            # umbrella project, links to Dataset and Consortium
+  - RecordingActivity
+
+schemas:
+
+  # --- License ---
+  License:
+    fairgraph_class: core.License
+    odml_section: Dataset
+    conflict_types: [vocabulary]  # free text -> openMINDS License instance
+    instance_lookup:
+      from_odml: "license"
+
+  # --- Person (with nested Organization, ORCID, Affiliation) ---
+  Person:
+    fairgraph_class: core.Person
+    odml_section: Dataset/Contributors
+    conflict_types: [structural]  # BIDS: flat author string; openMINDS: Person + Organization + Affiliation graph
+    mode: multiple
+    kg_lookup:
+      fields: [given_name, family_name]
+    fields:
+      given_name: { odml: "given name" }
+      family_name: { odml: "family name" }
+      digital_identifiers: { type: nested_list, target: ORCID }
+      affiliations: { type: nested_list, target: Affiliation }
+    nested:
+      # The institution only. Organizations are shared KG nodes matched by full
+      # name, so a person's lab must not become the institution's short_name
+      # (every dataset would overwrite it). The lab (often a group, faculty or
+      # joint unit name that is not unique across institutions) is not exported
+      # to openMINDS; README and DataCite keep it in the affiliation.
+      Organization: &person_org
+        fairgraph_class: core.Organization
+        condition: "affiliation.institution"
+        kg_lookup:
+          fields: [full_name]
+          search_space: common  # shared Organization nodes only, never test spaces
+        fields:
+          full_name: { odml: "affiliation.institution" }
+      ORCID: &person_orcid
+        fairgraph_class: core.ORCID
+        condition: "digital identifier.type == ORCID"
+        fields:
+          identifier: { odml: "digital identifier.value", prefix: "https://orcid.org/" }
+      Affiliation: &person_affiliation
+        fairgraph_class: core.Affiliation
+        condition: Organization
+        add_to_collection: false  # referenced by Person, no separate registration
+        fields:
+          member_of: { type: nested_ref, target: Organization }
+
+  # --- Custodian (same structure as Person, different odML path) ---
+  Custodian:
+    fairgraph_class: core.Person
+    odml_section: Dataset/Custodian
+    conflict_types: [structural, coverage]  # NWB/BIDS have no custodian concept
+    mode: single
+    kg_lookup:
+      fields: [given_name, family_name]
+    fields:
+      given_name: { odml: "given name" }
+      family_name: { odml: "family name" }
+      digital_identifiers: { type: nested_list, target: ORCID }
+      affiliations: { type: nested_list, target: [Affiliation, ConsortiumAffiliation] }
+      contact_information: { type: nested_ref, target: ContactInfo }
+    nested:
+      Organization: *person_org
+      ORCID: *person_orcid
+      Affiliation: *person_affiliation
+      # PI membership in the umbrella Consortium. openMINDS has no forward
+      # Consortium.members property; membership is an Affiliation on the
+      # Person whose member_of is the Consortium (shown as a reverse link on
+      # the Consortium). Opt-in per dataset: "consortium member: true".
+      ConsortiumAffiliation:
+        fairgraph_class: core.Affiliation
+        condition: "consortium member == True"
+        add_to_collection: false
+        fields:
+          member_of: { type: link, target: Consortium }
+      ContactInfo:
+        fairgraph_class: core.ContactInformation
+        condition: "email"
+        add_to_collection: true
+        fields:
+          email: { odml: "email" }
+
+  # --- Funding (with nested Organization for funder) ---
+  Funding:
+    fairgraph_class: core.Funding
+    odml_section: Dataset/Fundings
+    conflict_types: [structural]  # BIDS: flat string; openMINDS: Funding entity + Organization link
+    mode: multiple
+    kg_lookup:
+      fields: [award_number]
+      search_space: common  # shared Funding nodes (e.g. EBRAINS 2.0), never test spaces
+    # fairgraph's own push check matches a Funding by its funder alone, which
+    # would merge two new grants of the same funder into one node
+    existence_query: [award_number]
+    fields:
+      funder: { type: nested_ref, target: FunderOrg }
+      award_number: { odml: "award number" }
+      award_title: { odml: "award title" }
+      acknowledgement: { odml: "acknowledgement" }
+    nested:
+      FunderOrg:
+        fairgraph_class: core.Organization
+        condition: "funder"
+        kg_lookup:
+          fields: [full_name]
+          search_space: common  # shared Organization nodes only, never test spaces
+        fields:
+          full_name: { odml: "funder" }
+
+  # --- SubjectState (per-session) ---
+  # One SubjectState per session. Base properties from Subject; per-session
+  # lookup_label; the subject's age, the same in every state. relative_time_indication =
+  # days since the subject's first session (sessions without a date get none).
+  # RecordingActivity links to matching SubjectState via index-matched linking.
+  # One state per BIDS session: the recordings of several tasks in one session
+  # (entries with the same subject and session id) share it. EBRAINS convention:
+  #   internalIdentifier = ses-<session id>
+  #   lookupLabel = <Dataset short name>_sub-<subject id>_ses-<session id>
+  SubjectState:
+    fairgraph_class: core.SubjectState
+    conflict_types: [coverage, structural]  # NWB/BIDS have no time-varying subject state concept
+    mode: per_session
+    base_section: Subject
+    dedup_by: "session id"
+    kg_lookup:
+      fields: [lookup_label]
+      search_space: target
+    per_session_config:
+      session_date_field: "date"
+      relative_time_unit: day
+    fields:
+      internal_identifier: { type: template, value: "ses-{session_id}" }
+      lookup_label: { type: template, value: "{Dataset/short name}_sub-{subject id}_ses-{session_id}" }
+      age_category:
+        type: term
+        odml_field: "age category"
+        term_class: controlled_terms.AgeCategory
+      handedness:
+        type: term
+        odml_field: "handedness"
+        term_class: controlled_terms.Handedness
+      attributes:
+        type: term
+        odml_field: "subject attribute"
+        term_class: controlled_terms.SubjectAttribute
+        list: true
+      age:
+        type: quantity
+        odml_field: "age"
+      weight:
+        type: quantity
+        odml_field: "weight"
+      additional_remarks: { odml: "notes" }
+      # pathologies: Disease + DiseaseModel merged from template fields
+      pathologies:
+        type: multi_term
+        odml_field: "disease"
+        term_classes:
+          - controlled_terms.Disease
+          - controlled_terms.DiseaseModel
+        merge_fields: ["disease", "disease model"]
+        list: true
+
+  # --- Subject ---
+  # subject id is a pseudonym (never the animal's name). EBRAINS convention:
+  #   internalIdentifier = sub-<subject id>  (the BIDS participant id)
+  #   lookupLabel = <Dataset short name>_sub-<subject id>  (unique per KG space)
+  Subject:
+    fairgraph_class: core.Subject
+    conflict_types: [vocabulary, structural]  # controlled terms (species, sex); entity-referenced states
+    mode: per_subject  # one per entry of 'Subjects', else the single 'Subject'
+    kg_lookup:
+      fields: [lookup_label]
+      search_space: target
+    fields:
+      lookup_label: { type: template, value: "{Dataset/short name}_sub-{subject id}" }
+      internal_identifier: { type: template, value: "sub-{subject id}" }
+      species:
+        type: term
+        odml_field: "species"
+        term_class: controlled_terms.Species
+      biological_sex:
+        type: term
+        odml_field: "biological sex"
+        term_class: controlled_terms.BiologicalSex
+      studied_states: { type: link, target: SubjectState, list: true, match: subject }
+
+  # --- Contribution (contributor roles) ---
+  # One per contributor: links Person to ContributionType roles.
+  # Embedded metadata: not added to collection (embedded in DatasetVersion).
+  Contribution:
+    fairgraph_class: core.Contribution
+    odml_section: Dataset/Contributors
+    conflict_types: [coverage, vocabulary]  # NWB/BIDS have no typed contribution roles
+    mode: multiple
+    add_to_collection: false
+    fields:
+      contributor: { type: link, target: Person }
+      types:
+        type: term
+        odml_field: "roles"
+        term_class: controlled_terms.ContributionType
+        list: true
+
+  # --- DatasetVersion ---
+  DatasetVersion:
+    fairgraph_class: core.DatasetVersion
+    odml_section: Dataset
+    conflict_types: [structural, vocabulary]  # versioned entity graph; controlled terms for techniques, approaches
+    mode: single
+    kg_lookup:
+      fields: [short_name]
+      search_space: target
+    # DatasetVersion duplicates some fields from parent Dataset (KG expects both).
+    fields:
+      short_name: { odml: "short name" }
+      # full_name and description are inherited from the parent Dataset; the
+      # version gets its own description, the Dataset's text with the
+      # dataset's usage statement (collection Project 'usage statement', a
+      # dataset's own under its Dataset/Project) appended as a paragraph, only
+      # when that statement is filled (an empty required token skips the field)
+      description: { type: template, value: "{description}\n\n{?Dataset/Project/dataset statement}\n\n{Dataset/Project/usage statement}" }
+      version_identifier: { odml: "version identifier", default: "1.0" }
+      # a first publication elsewhere (dataset.yaml 'release date'), else the export date
+      release_date: { type: today, odml: "release date" }
+      how_to_cite: { odml: "how to cite" }
+      homepage: { odml: "homepage url" }
+      support_channels: { odml: "support channel", list: true }
+      # dataset-specific text + the shared version statement (if any)
+      version_innovation: { type: template, value: "{version innovation}\n\n{?Dataset/Project/version statement}" }
+      digital_identifier: { type: nested_ref, target: DatasetDOI }
+      full_documentation: { type: nested_ref, target: DocumentationURL }
+      ethics_assessment:
+        type: term
+        odml_field: "ethics assessment"
+        term_class: controlled_terms.EthicsAssessment
+      accessibility:
+        type: term
+        odml_field: "accessibility"
+        term_class: controlled_terms.ProductAccessibility
+      # techniques: recording techniques and analysis techniques (e.g. spike sorting)
+      techniques:
+        type: multi_term
+        odml_field: "techniques"
+        term_classes:
+          - controlled_terms.Technique
+          - controlled_terms.AnalysisTechnique
+        list: true
+      experimental_approaches:
+        type: term
+        odml_field: "experimental approach"
+        term_class: controlled_terms.ExperimentalApproach
+        list: true
+      data_types:
+        type: term
+        odml_field: "semantic data type"
+        term_class: controlled_terms.SemanticDataType
+        list: true
+      # study_targets: brain regions + cell types + organs merged
+      study_targets:
+        type: multi_term
+        odml_field: "brain regions"
+        term_classes:
+          - controlled_terms.UBERONParcellation
+          - controlled_terms.CellType
+          - controlled_terms.Organ
+        merge_fields: ["brain regions", "cell types", "organs"]
+        list: true
+      preparation_designs:
+        type: term
+        odml_field: "preparation design"
+        term_class: controlled_terms.PreparationType
+        list: true
+      keywords:
+        type: multi_term
+        odml_field: "keywords"
+        # keywords that repeat another field of the card are dropped (KG curator)
+        exclude_fields: ["brain regions", "cell types", "organs", "techniques", "experimental approach"]
+        term_classes:
+          - controlled_terms.UBERONParcellation
+          - controlled_terms.CellType
+          - controlled_terms.Technique
+          - controlled_terms.ExperimentalApproach
+          - controlled_terms.Organ
+          - controlled_terms.Species
+        fallback_class: controlled_terms.TermSuggestion
+        list: true
+      license: { type: link, target: License }
+      studied_specimens: { type: link, target: Subject, list: true }
+      funding: { type: link, target: Funding, list: true }
+      behavioral_protocols: { type: link, target: BehavioralProtocol, list: true }
+      related_publications:
+        type: doi_list
+        odml_field: "related publications"
+      repository: { type: link, target: FileRepository }
+      input_data: { type: nested_ref, target: InputDataURL, list: true }
+      other_contributions: { type: link, target: Contribution, list: true }
+    nested:
+      DatasetDOI: &dataset_doi
+        fairgraph_class: core.DOI
+        condition: "doi"
+        add_to_collection: true
+        fields:
+          identifier: { odml: "doi", prefix: "https://doi.org/" }
+      DocumentationURL:
+        fairgraph_class: core.URL
+        condition: "documentation url"
+        add_to_collection: true
+        fields:
+          url: { odml: "documentation url" }
+      InputDataURL:
+        fairgraph_class: core.WebResource
+        condition: "input data url"
+        add_to_collection: true
+        fields:
+          iri: { type: iri, odml: "input data url" }
+
+  # --- Dataset (parent container, version-independent) ---
+  # Most metadata lives on DatasetVersion. The parent Dataset holds version-
+  # independent identity and links to its version(s) via has_versions.
+  # DatasetVersion.is_version_of is a computed reverse link in fairgraph;
+  # we only need to set has_versions on the parent.
+  Dataset:
+    fairgraph_class: core.Dataset
+    odml_section: Dataset
+    conflict_types: [structural]  # Dataset/DatasetVersion split; entity graph with links
+    mode: single
+    kg_lookup:
+      fields: [short_name]
+      search_space: target
+    fields:
+      full_name: { odml: "full name" }
+      short_name: { odml: "short name" }
+      # dataset description + the shared dataset statement (if any)
+      description: { type: template, value: "{description}\n\n{?Dataset/Project/dataset statement}" }
+      authors: { type: link, target: Person, list: true }
+      custodians: { type: link, target: Custodian, list: true }
+      has_versions: { type: link, target: DatasetVersion, list: true }
+      homepage: { odml: "homepage url" }
+      how_to_cite: { odml: "how to cite" }
+      digital_identifier: { type: nested_ref, target: DatasetDOI }
+      # is_part_of: computed reverse link from Project.has_parts
+    nested:
+      DatasetDOI: *dataset_doi
+
+  # --- BehavioralProtocol ---
+  BehavioralProtocol:
+    fairgraph_class: core.BehavioralProtocol
+    odml_section: Behavioral Protocol
+    conflict_types: [coverage, vocabulary]  # NWB has no protocol concept; controlled stimulus types
+    mode: single
+    kg_lookup:
+      fields: [name]
+      search_space: target
+    fields:
+      # KG convention: paradigm (the dataset's citation), e.g. "Resting State
+      # Paradigm (Author et al., 2026)": {dataset citation} is derived from
+      # dataset.yaml (SchemaBuilder.dataset_citation: the first author's
+      # family name, "et al." with more than one, the year of dataset.yaml's
+      # 'release date', else the release year of the export); the name
+      # alone without authors. 'described in' could give a citation here
+      # later; today it feeds described_in only
+      name: { type: template, value: "{name} ({?dataset citation})" }
+      # EBRAINS convention: the BIDS task entity, e.g. task-rest
+      internal_identifier: { type: template, value: "task-{bids task label}" }
+      description: { odml: "description" }
+      # 'described in', a DOI or URL of a publication or protocol (only when an IRI)
+      described_in: { type: nested_list, target: ProtocolRef }
+      # stimulations: StimulationApproach + StimulationTechnique merged
+      stimulations:
+        type: multi_term
+        odml_field: "stimulation approach"
+        term_classes:
+          - controlled_terms.StimulationApproach
+          - controlled_terms.StimulationTechnique
+        merge_fields: ["stimulation approach", "stimulation technique"]
+        list: true
+      # stimulus_types: 7 StimulusType vocabularies merged from typed template fields
+      stimulus_types:
+        type: multi_term
+        odml_field: "visual stimuli type"
+        term_classes:
+          - controlled_terms.VisualStimulusType
+          - controlled_terms.AuditoryStimulusType
+          - controlled_terms.TactileStimulusType
+          - controlled_terms.OlfactoryStimulusType
+          - controlled_terms.GustatoryStimulusType
+          - controlled_terms.OpticalStimulusType
+          - controlled_terms.ElectricalStimulusType
+        merge_fields:
+          - "visual stimuli type"
+          - "auditory stimuli type"
+          - "tactile stimuli type"
+          - "olfactory stimuli type"
+          - "gustatory stimuli type"
+          - "optical stimuli type"
+          - "electrical stimulation type"
+        list: true
+    nested:
+      ProtocolRef:
+        fairgraph_class: core.WebResource
+        condition: "described in"
+        add_to_collection: true
+        fields:
+          iri: { type: iri, odml: "described in" }
+
+  # --- Protocol (recording methodology, distinct from BehavioralProtocol) ---
+  # BehavioralProtocol = task/paradigm; Protocol = HOW the recording was done.
+  Protocol:
+    fairgraph_class: core.Protocol
+    odml_section: Dataset
+    conflict_types: [coverage, vocabulary]  # NWB/BIDS have no recording protocol entity
+    mode: single
+    kg_lookup:
+      fields: [name]
+      search_space: target
+    fields:
+      name: { odml: "short name", default: "Recording protocol" }
+      description: { odml: "description" }
+      described_in: { type: nested_list, target: ProtocolRef }
+      # techniques: recording techniques and analysis techniques (e.g. spike sorting)
+      techniques:
+        type: multi_term
+        odml_field: "techniques"
+        term_classes:
+          - controlled_terms.Technique
+          - controlled_terms.AnalysisTechnique
+        list: true
+    nested:
+      ProtocolRef:
+        fairgraph_class: core.WebResource
+        condition: "protocol url"
+        add_to_collection: true
+        fields:
+          iri: { type: iri, odml: "protocol url" }
+
+  # --- ElectrodeArray ---
+  ElectrodeArray:
+    fairgraph_class: ephys.ElectrodeArray
+    odml_section: Hardware/Probes
+    conflict_types: [structural, vocabulary]  # NWB: Device; BIDS: probes.tsv row; openMINDS: entity with controlled materials
+    mode: multiple
+    kg_lookup:
+      fields: [lookup_label]
+      search_space: target
+    fields:
+      name: { odml: "name" }
+      # probe names repeat across datasets ("Probe 1"); unique per KG space
+      lookup_label: { type: template, value: "{Dataset/short name}_{name}" }
+      internal_identifier: { odml: "internal id" }
+      description: { odml: "model" }
+      serial_number: { odml: "serial number" }
+      manufacturers:
+        type: nested_list
+        target: ProbeManufacturer
+      # No electrode-array DeviceType terms in openMINDS yet: hardware.yaml holds the
+      # candidate terms of openMINDS_instances#446, unresolved values are dropped
+      # until they are released.
+      device_type:
+        type: term
+        odml_field: "device type"
+        term_class: controlled_terms.DeviceType
+      number_of_electrodes: { odml: "number of contacts" }
+      electrode_identifiers: { odml: "electrode identifiers", list: true }
+      conductor_material:
+        type: term
+        odml_field: "conductor material"
+        term_class: controlled_terms.MolecularEntity
+      insulator_material:
+        type: term
+        odml_field: "insulator material"
+        term_class: controlled_terms.MolecularEntity
+      # digital_identifier: DOI or RRID (from template "digital identifier" subsection)
+      # Uses RRID (most common for probes). DOI support can be added via a second
+      # nested entity with condition "digital identifier.type == DOI".
+      digital_identifier: { type: nested_ref, target: ProbeRRID }
+    nested:
+      ProbeRRID:
+        fairgraph_class: core.RRID
+        condition: "digital identifier.type == RRID"
+        add_to_collection: true
+        fields:
+          identifier: { odml: "digital identifier.value" }
+      ProbeManufacturer: &manufacturer_org
+        fairgraph_class: core.Organization
+        condition: "manufacturer"
+        kg_lookup:
+          fields: [full_name]
+          search_space: common  # shared Organization nodes only, never test spaces
+        fields:
+          full_name: { odml: "manufacturer" }
+
+  # --- Setup (recording system hardware) ---
+  # Captures the DAQ/recording system as an openMINDS Setup entity.
+  # Links to ElectrodeArray via has_parts (probes are part of the setup).
+  # Template fields: manufacturer, system model, headstage, processor, etc.
+  Setup:
+    fairgraph_class: core.Setup
+    odml_section: Hardware/Recording System
+    conflict_types: [structural]  # NWB: Device; BIDS: ecephys.json fields; openMINDS: Setup entity with has_parts
+    mode: single
+    kg_lookup:
+      fields: [name]
+      search_space: target
+    condition: "manufacturer"
+    fields:
+      name: { odml: "name" }
+      description: { odml: "system model" }
+      manufacturers: { type: nested_list, target: SetupManufacturer }
+      has_parts: { type: link, target: ElectrodeArray, list: true }
+    nested:
+      SetupManufacturer: *manufacturer_org
+
+  # --- ElectrodeArrayUsage (per-session device usage wrapper) ---
+  # One per placement of each session (the session's Electrode Placements,
+  # else the subject's Implanted Probes for chronic arrays, see
+  # fairephys.placements.matched_probes), linked to its ElectrodeArray by the
+  # device's exact name. Returns list-of-lists so RecordingActivity[i].devices
+  # gets the usages of session i.
+  ElectrodeArrayUsage:
+    fairgraph_class: ephys.ElectrodeArrayUsage
+    conflict_types: [coverage, structural]  # NWB/BIDS have no per-session device usage wrapper
+    mode: per_session_nested
+    # one per recording: a session that recorded several tasks has one per task
+    lookup_label_template: "{dataset}_sub-{subject_id}_ses-{session_id}{?_task-{task}}_{probe}"
+    kg_lookup:
+      fields: [lookup_label]
+      search_space: target
+    fields:
+      device:
+        type: match_link
+        target: ElectrodeArray
+        match_field: probe
+        match_attrs: [name, lookup_label]
+      # The region's CustomAnatomicalEntity, named after the area of the
+      # collection's atlas registry (collection.yaml: anatomy atlas), else
+      # the region label; the placement's own fields override the atlas
+      anatomical_locations_of_arrays:
+        type: custom_anatomy
+        odml_field: "brain region"
+        area_field: "atlas area"        # atlas area name of this placement
+        uberon_field: "uberon term"      # UBERONParcellation attribute name
+        hemisphere_field: "hemisphere"
+
+  # --- RecordingActivity (per-session) ---
+  # Neo-derived fields (sampling rate, duration, streams) are populated by
+  # Neo enrichment - empty fields are omitted during build.
+  RecordingActivity:
+    fairgraph_class: ephys.RecordingActivity
+    odml_section: Sessions
+    conflict_types: [structural, vocabulary]  # NWB: NWBFile; BIDS: session row + ecephys.json; openMINDS: entity graph
+    mode: multiple
+    kg_lookup:
+      fields: [lookup_label]
+      search_space: target
+    fields:
+      # unique per KG space (session ids repeat across subjects and datasets;
+      # a session that recorded several tasks has one activity per task)
+      lookup_label: { type: template, value: "{Dataset/short name}_sub-{subject_id}_ses-{session_id}{?_task-{task}}" }
+      internal_identifier: { odml: "session id" }
+      description: { odml: "description" }
+      is_part_of: { type: link, target: DatasetVersion }
+      protocols: { type: link, target: Protocol, list: true }
+      devices: { type: link, target: ElectrodeArrayUsage, list: true }
+      inputs: { type: link, target: SubjectState, list: true, match: session }
+      study_targets:
+        type: term
+        odml_field: "brain regions"
+        term_class: controlled_terms.UBERONParcellation
+        list: true
+      performed_by:
+        type: match_link
+        target: Person
+        match_field: "performed by"
+        match_attrs: [family_name]
+      start_time: { type: datetime, odml: "start time" }
+      end_time: { type: datetime, odml: "end time" }
+      preparation_design:
+        type: term
+        odml_field: "preparation design"
+        term_class: controlled_terms.PreparationType
+      # outputs: FileBundle/File entities created by KG curation team
+
+  # --- Recording (future: when File entities exist) ---
+  # NOT BUILT: data_location (REQUIRED) needs File/FileBundle from KG curation team.
+  # Activate by removing build: false and adding to build_order after ElectrodeArrayUsage.
+  # Neo metadata mapping:
+  #   sampling_frequency <- signal_streams[0].sampling_rate (QuantitativeValue, Hz)
+  #   channels           <- signal_channels[*] -> ephys.Channel(internal_identifier, unit)
+  #   recorded_with      <- ElectrodeArrayUsage (already built per session)
+  Recording:
+    fairgraph_class: ephys.Recording
+    odml_section: Sessions
+    conflict_types: [structural, type]  # NWB: ElectricalSeries; BIDS: files; openMINDS: entity with QuantitativeValue
+    mode: per_session
+    build: false
+    fields:
+      internal_identifier: { odml: "session id" }
+      name: { odml: "session id" }
+      sampling_frequency: { type: quantity, odml_field: "sampling rate" }
+      recorded_with: { type: link, target: ElectrodeArrayUsage, list: true }
+      # BLOCKED: data_location needs core.File/FileBundle
+      # BLOCKED: channels needs ephys.Channel from Neo signal_channels
+
+  # --- FileRepository (the repository of the curated data) ---
+  # Created per dataset from its repository url (the DOI archive URL when
+  # published, the repository URL during curation). The hosting organisation
+  # and the kind of repository come from the collection metadata
+  # (collection.yaml: repository host, repository type), which a dataset
+  # deposited elsewhere overrides in its dataset.yaml.
+  FileRepository:
+    fairgraph_class: core.FileRepository
+    odml_section: Dataset
+    conflict_types: [coverage]  # NWB/BIDS have no repository entity concept
+    mode: single
+    kg_lookup:
+      fields: [name]
+      search_space: target
+    condition: "repository url"  # only build when repository URL is set
+    fields:
+      iri: { type: iri, odml: "repository url" }
+      # label = last segment of the IRI, e.g. MyLab_MyDataset_Curated
+      name: { odml: "repository url", basename: true }
+      type:
+        type: term
+        odml_field: "repository type"   # e.g. "git-annex repository" (GIN)
+        term_class: controlled_terms.FileRepositoryType
+      hosted_by: { type: nested_ref, target: HostingOrg }
+    nested:
+      HostingOrg:
+        fairgraph_class: core.Organization
+        condition: "repository host"
+        kg_lookup:
+          fields: [full_name]
+          search_space: common  # shared Organization nodes only, never test spaces
+        fields:
+          full_name: { odml: "repository host" }
+
+  # --- FileBundle (created by KG curation team, not built here) ---
+  # Groups files per session. Linked as RecordingActivity.outputs by KG team.
+  FileBundle:
+    fairgraph_class: core.FileBundle
+    odml_section: Sessions
+    conflict_types: [coverage]  # NWB/BIDS have no file bundle concept
+    mode: multiple
+    build: false
+    fields:
+      name: { odml: "session id" }
+      is_part_of: { type: link, target: FileRepository }
+
+  # --- Consortium ---
+  # Umbrella consortium (e.g. a network of labs). Linked as Project.coordinators.
+  # Shared across datasets (see collection/metadata); created once in the KG,
+  # then kept as-is; later edits are made in the KG editor.
+  Consortium:
+    fairgraph_class: core.Consortium
+    odml_section: Dataset/Consortium
+    conflict_types: [coverage]  # NWB/BIDS have no consortium concept
+    mode: single
+    keep_existing: true
+    kg_lookup:
+      fields: [full_name]
+    fields:
+      full_name: { odml: "full name" }
+      short_name: { odml: "name" }
+      homepage: { type: iri, odml: "url" }
+      contact_information: { type: nested_ref, target: ContactInfo }
+    nested:
+      ContactInfo:
+        fairgraph_class: core.ContactInformation
+        condition: "email"
+        add_to_collection: true
+        fields:
+          email: { odml: "email" }
+
+  # --- Project ---
+  # Umbrella project (e.g. a data-sharing project), described once in the shared
+  # collection/metadata. Built after Dataset so has_parts can link to the
+  # built Dataset. Dataset.is_part_of is a computed reverse link (same pattern
+  # as DatasetVersion.is_version_of from has_versions).
+  # keep_existing: created on the first push to a space with has_parts =
+  # [that dataset]; afterwards the KG copy is authoritative and has_parts is
+  # maintained manually in the KG editor.
+  Project:
+    fairgraph_class: core.Project
+    odml_section: Dataset/Project
+    conflict_types: [coverage]  # NWB/BIDS have no project hierarchy concept
+    mode: single
+    keep_existing: true
+    kg_lookup:
+      fields: [short_name]
+    fields:
+      short_name: { odml: "name" }
+      full_name: { odml: "full name" }
+      description: { odml: "description" }
+      has_parts: { type: link, target: Dataset, list: true }
+      coordinators: { type: link, target: Consortium, list: true }

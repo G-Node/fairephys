@@ -1,0 +1,66 @@
+[project]
+name = "fairephys"
+version = "0.1.0"
+description = "FAIR curation of extracellular electrophysiology: NWB in a BIDS (BEP032) layout with openMINDS and DataCite metadata, from one odML record"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE.md"]
+authors = [
+    { name = "Reema Gupta", email = "reema.gupta@lmu.de" }
+]
+requires-python = ">=3.11"
+keywords = ["electrophysiology", "NWB", "BIDS", "openMINDS", "odML", "EBRAINS", "FAIR", "curation"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "pyyaml",
+    "odml",
+    "openminds>=0.4,<0.5",
+    "jsonschema",
+    "probeinterface",
+    "neo>=0.14.6",
+    "numpy",
+    "pandas",
+    "pynwb",
+    "h5py",
+    "lxml",
+    "matplotlib>=3.10.8",
+    "neuroconv>=0.10.2",
+    "spikeinterface>=0.104.7,<0.105",
+    "nwbinspector>=0.7.2",
+    "fairgraph>=0.13.2,<0.14",
+    "pyedflib>=0.1.38",
+]
+
+[project.optional-dependencies]
+plexon = ["zugbruecke>=0.2.1"]        # Plexon .pl2 reader DLL via Wine (PlexonConverter)
+
+[project.scripts]
+fairephys = "fairephys.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/G-Node/fairephys"
+
+[build-system]
+requires = ["uv_build>=0.9.22,<0.10.0"]
+build-backend = "uv_build"
+
+# A KG token file must never ship
+[tool.uv.build-backend]
+source-exclude = ["**/.env"]
+wheel-exclude = ["**/.env"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

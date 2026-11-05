@@ -1,0 +1,71 @@
+# Recording configurations template (for ACUTE recordings)
+# Copy to your dataset's metadata/ folder and fill in values
+#
+# Contains per session_id:
+#   - techniques used (controlled terms)
+#   - electrode placements (anatomical)
+#
+# For CHRONIC datasets: placements go in subject.yaml to Implanted Probes
+
+_schema: recordings.v1
+_valueOrigin: ""
+
+# =============================================================================
+# RECORDING DEFAULTS
+# =============================================================================
+Recording Defaults:
+  recording type: acute  # acute | chronic
+  coordinate system: ""          # Stereotaxic, individual, AllenCCFv3, Other
+  coordinate reference: ""       # tip, center, base (point on probe described by coords)
+  coordinate units: millimeter   # millimeter | micrometer | centimeter | meter
+  coordinate system description: ""  # Free-form (required if coordinate system is Other)
+
+# =============================================================================
+# RECORDINGS BY SESSION
+# =============================================================================
+Recordings:
+  # Example session (replace with your session IDs):
+  session_id_001:
+    techniques:
+      - multi-electrode extracellular electrophysiology
+      # Add more: video tracking, electromyography, electrocardiography, etc.
+    notes: ""                 # session-level notes (e.g., paused recording)
+
+    # One entry per device inserted in this session; a device cannot be
+    # named twice in one session (a second insertion is a second session).
+    Electrode Placements:
+      - probe: ""  # exact name of the entry in Hardware.Probes
+        brain region: ""  # UBERONParcellation term
+        hemisphere: left  # left | right
+        # channels: the acquisition channels this device was wired to, as
+        # 1-based positions in the curated stream (e.g. "33-64", "1,3,5").
+        # Default: the next block after the previous placement.
+        # channels: ""
+        # stream: the recording stream of this device, for formats with several
+        # streams per file (e.g. SpikeGLX "imec0", "imec1"); empty when unknown
+        # stream: ""
+        # electrode identifiers: the contact ids of the device recorded in this session (e.g. from a Neuropixels IMRO table)
+        # electrode identifiers: []
+        # atlas area: ""       # name of the region in the anatomy atlas, when it differs (e.g. "4a")
+        # uberon term: ""      # UBERON term override (e.g. "primary_motor_cortex")
+        AP: ""               # e.g., "3 millimeter", "-4.5 millimeter"
+        ML: ""               # e.g., "1 millimeter", "2 millimeter"
+        DV: ""               # e.g., "5 millimeter" (depth from surface)
+        # DV by run: the depth of runs in which the device was moved during
+        # the session (microdrive advanced between runs); DV is the depth
+        # of the first run. Keys are run numbers.
+        # DV by run:
+        #   "5": "11.666 millimeter"
+        # quality: 1  # the lab's signal-quality label; write its scale in the curation README
+        # Insertion angles (degrees, for BIDS coordsystem; omit if not available)
+        # AP angle:                  # degrees in anterior-posterior plane
+        # ML angle:                  # degrees in medial-lateral plane
+        # rotation angle:            # degrees rotation around probe axis
+        anatomical reference: ""     # landmark for coordinates (e.g., ear bar zero)
+        # Per-contact anatomical targets: {term: contact_range}
+        # Keys are openMINDS UBERONParcellation terms or any anatomical term
+        anatomical targets:
+          cortical layer II: ""    # e.g., "2-10"
+          cortical layer III: ""
+          cortical layer V: ""
+        notes: ""               # e.g., drift, quality issues

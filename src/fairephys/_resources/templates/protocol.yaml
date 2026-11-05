@@ -1,0 +1,114 @@
+# Behavioral Protocol template
+# Copy to your dataset's metadata/ folder and fill in values
+
+_schema: protocol.v1
+_valueOrigin: ""
+
+Behavioral Protocol:
+  # ---------------------------------------------------------------------------
+  # IDENTITY -> BehavioralProtocol.name, .description, .internal_identifier
+  # ---------------------------------------------------------------------------
+  # the paradigm, e.g. "Resting State Paradigm"; the KG name adds the
+  # dataset's citation from dataset.yaml: "<name> (<first author's family name>
+  # et al., <year>)", "<name> (<family name>, <year>)" with one author; the
+  # year of dataset.yaml's release date, else the release year
+  name: ""
+  # DOI (10.xxxx/...) or http(s) URL of a publication or protocol that
+  # describes the paradigm (openMINDS described_in as a web resource, a DOI as
+  # https://doi.org/<doi>; never part of the name); a citation is no value here
+  described in: ""
+  internal identifier: ""
+  description: ""
+
+  # ---------------------------------------------------------------------------
+  # TASK CONDITIONS
+  # ---------------------------------------------------------------------------
+  task: ""
+  task paradigm: ""
+  bids task label: ""              # BIDS _task-<label>_ (alphanumeric only, e.g., "rest", "cue")
+  reward: ""
+  reward type: ""
+
+  # ---------------------------------------------------------------------------
+  # CONDITION DEFINITION (source facts for the description)
+  # ---------------------------------------------------------------------------
+  condition definition: ""         # criteria defining the recorded condition, e.g. "no task, no controlled stimulation, no reward"
+  block duration: ""               # duration of one recording block, e.g. "5 minute"
+  segment selection: ""            # rules for selecting data segments, e.g. "segments of at least 6 minute without task; first and last 30 s removed"
+
+  # ---------------------------------------------------------------------------
+  # SUBJECT POSITIONING
+  # ---------------------------------------------------------------------------
+  primate chair: false
+  head fixation: false
+  head fixation method: ""
+  body position: ""
+  limb movement allowed: false
+
+  # ---------------------------------------------------------------------------
+  # ENVIRONMENT
+  # ---------------------------------------------------------------------------
+  lighting condition: ""
+  acoustic environment: ""
+  temperature: ""
+  humidity: ""
+
+  # ---------------------------------------------------------------------------
+  # STIMULATION -> BehavioralProtocol.stimulations, .stimulus_types
+  # ---------------------------------------------------------------------------
+  # stimulation approach: StimulationApproach controlled terms
+  #   visual stimulation | auditory stimulation | tactile stimulation |
+  #   gustatory stimulation | olfactory stimulation | interoceptive stimulation
+  stimulation approach: []
+  # stimulation technique: StimulationTechnique controlled terms
+  #   e.g., drifting grating visual stimulation | optogenetic stimulation |
+  #   microstimulation | transcranial magnetic stimulation | whisker stimulation
+  stimulation technique: []
+  # Stimulus types: each field maps to a specific openMINDS StimulusType vocabulary.
+  # Values must match controlled terms exactly (use /openminds terms <Vocab>).
+  visual stimuli: ""           # free text description (documentary)
+  visual stimuli type: []      # VisualStimulusType: moving grating | natural scene | etc.
+  auditory stimuli: ""
+  auditory stimuli type: []    # AuditoryStimulusType: real spoken word
+  tactile stimuli: ""
+  tactile stimuli type: []     # TactileStimulusType: textured surface | vibrating object
+  olfactory stimuli: ""
+  olfactory stimuli type: []   # OlfactoryStimulusType: floral odor
+  gustatory stimuli: ""
+  gustatory stimuli type: []   # GustatoryStimulusType: sweet substance | sour substance
+  optical stimuli type: []     # OpticalStimulusType: infrared neural stimulus
+  electrical stimulation type: [] # ElectricalStimulusType: direct current
+
+  # Stimulus delivery software (BIDS StimulusPresentation)
+  Stimulus Presentation:
+    operating system: ""
+    software name: ""
+    software version: ""
+
+  # ---------------------------------------------------------------------------
+  # MONITORING
+  # ---------------------------------------------------------------------------
+  eye tracking: false
+  eye tracking method: ""
+  movement monitoring: []
+  movement monitoring note: ""
+  physiological monitoring: []
+  physiological monitoring note: ""
+  respiration monitoring: ""
+  vigilance control: ""            # how wakefulness is maintained or checked, e.g. "knock on the door when the animal becomes drowsy"
+
+  # ---------------------------------------------------------------------------
+  # PHARMACOLOGY
+  # ---------------------------------------------------------------------------
+  pharmacological agents: ""
+  anesthesia: ""
+  anesthesia type: ""
+  sedation: ""
+
+  # ---------------------------------------------------------------------------
+  # TRAINING CONTEXT
+  # ---------------------------------------------------------------------------
+  pre-training for resting state: false
+  training history: ""
+  other tasks performed: false
+  other tasks description: ""

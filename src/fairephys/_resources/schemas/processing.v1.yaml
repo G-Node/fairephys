@@ -1,0 +1,71 @@
+# Data Processing Template Schema v1
+#
+# Array of processing steps, each mapping to openMINDS computation.DataAnalysis.
+# Technique field uses openMINDS AnalysisTechnique controlled term names.
+# Only include steps that were actually performed.
+
+$schema: https://json-schema.org/draft-07/schema#
+title: Data Processing Template
+version: 1
+
+type: object
+required: [Data Processing]
+
+properties:
+  _schema:
+    const: processing.v1
+  _valueOrigin:
+    type: string
+
+  Data Processing:
+    type: array
+    items:
+      $ref: "#/$defs/ProcessingStep"
+
+$defs:
+  Software:
+    type: object
+    properties:
+      name: {type: string}
+      version: {type: string}
+
+  ProcessingStep:
+    type: object
+    required: [name, technique]
+    additionalProperties: true
+    properties:
+      # Core fields (map to openMINDS DataAnalysis)
+      name: {type: string}             # -> lookup_label
+      technique: {type: string}        # -> techniques (AnalysisTechnique controlled term)
+      description: {type: string}      # -> description
+      input: {type: string}            # documents input data type
+      output: {type: string}           # documents output data type
+      performed by: {type: string}     # -> performed_by (Person)
+      Software: {$ref: "#/$defs/Software"}  # -> environment
+      notes: {type: string}
+      # States the step annotates (on the step or in its annotation block)
+      # -> BIDS events.json trial_type Levels, README table
+      states: {$ref: "#/$defs/States"}
+      annotation:
+        type: object
+        additionalProperties: true
+        properties:
+          method: {type: string}
+          temporal resolution: {type: string}
+          states: {$ref: "#/$defs/States"}
+
+  # Plain labels, or objects with the BIDS trial_type value (label), the lab's
+  # raw code in the source files (code, if any) and what the state means
+  States:
+    anyOf:
+      - type: array
+        items: {type: string}
+      - type: array
+        items:
+          type: object
+          required: [label]
+          additionalProperties: false
+          properties:
+            label: {type: string, minLength: 1}
+            code: {type: [string, integer]}
+            description: {type: string}

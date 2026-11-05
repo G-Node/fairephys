@@ -1,0 +1,247 @@
+# Hardware Template Schema v1
+$schema: https://json-schema.org/draft-07/schema#
+title: Hardware Template
+version: 1
+
+type: object
+required: [Hardware]
+
+properties:
+  _schema:
+    const: hardware.v1
+  _valueOrigin:
+    type: string
+
+  Hardware:
+    type: object
+    required: [Recording System]
+    properties:
+      recording type:
+        enum: [acute, chronic]
+
+      Recording System:
+        type: object
+        required: [manufacturer, sampling rate]
+        properties:
+          name: {type: string}            # Human-readable setup name -> openMINDS Setup.name, NWB Device
+          manufacturer: {type: string}
+          manufacturer location: {type: string}
+          system model: {type: string}
+          model version: {type: string}       # Maps to BIDS ManufacturersModelVersion
+          setup name: {type: string}          # Maps to BIDS RecordingSetupName
+          serial number: {type: string}
+          headstage model: {type: string}
+          headstage version: {type: string}
+          headstage serial: {type: string}
+          digital hub model: {type: string}
+          digital hub version: {type: string}
+          cable type: {type: string}
+          transmission: {type: string}
+          processor model: {type: string}
+          processor version: {type: string}
+          processor serial: {type: string}
+          number of channels: {type: [integer, "null"], minimum: 1}
+          acquisition software: {type: string}
+          software version: {type: string}
+          operating system: {enum: [Windows, macOS, Linux, ""]}
+          operating system version: {type: string}
+          ground connection: {type: string}
+          system reference: {type: string}
+          sampling rate: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(hertz|kilohertz)|)$"}
+          bit depth: {type: [integer, "null"]}
+          gain: {type: [number, "null"]}
+          # the unit of 'gain'
+          gain unit: {enum: ["uV per count", "V per count", ""]}
+          # the stored count that corresponds to zero volts
+          adc zero: {type: [integer, "null"]}
+          input impedance: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(ohm|kiloohm|megaohm|gigaohm)|)$"}
+          power line frequency: {type: integer, enum: [50, 60]}
+          # Neo signal stream ids of the curated recording (e.g. [WB], ["6"]);
+          # needed when the raw file holds several streams
+          curated streams: {type: array, items: {type: string}}
+
+      # Analog filters before digitization; the same list describes an
+      # auxiliary device's own filters (BIDS HardwareFilters of its sidecar)
+      Hardware Filters: &hardware_filters
+        type: object
+        properties:
+          Filters:
+            type: array
+            items:
+              type: object
+              properties:
+                name: {type: string}
+                type: {type: string}
+                cutoff: {type: string, pattern: "^(\\d+(\\.\\d+)?(-\\d+(\\.\\d+)?)?\\s+(hertz|kilohertz)|)$"}
+                order: {}
+                implementation: {type: string}
+                roll-off: {type: string}
+
+      Auxiliary Devices:
+        type: array
+        description: >-
+          Non-neural recording devices (EMG amplifiers, eye trackers, motion
+          trackers, etc.). Each device has a name that can be referenced from
+          the registry to populate BIDS sidecar fields for the corresponding
+          modality. When auxiliary signals are recorded through the main
+          Recording System (e.g., as analog inputs), list it here with
+          'same as recording system: true' and the relevant fields will be
+          inherited.
+        items:
+          type: object
+          required: [name]
+          properties:
+            name: {type: string}
+            same as recording system:
+              type: boolean
+              description: >-
+                If true, device fields (manufacturer, model, etc.) are
+                inherited from Recording System. Use when auxiliary signals
+                are recorded as analog inputs through the neural recording
+                system rather than a separate device.
+            # Device metadata (flows to core.Device via openMINDS registry)
+            manufacturer: {type: string}
+            manufacturer location: {type: string}
+            model: {type: string}
+            serial number: {type: string}
+            software version: {type: string}
+            device type: {type: string}
+            electrode manufacturer: {type: string}
+            electrode model: {type: string}
+            # Description (flows to openMINDS core.Device.description)
+            description: {type: string}
+            # EMG-specific BIDS metadata (only relevant when modality=emg)
+            placement scheme:
+              enum: [ChannelSpecific, Measured, Other, ""]
+              description: >-
+                EMG electrode placement standard (BIDS EMGPlacementScheme).
+                Use "Other" if non-standard, then provide 'placement
+                description'.
+            placement description:
+              type: string
+              description: >-
+                Free-text description of electrode placement. Maps to BIDS
+                EMGPlacementSchemeDescription. Required when placement
+                scheme is "Other".
+            reference:
+              type: string
+              description: >-
+                EMG reference electrode description. Maps to BIDS
+                EMGReference.
+            # The device's analog filters before digitization (BIDS
+            # HardwareFilters of its sidecar), as under Recording System
+            Hardware Filters: *hardware_filters
+            # Eye-tracking specific BIDS metadata (only relevant when recording=eye)
+            recorded eye:
+              type: string
+              description: >-
+                Eye being tracked. Maps to BIDS RecordedEye. Use "left",
+                "right", or "cyclopean" (for binocular). Required by BIDS
+                when PhysioType is "eyetrack".
+            coordinate system:
+              type: string
+              description: >-
+                Gaze coordinate system. Maps to BIDS SampleCoordinateSystem.
+                Use "gaze-on-screen", "eye-in-head", "gaze-in-world", or
+                "custom" (for uncalibrated/non-standard, e.g. raw voltage).
+            # BIDS routing (channel-to-modality mapping)
+            modality:
+              type: string
+              enum: [physio, motion, emg]
+              description: >-
+                BIDS modality for auxiliary data files. Determines which
+                writer and sidecar generator to use.
+            channels:
+              type: array
+              items: {type: string}
+              description: >-
+                Channel names in the raw data that belong to this device.
+                Names must match the Neo signal_channels names exactly. An
+                eye tracker lists the horizontal, then the vertical position;
+                a further channel (pupil size) is named by its BIDS column in
+                the dataset's curate.py (eye_columns).
+            recording:
+              type: string
+              description: >-
+                BIDS recording entity value (e.g., "cardiac", "eye").
+                Used in physio filenames: recording-<value>_physio.
+            tracksys:
+              type: string
+              description: >-
+                BIDS tracking system entity value (e.g., "hand").
+                Used in motion filenames: tracksys-<value>_motion.
+            # the device's own sampling rate, e.g. "100 hertz"
+            sampling rate: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(hertz|kilohertz)|)$"}
+
+      # One entry per physical device (a probe of a model, a single electrode
+      # of a microdrive); Electrode Placements name entries by exact name
+      Probes:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          required: [name, number of contacts]
+          properties:
+            name: {type: string, description: Unique within the dataset, the same in every session}
+            internal id: {type: string}
+            manufacturer: {type: string}
+            # the ProbeInterface library's manufacturer key when it differs
+            # from the lab's manufacturer name (e.g. "sinaps-research-platform")
+            library manufacturer: {type: string}
+            manufacturer location: {type: string}
+            model: {type: string}
+            serial number: {type: string, description: This device's own serial number}
+            # digital identifier: DOI or RRID for the probe -> ElectrodeArray.digital_identifier
+            digital identifier: {type: object, properties: {type: {type: string}, value: {type: string}}}
+            device type: {type: string}
+            # the device class (the product name goes in 'model'); empty when unknown
+            probe type:
+              enum: [single electrode, linear multi-contact probe, silicon probe, Utah array,
+                     floating microelectrode array, ECoG array, ""]
+            laterality: {enum: [left, right, bilateral, ""]}
+            number of contacts: {type: integer, minimum: 1}
+            number of rows: {type: integer, minimum: 1}
+            number of columns: {type: integer, minimum: 1}
+            contact pitch: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            # a matrix whose spacings differ: between rows and between columns
+            row spacing: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            column spacing: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            total span: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            contact size: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            contact shape: {type: string}
+            contact arrangement: {enum: [linear, matrix, ""]}
+            first contact:
+              enum: [tip, top, ""]
+              description: >-
+                Linear probes: the end of the shank where contact 1 is (tip, the
+                default, or top: contact 1 farthest from the tip)
+            # explicit geometry: x and y in micrometer of each contact id
+            contact positions:
+              type: object
+              required: [contact ids, x, y]
+              properties:
+                contact ids: {type: array, items: {type: string}, minItems: 1}
+                x: {type: array, items: {type: number}, minItems: 1}
+                y: {type: array, items: {type: number}, minItems: 1}
+            shaft diameter: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            shaft length: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            total length: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(millimeter|micrometer)|)$"}
+            conductor material: {type: string}
+            insulator material: {type: string}
+            substrate material: {type: string}
+            coating: {type: string}
+            electrode identifiers: {type: [string, array], items: {type: string}}
+            channel mapping: {type: string}
+            reference type: {type: string}
+            reference attachment: {type: string}
+            reference location: {type: string}
+            reference impedance: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(ohm|kiloohm|megaohm|gigaohm)|)$"}
+            contact impedance range: {type: string, pattern: "^(\\d+(\\.\\d+)?(-\\d+(\\.\\d+)?)?\\s+(ohm|kiloohm|megaohm|gigaohm)|)$"}
+            impedance measurement date: {type: string}
+            # the device's status in the data (an array excluded with its reason,
+            # a known fault); printed under the probe in the data descriptor
+            notes: {type: string}
+            # Anatomical target -- optional; used for chronic probes with fixed target
+            brain region: {type: string}      # e.g. "primary motor cortex"
+            atlas area: {type: string}     # name of the region in the anatomy atlas, when it differs (e.g. "4a")
+            uberon term: {type: string}       # UBERON attr override (e.g. "primary_motor_cortex")

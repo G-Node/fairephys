@@ -1,0 +1,109 @@
+# Behavioral Protocol Template Schema v1
+$schema: https://json-schema.org/draft-07/schema#
+title: Behavioral Protocol Template
+version: 1
+
+type: object
+required: [Behavioral Protocol]
+
+properties:
+  _schema:
+    const: protocol.v1
+  _valueOrigin:
+    type: string
+
+  Behavioral Protocol:
+    type: object
+    required: [name, description, bids task label]
+    # 'reference' was removed: the name qualifier is derived from dataset.yaml
+    propertyNames: {not: {enum: [reference]}}
+    properties:
+      # Identity -> BehavioralProtocol.name, .description, .internal_identifier
+      name: {type: string}
+      internal identifier: {type: string}
+      description: {type: string}
+      # described in: DOI (10.xxxx/...) or http(s) URL of a publication or
+      # protocol that describes the paradigm; becomes
+      # BehavioralProtocol.described_in (a web resource, a DOI as its
+      # https://doi.org/ URL), never part of the name
+      described in: {type: string, pattern: "^(|10\\.\\d{4,9}/\\S+|https?://\\S+)$"}
+
+      # Task
+      task: {type: string}
+      task paradigm: {type: string}
+      # BIDS task entity used in filenames and TaskName sidecar field.
+      # Separate from the scientific 'task' field: "rest" is a BIDS convention
+      # for resting-state recordings, regardless of what the scientific task is.
+      # Alphanumeric constraint (^[a-zA-Z0-9]+$) is enforced in bids_filename() (naming.py).
+      bids task label: {type: string, pattern: "^[a-zA-Z0-9]+$"}
+      reward: {type: string}
+      reward type: {type: string}
+
+      # Condition definition (documentary; source facts for the description)
+      # Criteria that define the behavioral condition being recorded
+      condition definition: {type: string}
+      # Duration of one recording block of this protocol, e.g. "5 minute"
+      block duration: {type: string, pattern: "^(\\d+(\\.\\d+)?\\s+(second|minute|hour)|)$"}
+      # Rules used to select or extract data segments for this condition
+      segment selection: {type: string}
+
+      # Positioning
+      primate chair: {type: boolean}
+      head fixation: {type: boolean}
+      head fixation method: {type: string}
+      body position: {type: string}
+      limb movement allowed: {type: boolean}
+
+      # Environment
+      lighting condition: {type: string}
+      acoustic environment: {type: string}
+      temperature: {type: string}
+      humidity: {type: string}
+
+      # Stimulation -> BehavioralProtocol.stimulations (StimulationApproach + StimulationTechnique)
+      stimulation approach: {type: array, items: {type: string}}
+      stimulation technique: {type: array, items: {type: string}}
+      # Stimulus types -> BehavioralProtocol.stimulus_types (7 typed vocabularies)
+      visual stimuli: {type: string}
+      visual stimuli type: {type: array, items: {type: string}}
+      auditory stimuli: {type: string}
+      auditory stimuli type: {type: array, items: {type: string}}
+      tactile stimuli: {type: string}
+      tactile stimuli type: {type: array, items: {type: string}}
+      olfactory stimuli: {type: string}
+      olfactory stimuli type: {type: array, items: {type: string}}
+      gustatory stimuli: {type: string}
+      gustatory stimuli type: {type: array, items: {type: string}}
+      optical stimuli type: {type: array, items: {type: string}}
+      electrical stimulation type: {type: array, items: {type: string}}
+
+      # Stimulus delivery software (maps to BIDS StimulusPresentation)
+      Stimulus Presentation:
+        type: object
+        properties:
+          operating system: {type: string}
+          software name: {type: string}
+          software version: {type: string}
+
+      # Monitoring
+      eye tracking: {type: boolean}
+      eye tracking method: {type: string}
+      movement monitoring: {type: array}
+      movement monitoring note: {type: string}
+      physiological monitoring: {type: array}
+      physiological monitoring note: {type: string}
+      respiration monitoring: {type: string}
+      # How wakefulness is maintained or checked (e.g. intervention when drowsy)
+      vigilance control: {type: string}
+
+      # Pharmacology
+      pharmacological agents: {type: string}
+      anesthesia: {type: string}
+      anesthesia type: {type: string}
+      sedation: {type: string}
+
+      # Training
+      pre-training for resting state: {type: boolean}
+      training history: {type: string}
+      other tasks performed: {type: boolean}
+      other tasks description: {type: string}

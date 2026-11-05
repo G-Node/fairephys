@@ -1,0 +1,573 @@
+# BIDS Field Mappings Registry
+# Maps odML properties to BIDS sidecar fields and TSV columns.
+# Path notation: Section/Subsection.property
+# Only custom fields (not directly mappable to BIDS) should have sidecar_description,
+# except columns whose values come from an ontology: sidecar_term_url documents
+# the source (written as TermURL, with the description, into the column sidecar)
+#
+# Conflict types reference the six-type typology:
+#   unit, type, vocabulary, structural, cardinality, coverage
+# Empty list [] means direct passthrough with no interoperability conflict.
+
+# Target BIDS specification. Update both values together when following a
+# newer spec state (the microelectrode extension is not yet in a release).
+spec:
+  bids_version: &bids_version "1.11.2"
+  ecephys_extension: "BEP032 Microelectrode Electrophysiology, draft (bids-specification PR #2307 at commit 508cfc7b)"
+  # Used by --validate: the schema file lives in _resources/bids/ and was
+  # generated with `bst export` from the same spec commit; override with the
+  # BIDS_SCHEMA environment variable. Named schema-<extension>-<commit>.json:
+  # the odML 'Curation Software' section (and the descriptor) take the schema
+  # and commit from the name and the validator version from its pin below.
+  schema_file: "schema-bep032-508cfc7b.json"
+  validator: "jsr:@bids/validator@2.2.6"
+
+# Value transforms
+transforms:
+  hemisphere:
+    left: L
+    right: R
+  coordinate_units:   # the templates' expanded unit names -> BIDS units
+    millimeter: mm
+    micrometer: um
+    centimeter: cm
+    meter: m
+
+# Type coercions (applied after extraction, before writing BIDS files)
+coercions:
+  array_fields: [Keywords, ReferencesAndLinks]          # wrap single values in list
+  float_fields: [SamplingFrequency, PowerLineFrequency] # cast to float
+  string_fields: [BodyPartDetails]                      # join arrays with ", "
+  # Allowed values of enum fields (BIDS schema): an invalid value is an error,
+  # never substituted; an absent value leaves the field out of the sidecar
+  enum_fields:
+    RecordingType: [continuous, discontinuous, epoched]
+    RecordedEye: [left, right, cyclopean]
+    SampleCoordinateSystem: [gaze-on-screen, eye-in-head, gaze-in-world, custom]
+    EMGPlacementScheme: [ChannelSpecific, Measured, Other]
+    MicroephysCoordinateUnits: [pixels, m, mm, cm, um]
+
+# TSV sections: a column's value is its odML path resolved, else its default;
+# a column in 'required' with neither is an error naming the session. Columns
+# marked 'generated' are filled by code (from the session's ProbeInterface
+# group), 'derived' ones from what the caller passes (channel map, types).
+
+# probes.tsv
+probes_tsv:
+  required: [probe_name, type]
+  columns:
+    probe_name:
+      generated: true
+      conflict_types: [structural]  # NWB: ElectrodeGroup.name; BIDS: probe_name column
+    type:
+      path: Hardware/Probes/*.probe type
+      conflict_types: [coverage, vocabulary]  # NWB has no probe type field; openMINDS uses controlled terms
+    AP:
+      path: Sessions/*/Electrode Placements/*.AP
+      conflict_types: [coverage]  # NWB has no standard stereotaxic coordinate field
+    ML:
+      path: Sessions/*/Electrode Placements/*.ML
+      conflict_types: [coverage]
+    DV:
+      path: Sessions/*/Electrode Placements/*.DV
+      conflict_types: [coverage]
+    AP_angle:
+      path: Sessions/*/Electrode Placements/*.AP angle
+      conflict_types: [coverage]
+    ML_angle:
+      path: Sessions/*/Electrode Placements/*.ML angle
+      conflict_types: [coverage]
+    rotation_angle:
+      path: Sessions/*/Electrode Placements/*.rotation angle
+      conflict_types: [coverage]
+    coordinate_reference_point:
+      path: Sessions/*.coordinate reference
+      conflict_types: [coverage]
+    hemisphere:
+      path: Sessions/*/Electrode Placements/*.hemisphere
+      transform: hemisphere
+      conflict_types: [vocabulary]  # left/right → L/R
+    anatomical_location:
+      path: Sessions/*/Electrode Placements/*.brain region
+      sidecar_description: Brain region in which the probe is placed (UBERON term name)
+      sidecar_term_url: "http://purl.obolibrary.org/obo/uberon.owl"
+      conflict_types: [vocabulary]  # free text vs UBERON controlled terms (openMINDS)
+    manufacturer:
+      path: Hardware/Probes/*.manufacturer
+      conflict_types: []
+    model:
+      path: Hardware/Probes/*.model
+      conflict_types: []
+    device_serial_number:
+      path: Hardware/Probes/*.serial number
+      conflict_types: []
+    electrode_count:
+      path: Hardware/Probes/*.number of contacts
+      conflict_types: [structural]  # NWB derives from electrode table length
+    anatomical_reference_point:
+      path: Sessions/*/Electrode Placements/*.anatomical reference
+      conflict_types: [coverage]
+    # custom
+    quality:
+      path: Sessions/*/Electrode Placements/*.quality
+      sidecar_description: Signal quality of the placement as labelled by the lab (lab-specific scale, see the dataset documentation)
+      conflict_types: [coverage]  # not in any standard
+
+# electrodes.tsv: one row per contact of the session's ProbeInterface group
+electrodes_tsv:
+  required: [name, probe_name, x, y, z]
+  columns:
+    name:
+      generated: true  # {probe_id}_{contact id}, the NWB electrode name
+      sidecar_description: Electrode name <probe id>_<contact id>, equal to the NWB electrode table's group_name, an underscore and electrode_name
+      conflict_types: [structural]
+    probe_name:
+      generated: true
+      conflict_types: [structural]  # NWB: group_name column; BIDS: probe_name column
+    x:
+      generated: true  # contact position in the probe plane (um), from ProbeInterface
+      conflict_types: [structural]  # BIDS: relative to probe; NWB: brain coordinates
+    y:
+      generated: true
+      conflict_types: [structural]
+    z:
+      generated: true  # n/a for a planar probe (BIDS: 2D localizations)
+      conflict_types: [structural]
+    hemisphere:
+      path: Electrode Placements/*.hemisphere
+      transform: hemisphere
+      default: "n/a"
+      conflict_types: [vocabulary]
+    material:
+      path: Hardware/Probes/*.conductor material  # the contact, not the substrate
+      default: "n/a"
+      conflict_types: [coverage]  # NWB has no standard material column
+    anatomical_location:
+      path: Electrode Placements/*.brain region
+      default: "n/a"
+      sidecar_description: Brain region in which the electrode is located (UBERON term name)
+      sidecar_term_url: "http://purl.obolibrary.org/obo/uberon.owl"
+      conflict_types: [structural]  # NWB: on ElectrodeGroup; BIDS: per electrode row
+    # custom
+    anatomical_targets:
+      calculated: from_anatomical_targets  # the placement's 'anatomical targets' contact ranges
+      sidecar_description: Anatomical structure(s) targeted by this electrode contact
+      default: "n/a"
+      conflict_types: [coverage]
+
+# channels.tsv
+channels_tsv:
+  required: [name, electrode_name, type, units]
+  columns:
+    name:
+      path: signal_channels/*.name
+      conflict_types: []
+    electrode_name:
+      derived: true  # channel_electrode_map of the session's probe group; n/a on no probe
+      default: "n/a"
+      conflict_types: [structural]  # BIDS: explicit string link; NWB: electrode column reference
+    type:
+      derived: true  # the dataset's channel types (prefixes, names, default)
+      conflict_types: [vocabulary, coverage]  # BIDS enum (ECOG, SEEG, etc.); NWB has no equivalent column
+    units:
+      path: signal_channels/*.units
+      conflict_types: []
+    sampling_frequency:
+      path: signal_channels/*.sampling_rate
+      type: float
+      conflict_types: []
+    reference:
+      derived: true
+      default: "n/a"
+      conflict_types: [coverage]  # NWB has no standard reference column
+    gain:
+      path: signal_channels/*.gain
+      default: "n/a"
+      conflict_types: [coverage]
+    status:
+      derived: true  # "bad" for the channels the dataset declares bad, else n/a (never "good" unsaid)
+      default: "n/a"
+      conflict_types: [coverage]
+    status_description:
+      derived: true
+      default: "n/a"
+      conflict_types: [coverage]
+
+# participants.tsv
+participants_tsv:
+  required: [participant_id]
+  columns:
+    participant_id:
+      path: Subject.subject id
+      prefix: "sub-"
+      conflict_types: [structural]  # BIDS: sub- prefix; NWB: bare subject_id
+    species:
+      path: Subject.species
+      conflict_types: [type, vocabulary]  # NWB: NCBI taxonomy; openMINDS: ControlledTerm
+    sex:
+      path: Subject.biological sex
+      conflict_types: [vocabulary]  # male/female vs M/F
+    age:
+      path: Subject.age
+      conflict_types: [type, unit]  # NWB: ISO 8601 duration; BIDS: free text
+    handedness:
+      path: Subject.handedness
+      conflict_types: [coverage]
+    strain:
+      path: Subject.genetic strain type
+      conflict_types: [coverage]
+    strain_rrid:
+      path: Subject.strain rrid
+      conflict_types: [coverage]
+    # custom
+    age_category:
+      path: Subject.age category
+      sidecar_description: Age category (infant, juvenile, adult)
+      conflict_types: [coverage]
+    weight:
+      path: Subject.weight
+      sidecar_description: Body weight in kg
+      conflict_types: [coverage]
+
+# dataset_description.json
+dataset_description_json:
+  required: [Name, BIDSVersion]
+  fields:
+    Name:
+      path: [Dataset.full name, Dataset.short name]
+      conflict_types: []
+    BIDSVersion:
+      default: *bids_version
+      conflict_types: [coverage]  # BIDS-only concept
+    DatasetType:
+      default: raw
+      conflict_types: [coverage]
+    License:
+      path: Dataset.license
+      conflict_types: [vocabulary]  # openMINDS requires specific controlled term
+    Authors:
+      path: Dataset/Contributors/*
+      extract: author_name
+      conflict_types: [vocabulary, structural]  # BIDS: "Given Family"; NWB: "Family, Given"
+    GeneratedBy:
+      # the pipeline entry of the odML 'Curation Software' section: Name, Version
+      # (with the commit, "0.1.0+abc1234"), Description, CodeURL (when recorded)
+      extract: generated_by
+      conflict_types: [coverage]  # BIDS-only provenance
+    SourceDatasets:
+      extract: source_datasets
+      conflict_types: [coverage]
+    Keywords:
+      path: Dataset.keywords
+      conflict_types: [type]  # scalar-to-array coercion
+    Acknowledgements:
+      # Dataset.acknowledgement and Dataset/Fundings/*.acknowledgement, joined
+      extract: acknowledgements
+      conflict_types: [coverage]
+    HowToAcknowledge:
+      path: Dataset.how to cite
+      conflict_types: [coverage]
+    Funding:
+      path: Dataset/Fundings/*.funder
+      extract: funding_list
+      conflict_types: [structural]  # BIDS: array of strings; openMINDS: Funding objects
+    EthicsApprovals:
+      path: Dataset
+      extract: ethics_approvals
+      conflict_types: [structural, coverage]  # BIDS: array of strings; openMINDS: EthicsAssessment objects
+    ReferencesAndLinks:
+      extract: references_and_links
+      conflict_types: [coverage]
+    DatasetDOI:
+      path: Dataset.doi
+      conflict_types: []
+
+# *_ecephys.json
+ecephys_json:
+  fields:
+    SamplingFrequency:
+      # the stream's own rate when the session writes one file per stream
+      path: [Sessions/*/Neo Metadata/stream.sampling_rate, Sessions/*/Neo Metadata.sampling_rate_hz,
+             Sessions/*.sampling rate, Hardware/Recording System.sampling rate]
+      conflict_types: []  # same concept and type across standards
+    PowerLineFrequency:
+      path: Hardware/Recording System.power line frequency
+      conflict_types: [coverage]  # BIDS-specific
+    SoftwareFilters:
+      default: "n/a"
+      conflict_types: [coverage, structural]  # BIDS-specific structured object
+    InstitutionName:
+      extract: institution_name
+      conflict_types: [structural]  # NWB: on NWBFile; BIDS: in sidecar
+    InstitutionAddress:
+      extract: institution_address
+      conflict_types: [structural]
+    InstitutionalDepartmentName:
+      extract: institution_department
+      conflict_types: [structural]
+    Manufacturer:
+      path: Hardware/Recording System.manufacturer
+      conflict_types: []
+    ManufacturersModelName:
+      path: [Hardware/Recording System.system model, Hardware/Recording System.processor model]
+      conflict_types: []
+    ManufacturersModelVersion:
+      path: Hardware/Recording System.model version
+      conflict_types: [coverage]
+    DeviceSerialNumber:
+      path: Hardware/Recording System.serial number
+      conflict_types: []
+    RecordingSetupName:
+      path: Hardware/Recording System.setup name
+      conflict_types: [coverage]
+    SoftwareName:
+      path: Hardware/Recording System.acquisition software
+      conflict_types: [coverage]
+    SoftwareVersions:
+      path: Hardware/Recording System.software version
+      conflict_types: [coverage]
+    RecordingType:
+      # continuous/discontinuous from the Neo enrichment (segments), not the
+      # acute/chronic 'recording type': the run's own (one segment) when a
+      # session holds several runs, else the session's; left out without one
+      path: [Sessions/*/Neo Metadata/runs/*.continuity, Sessions/*.continuity]
+      conflict_types: [vocabulary, coverage]  # BIDS enum; NWB has no equivalent
+    RecordingDuration:
+      # the run's own when a session holds several runs (of the sidecar's
+      # stream when given), the stream's own when the session writes one file
+      # per stream, else the session's
+      path: [Sessions/*/Neo Metadata/runs/*.duration_s, Sessions/*/Neo Metadata/stream.duration_s,
+             Sessions/*/Neo Metadata.duration_s]
+      conflict_types: []
+    HardwareFilters:
+      extract: hardware_filters
+      conflict_types: [coverage, structural]  # BIDS-specific structured object
+    TaskName:
+      # the session's own task (one session that recorded several tasks, as in
+      # the file's task entity), else the dataset's
+      path: [Sessions/*.task, Behavioral Protocol.bids task label]
+      conflict_types: [coverage]  # BIDS entity; NWB has no task concept
+    TaskDescription:
+      # The session's own 'task description' when it recorded a task of its
+      # own (sessions.yaml, one entry per task), else the same text as the
+      # openMINDS BehavioralProtocol description, else the session description.
+      path: [Sessions/*.task description, Behavioral Protocol.description, Sessions/*.description]
+      conflict_types: [coverage]
+    BodyPart:
+      default: brain
+      conflict_types: [coverage]
+    BodyPartDetails:
+      path: Dataset.brain regions
+      conflict_types: [coverage]
+    SampleEnvironment:
+      path: Subject/Surgical Preparation.preparation type
+      conflict_types: [coverage]
+    PharmaceuticalName:
+      path: Subject/Surgical Preparation/Surgery Details.anesthesia protocol
+      conflict_types: [coverage]
+    PharmaceuticalDoseUnits:
+      conflict_types: [coverage]
+    PharmaceuticalDoseRegimen:
+      conflict_types: [coverage]
+    Instructions:
+      conflict_types: [coverage]
+    CogAtlasID:
+      conflict_types: [coverage]
+    CogPOID:
+      conflict_types: [coverage]
+
+# NWB electrode table column descriptions
+# Injected into meta["Ecephys"]["Electrodes"] so neuroconv sets proper
+# VectorData.description on each column. Only standard columns that appear
+# across multiple datasets are listed here; dataset-specific columns should
+# be described in the dataset's curate.py.
+# neuroconv silently ignores entries for columns that do not exist in the recording.
+# Future: derive descriptions from odML schema properties instead of hardcoding here.
+nwb_electrode_columns:
+  group_name:
+    description: Name of the electrode group (probe) this channel belongs to
+    conflict_types: [structural]  # BIDS: probe_name; NWB: group_name
+  brain_area:
+    description: Brain region of the recording site
+    conflict_types: [vocabulary]  # free text vs controlled ontology
+  hemisphere:
+    description: Hemisphere of the recording site (left or right)
+    conflict_types: [vocabulary]
+  channel_name:
+    description: Channel name as reported by the acquisition system
+    conflict_types: []
+  electrode_name:
+    description: "Contact id of the electrode on its probe (BIDS electrodes.tsv name: <group_name>_<electrode_name>)"
+    conflict_types: [structural]  # BIDS: name is <probe_name>_<contact id>; NWB: group_name and electrode_name columns
+  inter_sample_shift:
+    description: Delay of the channel's sample within one sampling period, as a fraction of the period (multiplexed analog-to-digital conversion, e.g. Neuropixels)
+    conflict_types: [coverage]  # NWB column from SpikeInterface; no BIDS equivalent
+  # Plexon2 channel header fields (Neo Plexon2RawIO channel annotations)
+  m_Channel:
+    description: Plexon analog channel number
+    conflict_types: [coverage]
+  m_OneBasedTrode:
+    description: One-based trode (electrode group) index
+    conflict_types: [coverage]
+  m_MaximumNumberOfFragments:
+    description: Maximum number of recording fragments
+    conflict_types: [coverage]
+  m_OneBasedChannelInTrode:
+    description: One-based channel position within trode
+    conflict_types: [coverage]
+  m_SourceTrodality:
+    description: Source trode modality (e.g. stereotrode, tetrode)
+    conflict_types: [coverage]
+  m_Source:
+    description: Plexon source identifier
+    conflict_types: [coverage]
+
+# *_events.json
+# The trial_type Levels come from the states of the Data Processing steps
+# (label: description), built by builder.extract_event_levels().
+events_json:
+  fields:
+    StimulusPresentation:
+      extract: stimulus_presentation
+      conflict_types: [coverage, structural]  # BIDS-specific structured object
+
+# *_coordsystem.json: the coordinate system of the probe positions (AP, ML,
+# DV in probes.tsv), from the Recording Defaults merged into every session
+# (extract_sidecar_fields(doc, session, "coordsystem_json"), generate_coordsystem_json)
+coordsystem_json:
+  fields:
+    MicroephysCoordinateSystem:
+      path: Sessions/*.coordinate system
+      conflict_types: [coverage]  # BIDS-specific
+    MicroephysCoordinateUnits:
+      path: Sessions/*.coordinate units
+      transform: coordinate_units
+      conflict_types: [coverage, unit]
+    MicroephysCoordinateSystemDescription:
+      path: Sessions/*.coordinate system description
+      conflict_types: [coverage]
+
+# *_physio.json for eye-tracking (recording-eye_physio.json)
+# Required fields per BIDS eye-tracking extension (PhysioType: eyetrack).
+# Same Auxiliary Device pattern as motion_json / emg_json.
+eyetrack_json:
+  fields:
+    RecordedEye:
+      path: Auxiliary Device.recorded eye
+      conflict_types: [coverage]  # BIDS eye-tracking extension specific
+    SampleCoordinateSystem:
+      path: Auxiliary Device.coordinate system
+      conflict_types: [coverage]
+
+# *_motion.json (recommended fields from BIDS motion spec)
+# Device fields resolve via the "Auxiliary Device" source: the caller passes
+# device_name to extract_sidecar_fields() which loads the named device from
+# Hardware/Auxiliary Devices and injects it as "aux_device" source.
+# When the device has "same as recording system: true", fields are inherited
+# from Recording System automatically.
+motion_json:
+  fields:
+    Manufacturer:
+      path: Auxiliary Device.manufacturer
+      conflict_types: []
+    ManufacturersModelName:
+      path: Auxiliary Device.model
+      conflict_types: []
+    SoftwareVersions:
+      path: Auxiliary Device.software version
+      conflict_types: [coverage]
+    DeviceSerialNumber:
+      path: Auxiliary Device.serial number
+      conflict_types: []
+    InstitutionName:
+      extract: institution_name
+      conflict_types: [structural]
+    InstitutionAddress:
+      extract: institution_address
+      conflict_types: [structural]
+    InstitutionalDepartmentName:
+      extract: institution_department
+      conflict_types: [structural]
+    TaskDescription:
+      # The session's own 'task description' when it recorded a task of its
+      # own (sessions.yaml, one entry per task), else the same text as the
+      # openMINDS BehavioralProtocol description, else the session description.
+      path: [Sessions/*.task description, Behavioral Protocol.description, Sessions/*.description]
+      conflict_types: [coverage]
+    Instructions:
+      conflict_types: [coverage]
+    MissingValues:
+      conflict_types: [coverage]
+    SamplingFrequencyEffective:
+      path: [Sessions/*/Neo Metadata/stream.sampling_rate, Sessions/*/Neo Metadata.sampling_rate_hz,
+             Hardware/Recording System.sampling rate]
+      conflict_types: [coverage]  # BIDS motion extension specific
+    SubjectArtefactDescription:
+      conflict_types: [coverage]
+
+# *_emg.json (recommended fields from BIDS EMG spec)
+# Same Auxiliary Device pattern as motion_json.
+emg_json:
+  fields:
+    PowerLineFrequency:
+      path: Hardware/Recording System.power line frequency
+      conflict_types: [coverage]
+    Manufacturer:
+      path: Auxiliary Device.manufacturer
+      conflict_types: []
+    ManufacturersModelName:
+      path: Auxiliary Device.model
+      conflict_types: []
+    SoftwareVersions:
+      path: Auxiliary Device.software version
+      conflict_types: [coverage]
+    DeviceSerialNumber:
+      path: Auxiliary Device.serial number
+      conflict_types: []
+    ElectrodeManufacturer:
+      path: Auxiliary Device.electrode manufacturer
+      conflict_types: [coverage]
+    ElectrodeManufacturersModelName:
+      path: Auxiliary Device.electrode model
+      conflict_types: [coverage]
+    TaskDescription:
+      # The session's own 'task description' when it recorded a task of its
+      # own (sessions.yaml, one entry per task), else the same text as the
+      # openMINDS BehavioralProtocol description, else the session description.
+      path: [Sessions/*.task description, Behavioral Protocol.description, Sessions/*.description]
+      conflict_types: [coverage]
+    Instructions:
+      conflict_types: [coverage]
+    InstitutionName:
+      extract: institution_name
+      conflict_types: [structural]
+    InstitutionAddress:
+      extract: institution_address
+      conflict_types: [structural]
+    InstitutionalDepartmentName:
+      extract: institution_department
+      conflict_types: [structural]
+    RecordingDuration:
+      # the run's own duration (of the device's stream) when a session holds
+      # several runs, else the stream's, else the session's
+      path: [Sessions/*/Neo Metadata/runs/*.duration_s, Sessions/*/Neo Metadata/stream.duration_s,
+             Sessions/*/Neo Metadata.duration_s]
+      conflict_types: []
+    RecordingType:
+      # as ecephys.json: the run's continuity, else the session's
+      path: [Sessions/*/Neo Metadata/runs/*.continuity, Sessions/*.continuity]
+      conflict_types: [vocabulary, coverage]
+    EMGPlacementScheme:
+      path: Auxiliary Device.placement scheme
+      conflict_types: [coverage]
+    EMGPlacementSchemeDescription:
+      path: Auxiliary Device.placement description
+      conflict_types: [coverage]
+    EMGReference:
+      path: Auxiliary Device.reference
+      conflict_types: [coverage]
+    HardwareFilters:
+      # the device's own Hardware Filters list (the Recording System's for a
+      # device recorded through it that lists none)
+      extract: hardware_filters
+      conflict_types: [coverage, structural]

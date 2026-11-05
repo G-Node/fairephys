@@ -1,0 +1,154 @@
+# Dataset Template Schema v1
+#
+# Maps to openMINDS core.Dataset + core.DatasetVersion
+# Controlled term fields must match openMINDS vocabulary names exactly.
+
+$schema: https://json-schema.org/draft-07/schema#
+title: Dataset Template
+version: 1
+
+type: object
+required: [Dataset]
+
+properties:
+  _schema:
+    const: dataset.v1
+  _valueOrigin:
+    type: string
+
+  Dataset:
+    type: object
+    required: [full name, short name, license, species, description]
+    properties:
+      # Identity -> Dataset.full_name, DatasetVersion.short_name, etc.
+      full name: {type: string, minLength: 1}
+      short name: {type: string, minLength: 1}
+      alias: {type: string}
+      version identifier: {type: string}
+      doi: {type: string}
+      description: {type: string}
+      usage notes: {type: string}
+
+      # Classification -> DatasetVersion.data_types (SemanticDataType)
+      # Valid values: raw data | derived data | experimental data | simulated data
+      # Accepts single string or array for multiple types
+      semantic data type:
+        oneOf:
+          - {enum: [raw data, derived data, experimental data, simulated data]}
+          - type: array
+            items: {enum: [raw data, derived data, experimental data, simulated data]}
+
+      species: {type: string, pattern: "^[A-Z][a-z]+ [a-z]+$"}
+
+      # Access -> DatasetVersion.accessibility, .license, .ethics_assessment
+      license:
+        type: string
+        enum: [CC-BY-4.0, CC-BY-SA-4.0, CC-BY-NC-4.0, CC-BY-NC-SA-4.0,
+               CC-BY-ND-4.0, CC-BY-NC-ND-4.0, CC0-1.0]
+      ethics assessment: {enum: ["EU compliant +", EU compliant, not required, ""]}
+      accessibility: {enum: [free access, restricted access, controlled access]}
+
+      # Ethics details (documentary: no openMINDS entity, but preserved in odML)
+      ethics authority: {type: string}
+      ethics approval id: {type: string}
+      licensed institution: {type: string}
+      ethics directive: {type: string}
+      authorizing body: {type: string}
+      ethics statement: {type: string}
+
+      # Scientific classification -> DatasetVersion properties
+      # experimental approach: ExperimentalApproach controlled terms
+      experimental approach: {type: array, items: {type: string}}
+      # keywords: resolved against multiple controlled term vocabularies
+      keywords: {type: array, items: {type: string}}
+      # techniques: Technique + AnalysisTechnique controlled terms
+      techniques: {type: array, items: {type: string}}
+      # brain regions: UBERONParcellation controlled terms -> study_targets
+      brain regions: {type: array, items: {type: string}}
+      # cell types: CellType controlled terms -> study_targets
+      cell types: {type: array, items: {type: string}}
+      # organs: Organ controlled terms -> study_targets
+      organs: {type: array, items: {type: string}}
+      # preparation design: PreparationType controlled terms
+      preparation design: {type: array, items: {type: string}}
+
+      # Temporal (documentary: collection dates for DataCite/README)
+      # the date of a first publication elsewhere; empty for a first one here
+      release date: {type: [date, string], pattern: "^(|\\d{4}-\\d{2}-\\d{2})$"}
+      collection start date: {type: [date, string]}
+      collection end date: {type: [date, string]}
+      # IANA time zone of the recording site; session start times are local times in it
+      time zone: {type: string}
+
+      # Original data (documentary): the files as delivered by the lab, free
+      # text, one entry per format (named by the README records statement).
+      # The curated files are not written here; the README lists them from
+      # the dataset folder.
+      original data format: {type: array, items: {type: string}}
+
+      # Repository -> DatasetVersion.repository, .input_data, .homepage, etc.
+      repository url: {type: string}
+      input data url: {type: string}
+      homepage url: {type: string}
+      documentation url: {type: string}
+      protocol url: {type: string}
+      support channel: {type: string}
+
+      # Version info -> DatasetVersion.version_innovation, .how_to_cite
+      version innovation: {type: string}
+      how to cite: {type: string}
+
+      # Copyright -> DatasetVersion.copyright (Copyright embedded)
+      copyright holder: {type: string}
+      copyright year: {type: string}
+
+      # Related -> DatasetVersion.related_publications, Project
+      related publications: {type: array}
+      is part of: {type: string}
+      has parts: {type: array}
+
+      # Nested entities
+      Custodian: {$ref: "#/$defs/Person"}
+      Contributors: {type: array, items: {$ref: "#/$defs/Contributor"}}
+      Fundings: {type: array, items: {$ref: "#/$defs/Funding"}}
+      # Shared across datasets via collection/metadata/collection.yaml;
+      # a block here overrides the shared values.
+      Consortium: {type: object}
+      Project: {type: object}
+      Related Projects: {type: array}
+
+$defs:
+  Person:
+    type: object
+    required: [given name, family name]
+    properties:
+      given name: {type: string}
+      family name: {type: string}
+      email: {type: string}
+      digital identifier: {type: object}
+      affiliation: {type: object}
+      # true: the person is a member of the shared Consortium
+      # (collection/metadata) -> Affiliation.member_of on the Person
+      consortium member: {type: boolean}
+
+  Contributor:
+    type: object
+    required: [given name, family name]
+    properties:
+      given name: {type: string}
+      family name: {type: string}
+      digital identifier: {type: object}
+      affiliation: {type: object}
+      roles: {type: array, items: {type: string}}
+      role: {type: string}
+      contribution description: {type: string}
+
+  Funding:
+    type: object
+    properties:
+      funder: {type: string}
+      funder identifier: {type: string}
+      award number: {type: string}
+      award title: {type: string}
+      award url: {type: string}
+      acknowledgement: {type: string}

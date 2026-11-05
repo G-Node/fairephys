@@ -1,0 +1,193 @@
+# NWB Field Mappings Registry
+# Maps odML properties to NWB metadata fields for neuroconv.
+#
+# Two mapping types:
+#   source/keys  - simple dict lookup from section_to_dict(section)
+#   extract      - named function in converters/metadata.py
+#
+# Source names resolve to odML sections:
+#   session to the session Section passed to build_nwb_metadata
+#   Dataset to doc["Dataset"]
+#   Subject to the session's own subject (doc["Subject"], or its entry of "Subjects")
+#
+# Conflict types reference the six-type typology from:
+#   unit, type, vocabulary, structural, cardinality, coverage
+
+# Vocabulary transforms (value mapping tables). An unmapped value gives no
+# field (sex) or an error (age unit): no placeholder reaches the NWB.
+transforms:
+  sex:
+    male: M
+    female: F
+    m: M
+    f: F
+  age_unit:
+    year: Y
+    month: M
+    week: W
+    day: D
+  weight_unit:
+    kilogram: kg
+    gram: g
+
+# NWBFile container
+NWBFile:
+  session_description:
+    source: session
+    keys: [description]
+    fallback:
+      source: Dataset
+      keys: [short description]
+    required: true  # pynwb needs it: an error names the fields to fill
+    hint: "the session 'description' or the Dataset 'short description'"
+    conflict_types: [structural]
+  identifier:
+    extract: uuid  # unique per file; the readable id goes to session_id
+    conflict_types: []
+  session_id:
+    # the BIDS session label: the recordings of several tasks (or runs) in one
+    # session share it; their files differ by the task/run entities of the
+    # file name and by the identifier
+    source: session
+    keys: [session id]
+    conflict_types: []
+  session_start_time:
+    # The run's own start when the file holds one run of several
+    # (Sessions/*/Neo Metadata/runs/run N.start_time, ISO with offset, from
+    # Neo), else the session's 'start time' (a time of day in the Dataset
+    # 'time zone', or a datetime with offset). Without either: an error.
+    extract: session_start_time
+    conflict_types: [type]
+  experimenter:
+    # who recorded: the session's 'performed by', else the Dataset
+    # contributors with a 'data collection' role (never the curators)
+    extract: experimenters
+    conflict_types: [vocabulary, structural]
+  lab:
+    extract: affiliation
+    args: {field: lab}
+    conflict_types: [structural]
+  institution:
+    extract: affiliation
+    args: {field: institution}
+    conflict_types: [structural]
+  experiment_description:
+    source: Dataset
+    keys: [description]
+    conflict_types: []
+  keywords:
+    source: Dataset
+    keys: [keywords]
+    coerce: array
+    conflict_types: [type]
+  related_publications:
+    extract: related_publications  # "doi:<DOI>" where the entry contains a DOI
+    conflict_types: [vocabulary]
+
+# Subject container
+Subject:
+  subject_id:
+    source: Subject
+    keys: [subject id]
+    post: strip_spaces
+    conflict_types: [structural]
+  species:
+    source: Subject
+    keys: [species]
+    conflict_types: [type, cardinality]
+  sex:
+    source: Subject
+    keys: [sex, biological sex]
+    transform: sex
+    conflict_types: [vocabulary]
+  description:
+    source: Subject
+    keys: [nickname, subject id]
+    conflict_types: []
+  age:
+    extract: age_iso8601
+    conflict_types: [unit, type]
+  weight:
+    extract: weight
+    conflict_types: [unit, type]
+
+# Ecephys metadata (declarative - see converters/metadata.py)
+#
+# mode: single       - one item from a named odML section
+# mode: matched_probes - one item per matched probe x placement
+# mode: from_registry - load column definitions from bids_mappings.yaml
+#
+# Fields use either:
+#   keys     - list of dict keys to try (first non-None wins)
+#   extract  - named extractor function in metadata.py
+#   default  - fixed value (names of NWB objects only, never a placeholder)
+#   required - an error naming the field (hint) when there is no value
+Ecephys:
+  Device:
+    mode: single
+    as_list: true
+    source_section: Hardware/Recording System
+    fields:
+      name:
+        keys: [name, system model, model]
+        required: true
+      description:
+        extract: device_description
+      manufacturer:
+        keys: [manufacturer]
+      model:  # -> NWB DeviceModel name (with manufacturer)
+        keys: [system model, processor model, model]
+
+  # One Device per physical probe placed in the session (Hardware/Probes entry)
+  ProbeDevice:
+    mode: matched_probes
+    deduplicate_by: name
+    target: Device
+    fields:
+      name:
+        keys: [name]
+        required: true
+      description:
+        extract: probe_description
+      manufacturer:
+        keys: [manufacturer]
+      model:  # -> NWB DeviceModel name (with manufacturer)
+        keys: [model]
+      serial_number:
+        keys: [serial number]
+
+  # One ElectrodeGroup per Electrode Placement: the device, where it was
+  # (location text; position = ML, AP, DV in mm from the placement's
+  # anatomical reference, the DV of the run when the device was moved)
+  ElectrodeGroup:
+    mode: matched_probes
+    fields:
+      name:
+        extract: canonical_probe_id
+      description:
+        extract: electrode_group_description
+        required: true
+        hint: "the probe's 'number of contacts' or 'probe type'"
+      # the placement's 'brain region' (else 'target') with its hemisphere;
+      # without a region neuroconv's placeholder "unknown" takes its place
+      # (with the hemisphere), logged at conversion and a sanity warning per
+      # group; the dataset states it under Assumptions in its curation README
+      location:
+        extract: placement_location
+        placeholder: unknown
+      position:
+        extract: placement_position
+      device:
+        keys: [name]
+
+  ElectricalSeries:
+    mode: single
+    fields:
+      name:
+        default: "ElectricalSeries"
+      description:
+        default: "Raw acquisition traces"
+
+  Electrodes:
+    mode: from_registry
+    registry_key: nwb_electrode_columns

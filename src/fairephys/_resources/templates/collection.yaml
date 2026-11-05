@@ -1,0 +1,65 @@
+# Shared metadata for a curation project (collection of datasets)
+#
+# Place this file at <project>/collection/metadata/collection.yaml. It is
+# discovered automatically from any dataset at <project>/datasets/<name>/
+# metadata/curated and deep-merged underneath the dataset's own metadata,
+# so dataset values always win.
+#
+# Maps to openMINDS core.Project, core.Consortium and core.Funding. In the
+# EBRAINS KG the shared Project and Consortium are created on the first push
+# to a space and then kept as-is (keep_existing); later edits go through the
+# KG editor.
+
+_schema: collection.v1
+_valueOrigin: ""
+
+Dataset:
+  # ---------------------------------------------------------------------------
+  # PROJECT (umbrella) -> core.Project
+  # ---------------------------------------------------------------------------
+  Project:
+    name: ""                         # short name (e.g., "MyProject")
+    full name: ""                    # full project title
+    description: ""                  # what the project / curation effort is
+    # Standard text about the project, written once here and appended to
+    # every Dataset description (openMINDS). Use only facts that hold for
+    # every dataset. Leave empty to append nothing.
+    dataset statement: ""
+    # Standard text about the data formats, appended to every version
+    # innovation (openMINDS DatasetVersion). A dataset whose formats differ
+    # overrides it in its dataset.yaml (Project: version statement: "").
+    version statement: ""
+    # Standard text on how to open and download the files, appended to the
+    # usage notes of every data descriptor (README). A dataset whose formats
+    # differ overrides it in its dataset.yaml (Project: usage statement: "").
+    usage statement: ""
+    # Standard text about the curation, opening the data records of every data
+    # descriptor (README). An optional group "{?words {token} words}" carries
+    # the words around one dataset field and is left out with them when the
+    # field is empty; lists read as prose ("a, b and c"). Example:
+    # "The original recordings{?, provided as {original data format},} were
+    # converted ..." names the formats, or reads "The original recordings were
+    # converted ..." without them.
+    records statement: ""
+
+  # ---------------------------------------------------------------------------
+  # FUNDINGS -> DatasetVersion.funding (Funding)
+  # ---------------------------------------------------------------------------
+  # Project fundings of every dataset, listed before the dataset's own; a
+  # dataset entry with the same award number replaces the one here.
+  Fundings: []
+  # - funder: ""
+  #   funder identifier: ""          # ROR of the funder
+  #   award number: ""
+  #   award title: ""
+  #   award url: ""
+  #   acknowledgement: ""            # sentence for the data descriptor
+
+  # ---------------------------------------------------------------------------
+  # CONSORTIUM -> core.Consortium (linked as Project.coordinators)
+  # ---------------------------------------------------------------------------
+  Consortium:
+    name: ""                         # short name
+    full name: ""                    # full consortium name
+    url: ""                          # homepage
+    email: ""                        # contact address (ContactInformation)

@@ -1,0 +1,25 @@
+authors:
+- firstname: Jane
+  lastname: Doe
+  affiliation: Test Lab, Test Uni
+  id: ORCID:0000-0001
+- firstname: Bo
+  lastname: Lee
+  affiliation: Other Uni
+title: Test dataset
+description: A test experiment
+keywords:
+- test
+- ephys
+license:
+  name: Creative Commons Attribution 4.0 International
+  url: https://creativecommons.org/licenses/by/4.0/
+funding:
+- Test Foundation; GRANT-001
+- EC; 1
+references:
+- id: doi:10.1234/paper
+  reftype: IsSupplementTo
+  citation: Doe, J. A paper. J. Neurosci. 1, 2 (2024). https://doi.org/10.1234/paper
+resourcetype: Dataset
+templateversion: 1.2

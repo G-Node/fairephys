@@ -1,0 +1,72 @@
+# Collection (shared metadata) Template Schema v1
+#
+# Metadata shared by every dataset of a curation project, loaded from
+# collection/metadata/*.yaml and deep-merged underneath each dataset's own
+# metadata (dataset values win). Maps to openMINDS core.Project,
+# core.Consortium and core.Funding.
+
+$schema: https://json-schema.org/draft-07/schema#
+title: Collection Template
+version: 1
+
+type: object
+required: [Dataset]
+
+properties:
+  _schema:
+    const: collection.v1
+  _valueOrigin:
+    type: string
+
+  Dataset:
+    type: object
+    properties:
+      # Umbrella project -> core.Project (short_name, full_name, description)
+      Project:
+        type: object
+        required: [name]
+        properties:
+          name: {type: string}
+          full name: {type: string}
+          description: {type: string}
+          # Standard text about the project, maintained once here and
+          # appended to every Dataset description
+          dataset statement: {type: string}
+          # Standard text about the data formats, maintained once here and
+          # appended to every DatasetVersion version innovation; a dataset
+          # overrides it in its own Project block ("" appends nothing)
+          version statement: {type: string}
+          # Standard text on how to open and download the files, appended to
+          # every data descriptor's usage notes; a dataset overrides it in
+          # its own Project block ("" appends nothing)
+          usage statement: {type: string}
+          # Standard text about the curation, opening the data records of
+          # every data descriptor; an optional group "{?words {token} words}"
+          # (e.g. "{?, provided as {original data format},}") is filled from
+          # the dataset, lists as prose, and left out with its words when the
+          # field is empty ("" renders nothing)
+          records statement: {type: string}
+
+      # Project fundings, listed before each dataset's own Fundings; a
+      # dataset entry with the same award number replaces the shared one
+      Fundings: {type: array, items: {$ref: "#/$defs/Funding"}}
+
+      # Umbrella consortium -> core.Consortium, linked as Project.coordinators
+      Consortium:
+        type: object
+        properties:
+          name: {type: string}
+          full name: {type: string}
+          url: {type: string}
+          email: {type: string}
+
+$defs:
+  Funding:
+    type: object
+    properties:
+      funder: {type: string}
+      funder identifier: {type: string}
+      award number: {type: string}
+      award title: {type: string}
+      award url: {type: string}
+      acknowledgement: {type: string}

@@ -1,0 +1,199 @@
+# Dataset metadata template
+# Copy to your dataset's metadata/ folder and fill in values
+#
+# Maps to openMINDS core.Dataset + core.DatasetVersion
+# Controlled term fields must match openMINDS vocabulary names exactly.
+# Use /openminds terms <Vocabulary> to look up valid values.
+
+_schema: dataset.v1
+_valueOrigin: ""
+
+Dataset:
+  # ---------------------------------------------------------------------------
+  # IDENTITY -> Dataset.full_name, DatasetVersion.short_name
+  # ---------------------------------------------------------------------------
+  full name: "Dataset Full Name"
+  short name: "short-name"
+  alias: ""                          # informal name used in lab or publications
+  version identifier: ""             # e.g., "1.0.0"
+  doi: ""                            # DOI once published (e.g., "10.12751/...")
+  description: ""                    # multi-line dataset summary
+  usage notes: ""                    # how the data can be reused, caveats, suggested tools
+
+  # ---------------------------------------------------------------------------
+  # DATA CLASSIFICATION -> DatasetVersion.data_types (SemanticDataType)
+  # ---------------------------------------------------------------------------
+  # Valid values: raw data | derived data | experimental data | simulated data
+  semantic data type:
+    - raw data
+
+  # species: binomial name, capitalized genus (e.g., "Macaca mulatta")
+  species: ""
+
+  # ---------------------------------------------------------------------------
+  # ACCESS AND LICENSING
+  # ---------------------------------------------------------------------------
+  # license: SPDX identifier (CC-BY-4.0 | CC-BY-SA-4.0 | CC-BY-NC-4.0 |
+  #   CC-BY-NC-SA-4.0 | CC-BY-ND-4.0 | CC-BY-NC-ND-4.0 | CC0-1.0)
+  license: ""
+  # ethics assessment: "EU compliant +" (NHP/human) | EU compliant | not required
+  ethics assessment: ""
+  # accessibility: free access  # free access | restricted access | controlled access
+
+  # Ethics details (documented in odML, not pushed to openMINDS entities)
+  ethics authority: ""               # e.g., "IACUC" or local ethics committee
+  ethics approval id: ""             # protocol/authorization number
+  licensed institution: ""           # institution license code
+  ethics directive: ""               # e.g., "Directive 2010/63/EU"
+  authorizing body: ""               # ministry or regulatory body
+  ethics statement: ""               # full ethics declaration text
+
+  # ---------------------------------------------------------------------------
+  # SCIENTIFIC CLASSIFICATION -> DatasetVersion properties
+  # ---------------------------------------------------------------------------
+  # experimental approach: ExperimentalApproach controlled terms
+  #   e.g., electrophysiology | behavior | anatomy | cell biology
+  experimental approach: []
+
+  # keywords: resolved against multiple openMINDS controlled term vocabularies
+  #   (UBERONParcellation, CellType, Technique, ExperimentalApproach, Organ, Species)
+  #   Unresolved keywords are kept as free text for DataCite/BIDS.
+  keywords: []
+
+  # techniques: Technique controlled terms
+  #   e.g., multi-electrode extracellular electrophysiology | video tracking |
+  #   electromyography | electrocardiography | electrocorticography
+  techniques: []
+
+  # brain regions: UBERONParcellation controlled terms -> study_targets
+  brain regions: []
+
+  # cell types: CellType controlled terms -> study_targets
+  cell types: []
+
+  # organs: Organ controlled terms -> study_targets
+  organs: []
+
+  # preparation design: PreparationType controlled terms
+  #   e.g., in vivo | in vitro | in silico | ex vivo
+  preparation design: []
+
+  # ---------------------------------------------------------------------------
+  # TEMPORAL (documentary: for DataCite and README)
+  # ---------------------------------------------------------------------------
+  # release date: the date the dataset was first published, for a dataset
+  # already published elsewhere (e.g. under its DOI), with its source; empty
+  # for a first publication here. Its year qualifies the KG paradigm name
+  release date: ""                   # e.g., 2025-09-15
+  collection start date: ""          # e.g., 2015-03-27
+  collection end date: ""            # e.g., 2015-05-20
+  time zone: ""                      # IANA name of the recording site, e.g. Europe/Berlin
+
+  # ---------------------------------------------------------------------------
+  # ORIGINAL DATA (documentary, named by the README records statement)
+  # ---------------------------------------------------------------------------
+  # The files as delivered by the lab, not the curated files (those are listed
+  # in the README from the dataset folder), one entry per format; the README
+  # reads them within a sentence ("provided as a, b and c"), e.g.
+  # "Blackrock Cerebus NSx (.ns5)", "Blackrock Cerebus NEV (.nev)", "infrared video (.MTS)"
+  original data format: []
+
+  # ---------------------------------------------------------------------------
+  # REPOSITORY -> DatasetVersion.repository, .input_data, .homepage
+  # ---------------------------------------------------------------------------
+  repository url: ""                 # curated data URL (GIN, Zenodo, etc.)
+  input data url: ""                 # raw/source data URL
+  homepage url: ""                   # project or lab homepage
+  documentation url: ""              # full documentation (-> full_documentation)
+  protocol url: ""                   # recording protocol publication URL (-> Protocol.described_in)
+  support channel: ""                # email or URL for support
+
+  # ---------------------------------------------------------------------------
+  # VERSION INFO -> DatasetVersion.version_innovation, .how_to_cite
+  # ---------------------------------------------------------------------------
+  version innovation: ""             # what changed in this version
+  # empty = the generated citation (authors, full name, version, DOI or repository
+  # URL, year); a value here overrides that pattern
+  how to cite: ""
+
+  # ---------------------------------------------------------------------------
+  # COPYRIGHT -> DatasetVersion.copyright (Copyright embedded)
+  # ---------------------------------------------------------------------------
+  # copyright holder: ""             # person or organization name
+  # copyright year: ""               # e.g., "2025"
+
+  # ---------------------------------------------------------------------------
+  # RELATED -> DatasetVersion.related_publications, Project
+  # ---------------------------------------------------------------------------
+  related publications: []           # DOIs or full citations containing a DOI
+  is part of: ""                     # parent project name (e.g., "MyProject")
+  has parts: []                      # sub-datasets
+
+  # ---------------------------------------------------------------------------
+  # CUSTODIAN (data steward / PI) -> Dataset.custodians
+  # ---------------------------------------------------------------------------
+  Custodian:
+    given name: ""
+    family name: ""
+    email: ""
+    consortium member: false         # true: PI is a member of the shared Consortium
+    digital identifier:
+      type: ""                       # ORCID
+      value: ""                      # e.g., "0000-0002-1234-5678"
+    affiliation:
+      institution: ""
+      lab: ""
+      department: ""
+      address: ""
+      country: ""
+
+  # ---------------------------------------------------------------------------
+  # CONTRIBUTORS -> DatasetVersion.other_contributions (Contribution)
+  # ---------------------------------------------------------------------------
+  # roles: ContributionType controlled terms (list for multiple roles):
+  #   data collection | data management | data processing | coordination |
+  #   laboratory assistance | information technology support |
+  #   project management | project member | funding acquisition |
+  #   software development | visualization | writing initial draft |
+  #   writing review and editing | methodology | formal analysis |
+  #   supervision | validation | conceptualization | investigation | resources
+  Contributors:
+    - given name: ""
+      family name: ""
+      digital identifier:
+        type: ""
+        value: ""
+      affiliation:
+        institution: ""
+        lab: ""
+        department: ""
+        country: ""
+      roles: []
+      contribution description: ""
+
+  # ---------------------------------------------------------------------------
+  # FUNDINGS -> DatasetVersion.funding (Funding)
+  # ---------------------------------------------------------------------------
+  # The dataset's own fundings; shared project fundings (collection.yaml) are
+  # listed first, an entry here with the same award number replaces one.
+  Fundings:
+    - funder: ""                     # organization name (must resolve in KG)
+      funder identifier: ""         # ROR, GRID, etc.
+      award number: ""
+      award title: ""
+      award url: ""
+      acknowledgement: ""
+
+  # ---------------------------------------------------------------------------
+  # PROJECT / CONSORTIUM are shared across datasets: see
+  # collection/metadata/collection.yaml (templates/collection.yaml). A local
+  # `Project:` or `Consortium:` block here overrides the shared values.
+  # ---------------------------------------------------------------------------
+
+  # ---------------------------------------------------------------------------
+  # RELATED PROJECTS (documentary: links in README/DataCite)
+  # ---------------------------------------------------------------------------
+  Related Projects:
+    - project name: ""
+      project url: ""
+      relationship: ""              # is part of | references | is supplement to

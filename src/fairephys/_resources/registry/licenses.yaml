@@ -1,0 +1,26 @@
+# Licences a dataset can be shared under (the dataset template's "license"):
+# SPDX id -> name and URL, as the DataCite record (datacite.yml), the LICENSE
+# file and the data descriptor (README) write them. The names are those GIN's
+# DOI service lists (it matches the datacite.yml name and the first line of
+# LICENSE against them). The legal code of each id is _resources/licenses/<id>.txt.
+CC-BY-4.0:
+  name: Creative Commons Attribution 4.0 International
+  url: https://creativecommons.org/licenses/by/4.0/
+CC-BY-SA-4.0:
+  name: Creative Commons Attribution-ShareAlike 4.0 International
+  url: https://creativecommons.org/licenses/by-sa/4.0/
+CC-BY-NC-4.0:
+  name: Creative Commons Attribution-NonCommercial 4.0 International
+  url: https://creativecommons.org/licenses/by-nc/4.0/
+CC-BY-NC-SA-4.0:
+  name: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+  url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+CC-BY-ND-4.0:
+  name: Creative Commons Attribution-NoDerivatives 4.0 International
+  url: https://creativecommons.org/licenses/by-nd/4.0/
+CC-BY-NC-ND-4.0:
+  name: Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International
+  url: https://creativecommons.org/licenses/by-nc-nd/4.0/
+CC0-1.0:
+  name: Creative Commons CC0 1.0 Public Domain Dedication
+  url: https://creativecommons.org/publicdomain/zero/1.0/

@@ -1,0 +1,250 @@
+"""$dataset_name dataset curation pipeline.
+
+Steps: compile -> build-probes -> bids-layout -> convert -> sanity -> validate
+
+TODO: Update this docstring with a brief description of your dataset.
+"""
+
+from pathlib import Path
+
+from fairephys import enrichment, probes, bids
+from fairephys.bids import METADATA_DIRNAME, builder
+from fairephys.converters import $converter_class, build_nwb_metadata
+from fairephys.curation import (
+    load_doc, get_subject_id, get_task_label, find_session,
+    compile_metadata, finalize_compilation,
+    build_parser, run_export_steps,
+    run_sanity_checks,
+)
+
+# ---------------------------------------------------------------------------
+# Dataset configuration
+# ---------------------------------------------------------------------------
+
+DATASET_DIR = Path(__file__).parent
+TEMPLATES_DIR = DATASET_DIR / "metadata" / "curated"
+CURATED_DATA_DIR = DATASET_DIR / "curated-data"
+METADATA_DIR = CURATED_DATA_DIR / METADATA_DIRNAME
+RAW_DATA_DIR = DATASET_DIR / "raw-data"
+VALIDATION_DIR = DATASET_DIR / "validation"
+
+DATASET_NAME = "$dataset_name"
+# The raw format (fairephys.formats.RAW_FORMATS)
+RECORDING_FORMAT = "$recording_format"
+
+# TODO: Map raw channel names to BIDS channel types.
+# Keys: "prefixes" (prefix -> type), "names" (exact name -> type), "default".
+# Types: BB (broadband neural), MISC, EMG, ECG, TRIG, etc.
+CHANNEL_TYPES = {
+    "prefixes": {},
+    "names": {},
+    "default": "MISC",
+}
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def discover_sessions() -> list[str]:
+    """Discover session IDs from raw data directory.
+
+    TODO: Implement session discovery based on your raw data file layout.
+    Example: return sorted(d.name for d in RAW_DATA_DIR.iterdir() if d.is_dir())
+    """
+    raise NotImplementedError("Implement session discovery for your raw data layout")
+
+
+def get_odml_path(explicit: Path = None) -> Path:
+    return explicit or METADATA_DIR / "$dataset_name.odml.xml"
+
+
+def get_raw_file(session_id: str) -> Path:
+    """Return path to raw recording file (or folder) for a session.
+
+    TODO: Implement based on your raw data file naming convention.
+    Example: return RAW_DATA_DIR / session_id / f"{session_id}.ns6"
+    """
+    raise NotImplementedError("Implement raw file lookup for your data layout")
+
+
+def session_paths(sub: str, session_id: str, task: str) -> dict[str, Path]:
+    """Derive all standard output paths for a session."""
+    ses_dir = bids.session_path(CURATED_DATA_DIR, sub, session_id, "ecephys")
+    prefix = bids.bids_filename(sub, "", "", ses=session_id).rstrip("_.")
+    task_prefix = bids.bids_filename(
+        sub, "", "", ses=session_id, task=task).rstrip("_.")
+    return {
+        "ses_dir": ses_dir,
+        "prefix": prefix,
+        "probes_dir": f"probes/sub-{sub}_ses-{session_id}",
+        "probe_group": CURATED_DATA_DIR / "probes" / f"sub-{sub}_ses-{session_id}" / "probe_group.json",
+        "nwb": ses_dir / f"{task_prefix}_ecephys.nwb",
+        "channels_tsv": ses_dir / f"{prefix}_channels.tsv",
+        "electrodes_tsv": ses_dir / f"{prefix}_electrodes.tsv",
+        "probes_tsv": ses_dir / f"{prefix}_probes.tsv",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Pipeline steps
+# ---------------------------------------------------------------------------
+
+
+def compile_cmd(sessions: list[str] = None, enrich_openminds: bool = True,
+                shared_dir: Path = None):
+    """Step 1: Compile YAML templates -> odML, then enrich with Neo + openMINDS."""
+    sessions = sessions or discover_sessions()
+    meta, doc = compile_metadata(TEMPLATES_DIR, shared_dir=shared_dir)
+
+    for session_id in sessions:
+        raw_file = get_raw_file(session_id)
+        if not raw_file.exists():
+            raise FileNotFoundError(f"Session {session_id}: raw file {raw_file} not found")
+        neo_data = enrichment.neo_extract(raw_file, format=RECORDING_FORMAT)
+        enrichment.neo_enrich_document(doc, neo_data, session_id)
+        print(f"  Neo enriched: {session_id} ({raw_file.name})")
+
+    return finalize_compilation(doc, METADATA_DIR, DATASET_NAME, enrich_openminds,
+                                validation_dir=VALIDATION_DIR)
+
+
+def probes_cmd(odml_path: Path, session_id: str, output_dir: Path = None):
+    """Step 2: The session's ProbeInterface group: one probe per Electrode
+    Placement, wired to the placement's `channels` (BIDS and NWB read it)."""
+    doc = load_doc(odml_path)
+    paths = session_paths(get_subject_id(doc), session_id, get_task_label(doc))
+    output_dir = output_dir or paths["probe_group"].parent
+    probes.save_probe_group(
+        probes.build_session_probe_group(doc, find_session(doc, session_id)), output_dir)
+    print(f"Saved: {output_dir / 'probe_group.json'}")
+
+
+def bids_cmd(odml_path: Path, session_id: str):
+    """Step 3: Generate BIDS sidecars, TSVs, and dataset-level files."""
+    doc = load_doc(odml_path)
+    sub = get_subject_id(doc)
+    task = get_task_label(doc)
+    session = find_session(doc, session_id)
+    paths = session_paths(sub, session_id, task)
+    prefix = paths["prefix"]
+
+    bids.create_dataset_layout(CURATED_DATA_DIR)
+    ecephys_dir = bids.create_session_layout(
+        CURATED_DATA_DIR, sub, session_id, ["ecephys"])["ecephys"]
+
+    probes_data = builder.extract_probes(doc, session)
+    electrodes = builder.extract_electrodes(doc, session, paths["probe_group"])
+    channels = builder.extract_channels(session, paths["probe_group"], channel_types=CHANNEL_TYPES)
+
+    bids.generate_probes_tsv(
+        probes_data, ecephys_dir / f"{prefix}_probes.tsv")
+    bids.generate_probes_json(
+        probes_data, ecephys_dir / f"{prefix}_probes.json", probes_dir=paths["probes_dir"])
+    bids.generate_electrodes_tsv(
+        electrodes, ecephys_dir / f"{prefix}_electrodes.tsv")
+    bids.generate_electrodes_json(
+        ecephys_dir / f"{prefix}_electrodes.json")
+    bids.generate_channels_tsv(
+        channels, ecephys_dir / f"{prefix}_channels.tsv")
+    bids.generate_channels_json(
+        ecephys_dir / f"{prefix}_channels.json")
+
+    task_prefix = bids.bids_filename(
+        sub, "", "", ses=session_id, task=task).rstrip("_.")
+    bids.generate_ecephys_json(
+        builder.extract_ecephys_metadata(doc, session),
+        ecephys_dir / f"{task_prefix}_ecephys.json")
+
+    bids.generate_dataset_description(
+        builder.extract_dataset_description(doc),
+        CURATED_DATA_DIR / "dataset_description.json")
+    bids.generate_participants_tsv(
+        builder.extract_participants(doc),
+        CURATED_DATA_DIR / "participants.tsv")
+    bids.generate_participants_json(CURATED_DATA_DIR / "participants.json")
+
+    print(f"BIDS layout: ses-{session_id}")
+
+
+def convert_cmd(odml_path: Path, session_id: str, stub_test: bool = False):
+    """Step 4: Convert raw recording to NWB."""
+    doc = load_doc(odml_path)
+    session = find_session(doc, session_id)
+    sub = get_subject_id(doc)
+    task = get_task_label(doc)
+    paths = session_paths(sub, session_id, task)
+
+    raw_path = get_raw_file(session_id)
+    if not raw_path.exists():
+        raise FileNotFoundError(f"Session {session_id}: raw file {raw_path} not found")
+
+    meta = build_nwb_metadata(doc, session)
+
+    converter = $converter_class(
+        $converter_args
+        probe_group_path=paths["probe_group"],  # written by --build-probes
+    )
+    converter.run_conversion(paths["nwb"], meta, stub_test=stub_test)
+    print(f"Converted: {paths['nwb']}" + (" (stub)" if stub_test else ""))
+
+
+def sanity_cmd(odml_path: Path, session_id: str):
+    """Step 5: Per-session sanity checks across raw, BIDS, and NWB."""
+    doc = load_doc(odml_path)
+    paths = session_paths(
+        get_subject_id(doc), session_id, get_task_label(doc))
+    run_sanity_checks(
+        raw_path=get_raw_file(session_id),
+        paths=paths,
+        report_label=session_id,
+        validation_dir=VALIDATION_DIR,
+        recording_format=RECORDING_FORMAT,
+    )
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def main():
+    p = build_parser("$dataset_name curation pipeline")
+    p.add_argument("--output", type=Path, help="Output directory for probes")
+    args = p.parse_args()
+
+    if args.list_sessions:
+        for sid in discover_sessions():
+            print(f"  {sid}")
+        return
+
+    odml_path = get_odml_path(args.odml)
+
+    if args.all:  # every step and export but kg-push; the openMINDS collection only with a KG token
+                  # (run_export_steps prints one line and goes on without one)
+        args.compile = args.build_probes = args.bids_layout = args.convert = args.sanity = True
+        args.openminds_collection = args.datacite = args.readme = True
+        args.validate = args.validate or "all"
+
+    if args.compile:
+        odml_path = compile_cmd(enrich_openminds=not args.no_openminds,
+                                shared_dir=args.shared_metadata)
+    if args.openminds_enrich:
+        odml_path = compile_cmd(enrich_openminds=True, shared_dir=args.shared_metadata)
+    # The session given with --session, else every session; export-only runs discover none
+    per_session = args.build_probes or args.bids_layout or args.convert or args.sanity
+    for sid in ([args.session] if args.session else discover_sessions()) if per_session else []:
+        if args.build_probes:
+            probes_cmd(odml_path, sid, args.output)
+        if args.bids_layout:
+            bids_cmd(odml_path, sid)
+        if args.convert:
+            convert_cmd(odml_path, sid, args.stub_test)
+        if args.sanity:
+            sanity_cmd(odml_path, sid)
+    run_export_steps(args, odml_path, CURATED_DATA_DIR, VALIDATION_DIR)
+
+
+if __name__ == "__main__":
+    main()

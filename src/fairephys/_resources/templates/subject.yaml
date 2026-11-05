@@ -1,0 +1,138 @@
+# Subject metadata template
+# Copy to your dataset's metadata/ folder and fill in values
+
+_schema: subject.v1
+_valueOrigin: ""
+
+# ---------------------------------------------------------------------------
+# MULTI-SUBJECT (optional)
+# ---------------------------------------------------------------------------
+# For datasets with multiple subjects, uncomment the Subjects list below,
+# add one entry per subject and remove the single Subject section. All
+# subjects are compiled into one odML ('Subjects'); each session names its
+# subject in sessions.yaml ('subject: SubjectA'). Single-subject datasets
+# can ignore this section.
+#
+# Subjects:
+#   - Subject:
+#       subject id: SubjectA
+#       species: Macaca mulatta
+#       biological sex: male
+#       age category: adult
+#       # ... (same fields as the Subject section below)
+#   - Subject:
+#       subject id: SubjectB
+#       species: Macaca mulatta
+#       biological sex: female
+#       age category: adult
+
+Subject:
+  # ---------------------------------------------------------------------------
+  # IDENTITY
+  # ---------------------------------------------------------------------------
+  subject id: ""
+
+  # ---------------------------------------------------------------------------
+  # BIOLOGY -> Subject.species, .biological_sex; SubjectState.age_category, .handedness
+  # ---------------------------------------------------------------------------
+  species: ""                  # Species controlled term (e.g., "Macaca mulatta")
+  # biological sex: male | female | hermaphrodite | not detectable
+  biological sex: ""
+  # age category: adult | young adult | prime adult | late adult | adolescent |
+  #   juvenile | infant | neonate | perinatal | embryo
+  age category: ""
+  # handedness: left handedness | right handedness | ambidextrous handedness |
+  #   mixed handedness | ambilevous handedness
+  handedness: ""
+  genetic strain type: ""      # GeneticStrainType: wildtype | transgenic | knockin | knockout
+  strain rrid: ""              # Research Resource Identifier (e.g., "RRID:MGI:2160440")
+  notes: ""                    # -> SubjectState.additional_remarks
+
+  # ---------------------------------------------------------------------------
+  # HEALTH STATUS -> SubjectState.pathologies (Disease, DiseaseModel)
+  # ---------------------------------------------------------------------------
+  disease: ""                  # Disease controlled term
+  disease model: ""            # DiseaseModel controlled term
+  phenotype: ""                # documentary (no openMINDS target)
+
+  # (health fields moved to BIOLOGY section above)
+
+  # ---------------------------------------------------------------------------
+  # PHYSICAL CHARACTERISTICS
+  # ---------------------------------------------------------------------------
+  # age: the age at a stated date, e.g. "15 year", "6 month" (year | month |
+  # week | day); write "age at <date>, <source>" in this comment and in
+  # _valueOrigin. The KG carries one age per subject, the same in every state
+  age: ""
+  # age reference date: the date the stated age refers to (YYYY-MM-DD; a
+  # recording day, the lab's form date); empty when the lab gave none. The
+  # descriptor prints "Age: 15 years (at 2024-03-15)"
+  age reference date: ""
+  weight: ""                    # e.g., "10 kilogram", "5.5 kilogram" (kilogram | gram)
+
+  # ---------------------------------------------------------------------------
+  # HOUSING AND HISTORY
+  # ---------------------------------------------------------------------------
+  housing condition: ""
+  pathogen status: ""
+  breeding type: ""
+
+  # ---------------------------------------------------------------------------
+  # STATE ATTRIBUTES -> SubjectState.attributes (SubjectAttribute)
+  # ---------------------------------------------------------------------------
+  # SubjectAttribute terms: awake | alert | alive | anaesthetized | asleep |
+  #   comatose | control | deceased | drugged | freely moving | has implanted device |
+  #   has inserted device | head restrained | restrained | treated | untreated |
+  #   knockin | knockout | preoperative | postoperative
+  subject attribute: []
+
+  # ---------------------------------------------------------------------------
+  # SURGICAL PREPARATION
+  # ---------------------------------------------------------------------------
+  Surgical Preparation:
+    # preparation type: in vivo  # in vivo | ex vivo | in vitro
+
+    Head Post:
+      type: ""
+      material: ""
+      location: ""
+      implantation date: ""
+
+    Recording Chamber:
+      material: ""
+      shape: ""
+      inner diameter: ""
+      location: ""
+      coordinates: ""
+      orientation: ""
+      implantation date: ""
+
+    Craniotomy:
+      cranial window type: ""
+      location: ""
+      size: ""
+      dura condition: ""
+      dura treatment: ""
+
+    Surgery Details:
+      surgery date: ""
+      recovery period: ""
+      anesthesia protocol: ""
+      surgical notes: ""
+
+    # ---------------------------------------------------------------------------
+    # IMPLANTED PROBES (for chronic recordings only)
+    # ---------------------------------------------------------------------------
+    # For acute recordings: Leave empty, use recordings.yaml instead
+    Implanted Probes:
+      # - probe: ""           # exact name of the entry in Hardware.Probes, once per array
+      #   brain region: ""
+      #   hemisphere: ""
+      #   channels: ""        # acquisition channels of this array, e.g. "1-96"
+      #   stream: ""          # its recording stream when the format has several per file (e.g. SpikeGLX "imec0"); empty when unknown
+      #   electrode identifiers: []  # contact ids in the order of 'channels', when the channel order is not the contact order
+      #   AP: ""
+      #   ML: ""
+      #   depth: ""
+      #   implant date: ""
+      #   anatomical targets: {}  # {term: contact_range}

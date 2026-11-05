@@ -1,0 +1,364 @@
+# Wordings of the data descriptor (README) that no odML field gives.
+# The brain regions of the dataset are openMINDS UBERONParcellation terms
+# (openminds_schemas.yaml, DatasetVersion.study_targets); this is how the
+# README calls them in its Anatomical Location section.
+brain regions label: "Brain regions (UBERON anatomy terms)"
+
+# A term written out at its first plain mention in the descriptor (outside
+# code, links and URLs), unless the written-out form comes first; later
+# mentions keep the short form
+first use:
+  odML: "open metadata Markup Language (odML)"
+
+# Project pages of the software the descriptor names: the first plain mention
+# of each name is linked, unless the descriptor already links it (as the
+# collection's usage statement does). A tool of the odML Curation Software
+# section with a code url is linked to that url instead.
+software links:
+  BIDS validator: "https://github.com/bids-standard/bids-validator"
+  NWB Inspector: "https://nwbinspector.readthedocs.io/"
+  openMINDS Python: "https://github.com/openMetadataInitiative/openMINDS_Python"
+  NeuroConv: "https://neuroconv.readthedocs.io/"
+  PyNWB: "https://pynwb.readthedocs.io/"
+  MatNWB: "https://matnwb.readthedocs.io/"
+  fairgraph: "https://fairgraph.readthedocs.io/"
+  ProbeInterface: "https://probeinterface.readthedocs.io/"
+  Matplotlib: "https://matplotlib.org/"
+  DataLad: "https://www.datalad.org/"
+  python-odml: "https://g-node.github.io/python-odml/"
+  pyEDFlib: "https://pyedflib.readthedocs.io/"
+
+# The file types of the Data Records, in the order of the file table; the file
+# tree gives the short description (tree) after the first file of each type.
+# A file takes the first entry whose pattern matches the end of its path
+# relative to the dataset root ({metadata dir}: the curated metadata folder).
+# rows: what one row of a TSV with a header row is; the header rows of all
+# such files on disk give the columns they all have ({columns}) and those only
+# some of them have ({more columns}).
+# sidecar: what a JSON file of the type is; the top-level keys of all such
+# files on disk give the keys they all hold ({keys}) and those only some of
+# them hold ({more keys}); files that hold no entries (an empty object) are left
+# out of the comparison and counted ({no entries}: "2 of 8 files"), and when
+# no file holds any the type takes the empty content.
+# suffixes: the BIDS suffixes of the file names ({suffixes}: "T1w and T2w").
+# per suffix: one row per file suffix ("*_video.MTS"; {suffix} in the texts).
+# labels: the values of this BIDS entity in the file names ({labels}).
+# stale content: the content when the first file is older than the odML
+# record beside it ({built}: its date).
+# specification: the format specification ({bids version}: the BIDS registry
+# spec); software: the software that writes the files, with the version the
+# odML Curation Software section records for it.
+files:
+  - pattern: "*_ecephys.nwb"
+    tree: neural recording
+    format: NWB (HDF5)
+    content: >-
+      Continuous neural recording of the session with its electrode table,
+      devices and subject metadata, and the trials, intervals, events or sorted
+      units the dataset holds
+    specification: Neurodata Without Borders (NWB)
+    software: [NeuroConv, PyNWB]
+  - pattern: "*_ecephys.json"
+    tree: recording parameters
+    format: JSON
+    content: >-
+      Recording parameters of the session: sampling frequency, power line
+      frequency, filters, recording system and institution
+    specification: "BIDS {bids version}, BEP032 draft"
+    software: [fairephys]
+  - pattern: "ecephys/*_channels.tsv"
+    tree: channel list
+    format: TSV
+    rows: One row per recorded channel
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}, BEP032 draft"
+    software: [fairephys]
+  - pattern: "ecephys/*_channels.json"
+    tree: channel list sidecar
+    format: JSON
+    sidecar: Sidecar of the matching channels.tsv
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}, BEP032 draft"
+    software: [fairephys]
+  - pattern: "*_electrodes.tsv"
+    tree: contact positions
+    format: TSV
+    rows: One row per electrode contact
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}, BEP032 draft"
+    software: [fairephys]
+  - pattern: "*_electrodes.json"
+    tree: contact positions sidecar
+    format: JSON
+    sidecar: Sidecar of the matching electrodes.tsv
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}, BEP032 draft"
+    software: [fairephys]
+  - pattern: "*_probes.tsv"
+    tree: probe placements
+    format: TSV
+    rows: One row per probe placed in the session
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}, BEP032 draft"
+    software: [fairephys]
+  - pattern: "*_probes.json"
+    tree: probe placements sidecar
+    format: JSON
+    sidecar: Sidecar of the matching probes.tsv
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}, BEP032 draft"
+    software: [fairephys]
+  - pattern: "*_events.tsv"
+    tree: events
+    format: TSV
+    rows: One row per event or annotated interval
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_events.json"
+    tree: events sidecar
+    format: JSON
+    sidecar: Sidecar of the matching events.tsv
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_physio.tsv.gz"
+    tree: physiological signals
+    format: TSV (gzip)
+    labels: recording
+    content: >-
+      Continuous physiological signals{? ({labels})}, one column per signal
+      and no header row; the matching physio.json gives the column names,
+      sampling frequency and start time
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_physio.json"
+    tree: physiological signal parameters
+    format: JSON
+    content: Column names, units, sampling frequency and start time of the matching physio.tsv.gz
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_motion.tsv"
+    tree: motion tracking
+    format: TSV
+    content: >-
+      Motion tracking signals, one column per channel of the matching
+      channels.tsv and no header row
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_motion.json"
+    tree: motion tracking parameters
+    format: JSON
+    content: >-
+      Recording parameters of the motion tracking: sampling frequency, channel
+      counts and tracking system
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "motion/*_channels.tsv"
+    tree: motion channel list
+    format: TSV
+    rows: One row per motion tracking channel
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_emg.edf"
+    tree: EMG
+    format: EDF
+    content: >-
+      Electromyography signals of the session, one signal per channel of the
+      matching channels.tsv
+    specification: European Data Format (EDF+)
+    software: [pyEDFlib]
+  - pattern: "*_emg.json"
+    tree: EMG parameters
+    format: JSON
+    content: >-
+      Recording parameters of the electromyography: sampling frequency, power
+      line frequency, channel count, filters and recording system
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "emg/*_channels.tsv"
+    tree: EMG channel list
+    format: TSV
+    rows: One row per EMG channel
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_channels.tsv"
+    tree: channel list
+    format: TSV
+    rows: One row per channel
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_channels.json"
+    tree: channel list sidecar
+    format: JSON
+    sidecar: Sidecar of the matching channels.tsv
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_video.json"
+    tree: video metadata
+    format: JSON
+    content: Metadata of the matching video file, such as its frame rate and format
+    specification: JSON
+  - pattern: "*_video.*"
+    per suffix: true
+    tree: video
+    format: "Video ({suffix})"
+    content: Video recording of the session
+    specification: "Video file in the format of the camera ({suffix})"
+  - pattern: dataset_description.json
+    tree: dataset description
+    format: JSON
+    content: >-
+      Name, BIDS version, licence, authors, funding, references and the
+      software that generated the dataset
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: participants.tsv
+    tree: subjects
+    format: TSV
+    rows: One row per subject
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: participants.json
+    tree: subjects sidecar
+    format: JSON
+    sidecar: Sidecar of participants.tsv
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}"
+    software: [fairephys]
+  - pattern: "*_scans.tsv"
+    tree: scans
+    format: TSV
+    rows: One row per data file of the session
+    content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
+    specification: "BIDS {bids version}"
+  - pattern: "anat/*.nii.gz"
+    tree: anatomical image
+    format: NIfTI (gzip)
+    suffixes: true
+    content: "Anatomical MR images of the subject{? ({suffixes})}"
+    specification: "BIDS {bids version}"
+  - pattern: "anat/*.json"
+    tree: anatomical image parameters
+    format: JSON
+    sidecar: Sidecar of the matching anatomical image
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}"
+  - pattern: "func/*_bold.nii.gz"
+    tree: BOLD time series
+    format: NIfTI (gzip)
+    content: Functional MRI time series of the blood-oxygen-level-dependent (BOLD) signal, one file per run
+    specification: "BIDS {bids version}"
+  - pattern: "func/*_bold.json"
+    tree: BOLD parameters
+    format: JSON
+    sidecar: Sidecar of the matching BOLD time series
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}"
+  - pattern: "fmap/*.nii.gz"
+    tree: field map
+    format: NIfTI (gzip)
+    suffixes: true
+    content: "Field map images of the session{? ({suffixes})}"
+    specification: "BIDS {bids version}"
+  - pattern: "fmap/*.json"
+    tree: field map parameters
+    format: JSON
+    sidecar: Sidecar of the matching field map image
+    content: "{sidecar}{?, with the keys {keys}}{?; some files also: {more keys}}{?; no entries in {no entries}}"
+    empty content: "{sidecar}, with no entries (an empty JSON object)"
+    specification: "BIDS {bids version}"
+  - pattern: "*.nrrd"
+    tree: image volume
+    format: NRRD
+    content: >-
+      Image volume in the Nearly Raw Raster Data format: a text header with its
+      dimensions and encoding, followed by the data
+    specification: NRRD (Teem)
+  - pattern: "*.mrk.json"
+    tree: 3D Slicer markups
+    format: JSON (3D Slicer markups)
+    content: >-
+      3D Slicer markups: the type of each markup (such as a point list or a
+      line) and the positions of its control points
+    specification: 3D Slicer markups JSON schema
+  - pattern: datacite.yml
+    tree: citation metadata
+    format: YAML
+    content: >-
+      Citation metadata for the DOI registration on GIN: title, authors,
+      description, keywords, licence, funding and references
+    specification: GIN datacite.yml (DataCite)
+    software: [fairephys]
+  - pattern: LICENSE
+    tree: licence
+    format: Text
+    content: Licence of the dataset with its legal code
+    specification: Plain text
+    software: [fairephys]
+  - pattern: "probes/*.json"
+    tree: probe geometry
+    format: JSON (ProbeInterface)
+    content: >-
+      Contact geometry of each device: contact positions and shapes and the
+      wiring of the contacts to the recording channels
+    specification: ProbeInterface JSON
+    software: [ProbeInterface]
+  - pattern: "probes/sub-*_ses-*/*.json"
+    tree: probe geometry of the session
+    format: JSON (ProbeInterface)
+    content: >-
+      Contact geometry of the devices placed in the session, one file per
+      device and probe_group.json for all: contact positions and shapes and the
+      wiring of the contacts to the recording channels
+    specification: ProbeInterface JSON
+    software: [ProbeInterface]
+  - pattern: "probes/sub-*_ses-*/*.png"
+    tree: probe drawing of the session
+    format: PNG
+    content: >-
+      Drawings of the devices placed in the session, one file per device and
+      probe_group.png for all: the contact positions (x and y in micrometres),
+      each contact labelled with its contact id and the index of the recording
+      channel wired to it (-1 where none is)
+    specification: PNG image
+    software: [ProbeInterface, Matplotlib]
+  - pattern: "{metadata dir}/*.odml.*"
+    tree: metadata record
+    format: XML, YAML, HTML
+    content: >-
+      odML record holding all metadata of the dataset, from which the BIDS
+      sidecars, the openMINDS metadata, the DataCite record and this descriptor
+      are generated (XML and YAML, and an HTML viewer)
+    specification: odML
+    software: [python-odml, fairephys]
+  - pattern: "{metadata dir}/*.openminds.jsonld"
+    tree: openMINDS metadata
+    format: JSON-LD (openMINDS)
+    content: >-
+      openMINDS metadata of the dataset for the EBRAINS Knowledge Graph,
+      derived from the odML record
+    stale content: >-
+      openMINDS collection: not built in this run (no KG token); the file of
+      {built} predates this odML record
+    specification: openMINDS (JSON-LD)
+    software: [fairgraph]
+  - pattern: "{metadata dir}/*.instances.yaml"
+    tree: openMINDS terms
+    format: YAML
+    content: openMINDS terms of the controlled vocabulary values in the odML record
+    specification: YAML
+    software: [fairephys]

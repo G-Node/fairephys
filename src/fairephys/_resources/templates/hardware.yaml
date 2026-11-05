@@ -1,0 +1,219 @@
+# Hardware specifications template
+# Copy to your dataset's metadata/ folder and fill in values
+
+_schema: hardware.v1
+_valueOrigin: ""
+
+Hardware:
+  # ---------------------------------------------------------------------------
+  # RECORDING TYPE
+  # ---------------------------------------------------------------------------
+  # acute: Probes inserted per session (placements in recordings.yaml)
+  # chronic: Probes permanently implanted (placements in subject.yaml)
+  recording type: ""  # acute | chronic
+
+  # ---------------------------------------------------------------------------
+  # RECORDING SYSTEM
+  # ---------------------------------------------------------------------------
+  Recording System:
+    name: ""                   # e.g., "Blackrock Cerebus" -> openMINDS Setup.name
+    manufacturer: ""
+    manufacturer location: ""
+    system model: ""
+    model version: ""          # Maps to BIDS ManufacturersModelVersion
+    setup name: ""             # Maps to BIDS RecordingSetupName
+    serial number: ""
+
+    # Components
+    headstage model: ""
+    headstage version: ""
+    headstage serial: ""
+    digital hub model: ""
+    digital hub version: ""
+    cable type: ""
+    transmission: ""
+    processor model: ""
+    processor version: ""
+    processor serial: ""
+    number of channels: null  # integer or null if unknown
+
+    # Software
+    acquisition software: ""
+    software version: ""
+    # operating system: Windows | macOS | Linux | ""
+    operating system: ""
+    operating system version: ""
+
+    # Grounding
+    ground connection: ""
+    system reference: ""
+
+    # Acquisition parameters
+    sampling rate: ""           # e.g., "30000 hertz" (expanded unit name, not Hz)
+    bit depth: null              # integer or null if unknown
+    gain: null                   # number or null if unknown
+    # gain unit: the unit of 'gain': "uV per count" | "V per count"; empty when unknown
+    gain unit: ""
+    # adc zero: the stored count that corresponds to zero volts: 0 for signed
+    # counts, 2048 for a 12-bit ADC stored around mid-scale; state the source
+    # (header, format documentation). Empty when unknown, which stops the conversion
+    adc zero: null
+    input impedance: ""          # e.g., "1 megaohm" (ohm | kiloohm | megaohm | gigaohm)
+    # power line frequency: 50 (EU) | 60 (US)
+    # power line frequency: 50
+    # Neo signal stream ids to curate, when the raw file holds several streams
+    # (e.g. [WB] for Plexon wideband, ["6"] for Blackrock .ns6, [imec0.ap]);
+    # a stream name where ids depend on the file (e.g. [Broa] for a TDT store).
+    # Channels and sampling rate in BIDS come from these streams only.
+    curated streams: []
+
+  # ---------------------------------------------------------------------------
+  # HARDWARE FILTERS (analog, applied before ADC)
+  # ---------------------------------------------------------------------------
+  # Physical filters in amplifier/headstage hardware
+  # These are applied to the analog signal before digitization
+  Hardware Filters:
+    Filters:
+      - name: ""                  # e.g., "Highpass", "Anti-aliasing lowpass", "Notch"
+        # type: highpass | lowpass | bandpass | notch
+        type: ""
+        cutoff: ""                # e.g., "300 hertz", "1-5000 hertz" (expanded unit name)
+        order: 0                  # filter order (e.g., 1, 2, 4)
+        # implementation: RC | Butterworth | Bessel | Chebyshev
+        implementation: ""
+        roll-off: ""              # e.g., "6 dB/octave", "20 dB/decade"
+
+  # ---------------------------------------------------------------------------
+  # AUXILIARY DEVICES (non-neural recording devices)
+  # ---------------------------------------------------------------------------
+  # Non-neural signals recorded alongside ephys: eye tracking, EMG, ECG,
+  # motion tracking, etc. Each entry describes one logical device and the
+  # raw data channels it produces.
+  #
+  # modality: physio | motion | emg
+  #   physio: generic continuous signals (ECG, respiration, eye gaze voltage)
+  #   motion: tracked spatial positions (BIDS motion extension)
+  #   emg: electromyography (BIDS EMG extension)
+  #
+  # When aux signals are acquired through the main recording system
+  # (e.g., analog inputs on Blackrock/TDT), set "same as recording system: true"
+  # and device metadata fields are inherited from Recording System.
+  Auxiliary Devices: []
+  # Auxiliary Devices:
+    # - name: ""
+    #   same as recording system: false
+    #   description: ""              # free-text (flows to openMINDS core.Device)
+    #   modality: ""                 # physio | motion | emg
+    #   channels: []                 # raw data channel names (must match Neo exactly); an
+    #                                # eye tracker lists the horizontal, then the vertical
+    #                                # position; a further channel (pupil size) is named by
+    #                                # its BIDS column in curate.py (eye_columns), with the
+    #                                # lab's statement of the order as its source
+    #   recording: ""                # physio only: BIDS recording entity
+    #   sampling rate: ""            # the device's own rate, e.g. "100 hertz"; empty when unknown
+    #   tracksys: ""                 # motion only: BIDS tracksys entity
+    #   # EMG-specific (required when modality=emg)
+    #   placement scheme: ""         # ChannelSpecific | Measured | Other
+    #   placement description: ""    # required when scheme is Other
+    #   reference: ""                # EMG reference electrode
+    #   # The device's own analog filters before ADC, listed as under
+    #   # Recording System (BIDS HardwareFilters of its sidecar)
+    #   Hardware Filters:
+    #     Filters:
+    #       - name: ""               # e.g., "Amplifier highpass"
+    #         type: ""               # highpass | lowpass | bandpass | notch
+    #         cutoff: ""             # e.g., "1 hertz", "1-3000 hertz"
+    #   # Eye-tracking specific (required when recording=eye)
+    #   recorded eye: ""             # left | right | cyclopean
+    #   coordinate system: ""        # gaze-on-screen | eye-in-head | gaze-in-world | custom
+
+  # ---------------------------------------------------------------------------
+  # PROBES
+  # ---------------------------------------------------------------------------
+  # One entry per physical device: two probes of one model are two entries
+  # (e.g. "Plexon S-Probe 1" and "Plexon S-Probe 2"), and each single
+  # electrode of a microdrive is one entry (e.g. "MiniMatrix electrode 3").
+  # Electrode Placements name the entry by its exact name, so a session can
+  # say which device went where. The name stays the same in every session.
+  Probes:
+    - name: ""
+      internal id: ""
+
+      # Manufacturer
+      manufacturer: ""
+      # library manufacturer: the ProbeInterface library's manufacturer key when it differs from the lab's name (e.g. "sinaps-research-platform")
+      # library manufacturer: ""
+      manufacturer location: ""
+      model: ""
+      serial number: ""           # this device's own serial, not the connector or pedestal
+      # digital identifier: DOI or RRID for the probe -> ElectrodeArray.digital_identifier
+      # digital identifier:
+      #   type: ""               # DOI | RRID
+      #   value: ""              # e.g., "10.xxxx/..." or "RRID:SCR_..."
+
+      # Classification
+      device type: ""
+      # probe type: the device class, one of: single electrode | linear
+      #   multi-contact probe | silicon probe | Utah array | floating
+      #   microelectrode array | ECoG array; the product name (e.g. "S-Probe",
+      #   "NP1010") goes in 'model'; empty when unknown
+      probe type: ""
+      # laterality: left | right | bilateral
+      laterality: ""
+
+      # Physical specifications
+      number of contacts: 1
+      # number of columns: for matrix probes, grid columns (e.g., 4 for 4×8 FMA)
+      # number of columns: 0
+      contact pitch: ""           # e.g., "100 micrometer" (millimeter | micrometer)
+      # row spacing, column spacing: for a matrix whose two spacings differ,
+      # the distance between rows and between columns (e.g. "30 micrometer";
+      # millimeter | micrometer); 'contact pitch' stays for equal spacing;
+      # empty when unknown
+      # row spacing: ""
+      # column spacing: ""
+      total span: ""              # e.g., "3.1 millimeter"
+      contact size: ""            # e.g., "25 micrometer"
+      contact shape: ""
+      # contact arrangement: linear | matrix
+      contact arrangement: ""
+      # first contact: where contact 1 is on a linear probe: tip (default) or
+      # top (contact 1 farthest from the tip, e.g. "the most superficial
+      # contact"); take it from the lab's numbering, not the manufacturer's
+      # first contact: tip
+      # contact positions: for a probe no parameter above describes, the x
+      # and y of each contact in micrometer, with its contact id (lists of
+      # equal length, one entry per contact); used instead of generating the
+      # geometry; leave out when unknown
+      # contact positions:
+      #   contact ids: ["01", "02", "03"]
+      #   x: [0, 30, 15]
+      #   y: [0, 0, 26]
+      shaft diameter: ""          # e.g., "50 micrometer"
+      shaft length: ""            # e.g., "10 millimeter"
+      total length: ""            # e.g., "100 millimeter"
+
+      # Materials
+      conductor material: ""
+      insulator material: ""
+      substrate material: ""
+      coating: ""
+
+      # Electrodes
+      electrode identifiers: []
+      channel mapping: ""
+
+      # Reference
+      reference type: ""
+      reference attachment: ""
+      reference location: ""
+      reference impedance: ""
+
+      # Impedance
+      contact impedance range: "" # e.g., "650 ohm", "100-800 ohm", "0.25 megaohm"
+      impedance measurement date: ""
+
+      # notes: the device's status in the data (an array left out of the
+      # release with its reason, a known fault), with its source; printed
+      # under the probe in the data descriptor
+      notes: ""

@@ -1,0 +1,83 @@
+# Data Processing template
+# Copy to your dataset's metadata/ folder and fill in values
+#
+# Each item is a separate processing step -> openMINDS computation.DataAnalysis
+# Only include steps that were actually performed; omit the rest
+#
+# technique: openMINDS AnalysisTechnique controlled term, e.g.:
+#   spike sorting, signal filtering technique, signal processing technique,
+#   video annotation, current source density analysis, temporal filtering,
+#   independent component analysis, motion analysis, eye movement analysis
+
+_schema: processing.v1
+_valueOrigin: ""
+
+Data Processing:
+  # --- Example: Signal preprocessing ---
+  # - name: ""                             # e.g., "LFP Extraction"
+  #   technique: signal filtering technique
+  #   description: |
+  #     [Describe the preprocessing pipeline and rationale]
+  #   input: broadband neural signal
+  #   output: ""                           # e.g., "LFP", "filtered broadband"
+  #   performed by: ""
+  #   Filters Applied:
+  #     - name: ""                         # e.g., "Anti-aliasing lowpass"
+  #       type: ""                         # lowpass | highpass | bandpass | notch
+  #       cutoff: ""                       # e.g., "300 hertz", "0.1-300 hertz"
+  #       order: ""
+  #       implementation: ""               # Butterworth | Chebyshev | FIR | etc.
+  #   downsampling factor: ""             # e.g., "30x" (30kHz to 1kHz)
+  #   artifact rejection: ""              # e.g., "threshold-based", "ICA"
+  #   Software:
+  #     name: ""
+  #     version: ""
+
+  # --- Example: Spike sorting ---
+  # - name: ""                             # e.g., "Offline Spike Sorting"
+  #   technique: spike sorting
+  #   description: |
+  #     [Describe spike detection, clustering, and curation approach]
+  #   input: broadband neural signal       # or "filtered broadband"
+  #   output: spike times
+  #   performed by: ""
+  #   detection:
+  #     method: ""                         # threshold crossing | template matching
+  #     threshold: ""                      # e.g., "-4 SD", "50 uV"
+  #   sorting:
+  #     method: ""                         # manual | automatic | semi-automatic
+  #     algorithm: ""                      # e.g., "Kilosort", "MountainSort"
+  #     features: []                       # e.g., [PCA, waveform amplitude, ISI]
+  #   quality control:
+  #     metrics: []                        # e.g., [ISI violations, isolation distance, SNR]
+  #     curation: ""                       # manual | automatic | semi-automatic
+  #     inclusion criteria: ""             # e.g., "ISI violations < 1%"
+  #   Software:
+  #     name: ""
+  #     version: ""
+
+  # --- Example: Behavioral annotation ---
+  # - name: ""                             # e.g., "Behavioral State Annotation"
+  #   technique: video annotation
+  #   description: |
+  #     [Describe annotation protocol and state definitions]
+  #   input: video
+  #   output: behavioral states
+  #   performed by: ""
+  #   annotation:
+  #     method: ""                         # manual | DeepLabCut | SLEAP | etc.
+  #     temporal resolution: ""            # e.g., "1 second", "frame-by-frame"
+  #     # one entry per state -> BIDS events.json trial_type Levels
+  #     states:
+  #       - label: ""                      # trial_type value in events.tsv, e.g. "movement"
+  #         code: ""                       # the lab's code in the source files, e.g. "M" (if any)
+  #         description: ""                # e.g. "Body movement"
+  #   synchronization:
+  #     method: ""                         # e.g., "LED flash", "TTL pulse"
+  #     precision: ""                      # e.g., "1 second", "1 ms"
+  #     reference: ""                      # e.g., "first LED = t0 in neural recording"
+  #   Software:
+  #     name: ""
+  #     version: ""
+
+  []  # Empty: no processing. Remove this line and uncomment/add steps above.

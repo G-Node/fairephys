@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use fairephys, please cite it as below."
+title: "fairephys: a practical workflow for FAIR sharing of electrophysiology data"
+type: software
+authors:
+  - family-names: Gupta
+    given-names: Reema
+    affiliation: "Ludwig-Maximilians-Universität München"
+version: 0.1.0
+repository-code: "https://github.com/G-Node/fairephys"
+license: MIT
+keywords:
+  - electrophysiology
+  - NWB
+  - BIDS
+  - openMINDS
+  - odML
+  - EBRAINS

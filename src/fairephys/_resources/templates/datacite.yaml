@@ -1,0 +1,100 @@
+# Metadata for DOI registration according to DataCite Metadata Schema 4.1.
+# For detailed schema description see https://doi.org/10.5438/0014
+#
+# The information in this file will be used to create the DOI record and
+# the landing page for the registered resource.
+#
+# Please replace the template entries by the corresponding information for your resource.
+# For detailed instructions see https://gin.g-node.org/G-Node/Info/wiki/DOI
+# Comments (lines starting with '#') may be removed.
+
+## Required fields
+
+# authors: The researchers involved.
+# Include digital identifier (e.g., ORCID) if possible, including the prefix to indicate its type.
+# All authors listed here need to have agreed to the publication.
+authors:
+  -
+    firstname: "GivenNames1"
+    lastname: "FamilyName1"
+    affiliation: "Affiliation1"
+    id: "ORCID:0000-0001-2345-6789"
+  -
+    firstname: "GivenNames2"
+    lastname: "FamilyName2"
+    affiliation: "Affiliation2"
+
+# title: A title to identify the published resource.
+title: "Example Title"
+
+# description: A brief abstract describing the resource.
+description: |
+  Example description
+  that can contain linebreaks
+  but has to maintain indentation.
+
+# keywords: List of keywords for the resource.
+# Provide as many keywords as possible, to make the resource findable.
+# For keyword suggestions, see https://doi.gin.g-node.org/keywords/
+keywords:
+  - Neuroscience
+  - Keyword2
+  - Keyword3
+  - ...
+
+# license: License information for this resource. Please provide the license name and a link to the license.
+# Please add also a corresponding LICENSE file to the repository.
+license:
+  name: "Creative Commons CC0 1.0 Public Domain Dedication"
+  url: "https://creativecommons.org/publicdomain/zero/1.0/"
+
+## Optional fields
+
+# funding: Funding information for this resource.
+# Separate funder name and grant number by a semicolon.
+funding:
+  - "DFG; AB1234/5-6"
+  - "EU; ERC grant 12345"
+  - "NIH; R01XY123456"
+
+# references: Digital resources related to this publication, such as research articles, data, or code
+# If this publication is supplement to a research paper, a reference to the paper is mandatory.
+#
+#  id: Please provide digital identifier (e.g., DOI, arXiv, PMID, URL) if possible.
+#   Add a prefix to the ID, separated by a colon, to indicate the type of identifier.
+#   If assignment of an identifier is pending, enter "doi:tba" as placeholder.
+#
+#  reftype: The relationship of this publication to the referenced resource.
+#   IsSupplementTo: to reference a research paper that is supplemented by this publication
+#   IsDescribedBy: to reference a data descriptor of a dataset publication
+#   IsReferencedBy: to reference code or other resources that use this publication.
+#   (for further reftypes see the Datacite schema description https://doi.org/10.5438/0014) 
+#
+#  citation: Please provide the full reference, including title, authors, journal etc., like in the reference section of a paper.
+#   If an unpublished manuscript is referenced, enter as much citation information as available, and update when the paper is published.
+#
+references:
+  -
+    id: "doi:10.123/abc123"
+    reftype: "IsSupplementTo"
+    citation: "Author A, Author B (2010) A study based on the data. Neuroscience Journal 12(3):1234-1245. https://doi.org/10.123/abc123"
+  -
+    id: "doi:tba"
+    reftype: "IsSupplementTo"
+    citation: "Author A, Author C: Title of a manuscript that is not published yet. Neuro Research Journal, submitted."
+  -
+    id: "arxiv:2201.23456"
+    reftype: "IsSupplementTo"
+    citation: "Author A, Author D (2022) Preprint of a study based on the data. arXiv. https://doi.org/10.48550/arXiv.2201.23456"
+  -
+    id: "url:https://github.com/abcdxyz/greatdataanalysis"
+    reftype: "IsReferencedBy"
+    citation: "GreatDataAnalysis: Analysis code. Github. https://github.com/abcdxyz/greatdataanalysis"
+
+
+# Resource type. Default is Dataset, other possible values are Software, Text, Preprint.
+resourcetype: Dataset
+
+# Do not edit or remove the following line
+templateversion: 1.2
+
