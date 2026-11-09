@@ -19,7 +19,16 @@
 #   iri         - IRI value (wraps in fairgraph.IRI)
 #   today       - current date; with `odml`, that property's date when set
 #   datetime    - ISO datetime string from odML
-#   doi_list    - list of DOIs or citations containing a DOI, each DOI becomes core.DOI entity
+#   identifier_list - the identifier nodes of the entries of a subsection
+#                 (odml_section, one subsection per entry with its 'identifier'
+#                 and 'relation', see fairephys.metadata.identifiers): each
+#                 entry whose identifier type (DOI, Handle, ISBN, URL, arXiv,
+#                 PMID) `classes` names becomes that class's node, its
+#                 identifier written by the class's pattern ({} the value);
+#                 relation: only the entries of that relation; single: the
+#                 first such node. Entries of a type `classes` does not name
+#                 are listed in the collection warnings (by the list field
+#                 only), never dropped silently
 #   quantity    - odML property with value + unit -> core.QuantitativeValue
 #   nested_ref  - reference to nested entity built in same schema context
 #   nested_list - list of nested entity references (target: name or [name, ...])
@@ -48,7 +57,7 @@
 #   term / multi_term   -> vocabulary (controlled terms vs free text)
 #   quantity            -> type, structural (number+unit -> QuantitativeValue object)
 #   iri                 -> type (string -> IRI object)
-#   doi_list            -> type, structural (strings -> DOI entities)
+#   identifier_list     -> type, structural (entries -> identifier entities)
 #   link / match_link   -> structural (inline value -> entity reference)
 #   nested_ref/list     -> structural (flat fields -> nested entities)
 #   datetime            -> type (format conversion)
@@ -102,6 +111,8 @@
 #   add_to_collection   - false to suppress collection.add() (embedded metadata)
 #   build: false        - skip building entirely (documentary schema)
 #   nested              - dict of nested entities to build before main entity
+#   fallback            - (field option, schemas with nested) a field
+#                         definition built when the field builds nothing
 #   conflict_types      - entity-level interoperability conflicts
 #
 # ─── Extending this registry ──────────────────────────────────────────────
@@ -415,7 +426,18 @@ schemas:
       # dataset-specific text + the shared version statement (if any)
       version_innovation: { type: template, value: "{version innovation}\n\n{?Dataset/Project/version statement}" }
       digital_identifier: { type: nested_ref, target: DatasetDOI }
-      full_documentation: { type: nested_ref, target: DocumentationURL }
+      # the documentation url, else the first Related Publications entry
+      # described in it (IsDescribedBy) whose identifier is a DOI
+      full_documentation:
+        type: nested_ref
+        target: DocumentationURL
+        fallback:
+          type: identifier_list
+          odml_section: "Related Publications"
+          relation: IsDescribedBy
+          classes:
+            DOI: { class: core.DOI, identifier: "https://doi.org/{}" }
+          single: true
       ethics_assessment:
         type: term
         odml_field: "ethics assessment"
@@ -475,9 +497,19 @@ schemas:
       studied_specimens: { type: link, target: Subject, list: true }
       funding: { type: link, target: Funding, list: true }
       behavioral_protocols: { type: link, target: BehavioralProtocol, list: true }
+      # every Related Publications entry whose identifier openMINDS takes
+      # (DatasetVersion.related_publications: DOI, HANDLE, ISBN, ...); a URL,
+      # an arXiv id or a PMID has no openMINDS node and is listed in the
+      # collection warnings. Identifier patterns: the openMINDS v4
+      # instructions of each class (DOI 'https://doi.org/' + DOI, HANDLE
+      # 'http://hdl.handle.net/' + HANDLE, ISBN the number)
       related_publications:
-        type: doi_list
-        odml_field: "related publications"
+        type: identifier_list
+        odml_section: "Related Publications"
+        classes:
+          DOI: { class: core.DOI, identifier: "https://doi.org/{}" }
+          Handle: { class: core.HANDLE, identifier: "http://hdl.handle.net/{}" }
+          ISBN: { class: core.ISBN, identifier: "{}" }
       repository: { type: link, target: FileRepository }
       input_data: { type: nested_ref, target: InputDataURL, list: true }
       other_contributions: { type: link, target: Contribution, list: true }

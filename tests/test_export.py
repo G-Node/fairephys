@@ -91,13 +91,18 @@ def test_offline_collection_snapshot(doc, tmp_path):
 
 def test_registry_driven_fields(make_doc):
     """Statements, release date, cited protocol (a bare DOI as its https://doi.org/ IRI, a citation an error), keywords,
-    techniques, DOIs, consortium and Funding match per registry."""
+    techniques, related publications (DOI, Handle and ISBN nodes, a URL and an entry without identifier in the
+    warnings, a data descriptor as the full documentation after the documentation url), consortium and Funding match
+    per registry."""
     doc = make_doc({"Behavioral Protocol": {"described in": "10.1234/x"}}, Dataset={
         "doi": "10.1234/abc", "version innovation": "First release.",
         "techniques": ["electromyography", "spike sorting"], "experimental approach": ["electrophysiology"],
         "keywords": ["electrophysiology", "electromyography", "brain"],
-        "related publications": ["10.1000/abc", "https://doi.org/10.1000/def", "A. Title. https://doi.org/10.1234/abc.",
-                                 "Author, B. Title without a DOI (2020)."],
+        "Related Publications": [{"identifier": i, "relation": r, "citation": "A. Title."} for i, r in (
+            ("10.1000/abc", "IsSupplementTo"), ("https://doi.org/10.1000/def", "IsDescribedBy"),
+            ("doi:10.1234/abc", "IsSupplementTo"), ("hdl:11858/00-1735", "IsSupplementTo"),
+            ("isbn:978-3-16-148410-0", "Cites"), ("https://github.com/lab/code", "IsReferencedBy"),
+            ("", "IsSupplementTo"))],
         "Project": {"name": "P", "description": "Project text", "dataset statement": "Part of P.",
                     "version statement": "Formats used."},
         "Consortium": {"name": "C", "full name": "Consortium Full"}, "Custodian": {"consortium member": True},
@@ -128,6 +133,18 @@ def test_registry_driven_fields(make_doc):
         _builder(make_doc({"Behavioral Protocol": {"described in": "Author et al., 2026"}})).build_all()
     assert sorted(n.identifier for n in collection.nodes.values() if isinstance(n, fgcore.DOI)) == [
         "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc"]
+    assert [n.identifier for n in version.related_publications] == [
+        "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc",
+        "http://hdl.handle.net/11858/00-1735", "978-3-16-148410-0"]
+    assert version.full_documentation is version.related_publications[1]
+    assert collection.warnings == ["Related Publications entry 'https://github.com/lab/code': openMINDS has no node "
+                                   "for a URL here (only DOI, Handle, ISBN); not in the collection",
+                                   "Related Publications entry 'A. Title.': no identifier; not in the collection"]
+    documented = _builder(make_doc(Dataset={"documentation url": "https://docs.example/ds",
+                                            "Related Publications": [{"identifier": "10.1000/def",
+                                                                      "relation": "IsDescribedBy", "citation": ""}]}))
+    documented.build_all()
+    assert str(documented.entities["DatasetVersion"].full_documentation.iri.value) == "https://docs.example/ds"
     custodian = entities["Custodian"]
     assert [a.member_of.full_name for a in custodian.affiliations] == ["Test Uni", "Consortium Full"]
     assert custodian.affiliations[0].member_of.short_name is None  # the lab is no organization name

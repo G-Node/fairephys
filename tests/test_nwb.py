@@ -41,10 +41,15 @@ from fairephys.validation.sanity import run_sanity_checks
 _PLACED = {"Electrode Placements": [{"probe": "Utah Array", "brain region": "M1"}]}
 
 
-def test_subject_and_nwbfile_metadata(doc, session):
-    """Subject and NWBFile from the odML: ISO age, weight, fallbacks, experimenters, DOIs, unique id."""
-    doc["Dataset"].append(odml.Property("related publications", values=[
-        "Author (2020) eLife 9:e51322. doi:10.7554/eLife.51322", "Book without DOI"]))
+def test_subject_and_nwbfile_metadata(make_doc):
+    """Subject and NWBFile from the odML: ISO age, weight, fallbacks, experimenters, related publications (a DOI
+    as doi:<DOI>, another identifier as given, the citation without identifier), unique id."""
+    doc = make_doc(Dataset={"Related Publications": [
+        {"identifier": "https://doi.org/10.7554/eLife.51322", "relation": "IsSupplementTo",
+         "citation": "Author (2020) eLife 9:e51322."},
+        {"identifier": "https://github.com/lab/code", "relation": "IsReferencedBy", "citation": "Code."},
+        {"identifier": "", "relation": "IsSupplementTo", "citation": "Doe, J. A thesis (2020)."}]})
+    session = sessions(doc)[0]
     meta = build_nwb_metadata(doc, session, overrides={"lab": "Other"})
     assert meta["Subject"] == {"subject_id": "MonkeyA", "species": "Macaca mulatta", "sex": "F", "age": "P7Y",
                                "weight": "9.5 kg", "description": "MonkeyA"}  # nickname, else the id
@@ -55,7 +60,8 @@ def test_subject_and_nwbfile_metadata(doc, session):
                                 "keywords", "lab", "related_publications")} == {
         "session_id": "ses01", "session_description": "Test recording", "experiment_description": "A test experiment",
         "experimenter": ["Doe, Jane"], "keywords": ["test", "ephys"], "lab": "Other",
-        "related_publications": ["doi:10.7554/eLife.51322", "Book without DOI"]}
+        "related_publications": ["doi:10.7554/eLife.51322", "https://github.com/lab/code",
+                                 "Doe, J. A thesis (2020)."]}
 
 
 def test_no_placeholders(make_doc):

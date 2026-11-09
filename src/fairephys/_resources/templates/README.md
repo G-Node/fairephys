@@ -33,7 +33,7 @@ YOUR-DATASET/
 
 | File | Content |
 |------|---------|
-| `dataset.yaml` | Project identity, license, contributors |
+| `dataset.yaml` | Project identity, license, contributors, related publications |
 | `subject.yaml` | Subject biology, surgical preparation |
 | `hardware.yaml` | Equipment specs, probes |
 | `protocol.yaml` | Behavioral/experimental conditions |
@@ -42,6 +42,8 @@ YOUR-DATASET/
 | `sessions.yaml` | Session identifiers |
 | `datacite.yaml` | DOI registration metadata |
 | `collection.yaml` | Shared Project/Consortium of a curation project; lives in `collection/metadata/` above the datasets, or is given with `--shared-metadata` |
+
+`Related Publications` in `dataset.yaml` holds one entry per related paper, data descriptor, code or other resource: `identifier` (a DOI, a URL, `arxiv:`, `pmid:`, `hdl:` or `isbn:`; empty for a publication without one), `relation` (a DataCite relationType such as `IsSupplementTo`, `IsDescribedBy` or `IsReferencedBy`) and `citation`; `Related Publications: []` when there is none. `docs/pipeline.md` (Related publications) says what each output makes of an entry.
 
 ## Example
 

@@ -19,6 +19,9 @@ properties:
   Dataset:
     type: object
     required: [full name, short name, license, species, description]
+    # 'related publications' (citation strings) was replaced by the entries
+    # of 'Related Publications' (identifier, relation, citation)
+    propertyNames: {not: {enum: [related publications]}}
     properties:
       # Identity -> Dataset.full_name, DatasetVersion.short_name, etc.
       full name: {type: string, minLength: 1}
@@ -102,8 +105,7 @@ properties:
       copyright holder: {type: string}
       copyright year: {type: string}
 
-      # Related -> DatasetVersion.related_publications, Project
-      related publications: {type: array}
+      # Related -> Project
       is part of: {type: string}
       has parts: {type: array}
 
@@ -111,6 +113,10 @@ properties:
       Custodian: {$ref: "#/$defs/Person"}
       Contributors: {type: array, items: {$ref: "#/$defs/Contributor"}}
       Fundings: {type: array, items: {$ref: "#/$defs/Funding"}}
+      # -> DataCite references, DatasetVersion.related_publications and
+      # .full_documentation, NWB related_publications, BIDS
+      # ReferencesAndLinks, README References
+      Related Publications: {type: array, items: {$ref: "#/$defs/RelatedPublication"}}
       # Shared across datasets via collection/metadata/collection.yaml;
       # a block here overrides the shared values.
       Consortium: {type: object}
@@ -142,6 +148,25 @@ $defs:
       roles: {type: array, items: {type: string}}
       role: {type: string}
       contribution description: {type: string}
+
+  # A publication or resource related to the dataset, as a DataCite
+  # relatedIdentifier: the identifier (its type read from its form: a DOI,
+  # doi:, https://doi.org/, a URL, arxiv:, pmid:, hdl: or isbn:; see
+  # fairephys.metadata.identifiers; empty for a publication without one,
+  # listed by its citation), the DataCite relationType and the full citation
+  RelatedPublication:
+    type: object
+    required: [identifier, relation, citation]
+    properties:
+      identifier: {type: string}
+      relation:
+        enum: [IsCitedBy, Cites, IsSupplementTo, IsSupplementedBy, IsContinuedBy, Continues,
+               IsDescribedBy, Describes, HasMetadata, IsMetadataFor, HasVersion, IsVersionOf,
+               IsNewVersionOf, IsPreviousVersionOf, IsPartOf, HasPart, IsPublishedIn, IsReferencedBy,
+               References, IsDocumentedBy, Documents, IsCompiledBy, Compiles, IsVariantFormOf,
+               IsOriginalFormOf, IsIdenticalTo, IsReviewedBy, Reviews, IsDerivedFrom, IsSourceOf,
+               IsRequiredBy, Requires, IsObsoletedBy, Obsoletes, IsCollectedBy, Collects]
+      citation: {type: string}
 
   Funding:
     type: object

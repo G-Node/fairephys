@@ -81,7 +81,7 @@ NWBFile:
     coerce: array
     conflict_types: [type]
   related_publications:
-    extract: related_publications  # "doi:<DOI>" where the entry contains a DOI
+    extract: related_publications  # every Related Publications entry: "doi:<DOI>" for a DOI, else the identifier, else the citation
     conflict_types: [vocabulary]
 
 # Subject container

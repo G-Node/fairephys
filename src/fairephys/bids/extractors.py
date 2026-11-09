@@ -2,6 +2,7 @@
 
 import odml
 
+from ..metadata.identifiers import related_publications
 from ..metadata.provenance import CURATION_SOFTWARE, PIPELINE
 from ..odml import section_at
 from .resolver import section_to_dict
@@ -64,12 +65,10 @@ def ethics_approvals(dataset_data: dict) -> list[str]:
     return [auth] if auth else []
 
 
-def references_and_links(dataset: odml.Section, dataset_data: dict) -> list[str]:
-    """Extract publications and project URLs."""
-    refs = []
-    pubs = dataset_data.get("related publications")
-    if pubs:
-        refs.extend(pubs if isinstance(pubs, list) else [pubs])
+def references_and_links(dataset: odml.Section) -> list[str]:
+    """Every Related Publications entry (its citation, followed by its link
+    unless the citation holds the identifier), then the source dataset URLs."""
+    refs = [p.reference for p in related_publications(dataset)]
     refs.extend(sd["URL"] for sd in source_datasets(dataset))
     return refs
 

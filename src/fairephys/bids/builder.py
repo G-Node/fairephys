@@ -325,7 +325,7 @@ def extract_dataset_description(doc: odml.Document) -> dict:
         "funding_list": lambda: extractors.funding(dataset),
         "acknowledgements": lambda: extractors.acknowledgements(dataset, dataset_data),
         "ethics_approvals": lambda: extractors.ethics_approvals(dataset_data),
-        "references_and_links": lambda: extractors.references_and_links(dataset, dataset_data),
+        "references_and_links": lambda: extractors.references_and_links(dataset),
         "generated_by": lambda: extractors.generated_by(doc),
         "source_datasets": lambda: extractors.source_datasets(dataset),
     }

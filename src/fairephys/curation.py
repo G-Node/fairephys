@@ -381,6 +381,9 @@ def openminds_collection_cmd(odml_path: Path, target_space: str = None,
     if differences := getattr(collection, "kg_differences", []):
         lines.append(f"\nKG nodes referenced as they are that differ from the odML: {len(differences)}")
         lines += [f"  - {d}" for d in differences]
+    if warnings := getattr(collection, "warnings", []):
+        lines.append(f"\nodML values not in the collection: {len(warnings)}")
+        lines += [f"  - {w}" for w in warnings]
     output = "\n".join(lines)
     print(output)
 

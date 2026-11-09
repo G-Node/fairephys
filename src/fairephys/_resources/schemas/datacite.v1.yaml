@@ -47,7 +47,14 @@ properties:
       required: [id, reftype, citation]
       properties:
         id: {type: string}
-        reftype: {enum: [IsSupplementTo, IsDescribedBy, IsReferencedBy]}
+        # DataCite relationType (GIN recommends IsSupplementTo, IsDescribedBy, IsReferencedBy)
+        reftype:
+          enum: [IsCitedBy, Cites, IsSupplementTo, IsSupplementedBy, IsContinuedBy, Continues,
+                 IsDescribedBy, Describes, HasMetadata, IsMetadataFor, HasVersion, IsVersionOf,
+                 IsNewVersionOf, IsPreviousVersionOf, IsPartOf, HasPart, IsPublishedIn, IsReferencedBy,
+                 References, IsDocumentedBy, Documents, IsCompiledBy, Compiles, IsVariantFormOf,
+                 IsOriginalFormOf, IsIdenticalTo, IsReviewedBy, Reviews, IsDerivedFrom, IsSourceOf,
+                 IsRequiredBy, Requires, IsObsoletedBy, Obsoletes, IsCollectedBy, Collects]
         citation: {type: string}
 
   resourcetype: {enum: [Dataset, Software, Text, Preprint]}

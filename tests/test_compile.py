@@ -19,7 +19,8 @@ TEMPLATES = Path(fairephys.__file__).parent / "_resources" / "templates"
 
 # The required values the empty templates leave to the curator
 FILLS = {
-    "dataset.yaml": {"Dataset": {"species": "Macaca mulatta", "license": "CC-BY-4.0"}},
+    "dataset.yaml": {"Dataset": {"species": "Macaca mulatta", "license": "CC-BY-4.0", "Related Publications": [
+        {"identifier": "10.1234/x", "relation": "IsSupplementTo", "citation": ""}]}},
     "subject.yaml": {"Subject": {"subject id": "A", "species": "Macaca mulatta"}},
     "hardware.yaml": {"Hardware": {"recording type": "acute"}},
     "protocol.yaml": {"Behavioral Protocol": {"bids task label": "rest"}},
@@ -131,14 +132,14 @@ def test_values_split_into_value_and_unit(tmp_path):
     """'30000 hertz' compiles to the number and its unit; text with commas survives the XML round trip."""
     assert [parse_value(v) for v in ("30000 hertz", "10.5 kilogram", "Macaca mulatta", 42)] == [
         (30000, "hertz"), (10.5, "kilogram"), ("Macaca mulatta", None), (42, None)]
-    refs = ["Author, A. et al. Title one. (2025).", "Other, B. & Third, C. Title two. (2024)."]
-    doc = compile_to_odml({"Dataset": {"related publications": refs},
+    formats = ["Blackrock Cerebus NSx, NEV (.ns5, .nev)", "Video, infrared (.MTS)"]
+    doc = compile_to_odml({"Dataset": {"original data format": formats},
                            "Hardware": {"Recording System": {"sampling rate": "30000 hertz"}}})
     assert "doi" not in compile_to_odml({"Dataset": {"doi": ""}}, omit_empty=True)["Dataset"].properties
     rate = doc["Hardware"]["Recording System"].properties["sampling rate"]
     assert (rate.values, rate.unit) == ([30000], "hertz")
     _, xml_path = save_odml(doc, tmp_path / "doc")
-    assert odml.load(str(xml_path))["Dataset"].properties["related publications"].values == refs
+    assert odml.load(str(xml_path))["Dataset"].properties["original data format"].values == formats
 
 
 def test_template_schemas():
@@ -178,6 +179,11 @@ def test_template_schemas():
         ("hardware.yaml", {"Hardware": {"Recording System": {**system, "gain unit": "V per count"}}}, None),
         ("hardware.yaml", {"Hardware": {"Recording System": {**system, "gain unit": "uV"}}}, "'uV' is not one of"),
         ("dataset.yaml", {"Dataset": {"release date": "15.09.2025"}}, "Dataset.release date: '15.09.2025' does not match"),
+        ("dataset.yaml", {"Dataset": {"related publications": ["Doe, J. (2024)."]}},
+         "Dataset: 'related publications' should not"),
+        ("dataset.yaml", {"Dataset": {"Related Publications": [
+            {"identifier": "10.1234/x", "relation": "IsSupplement", "citation": "Doe, J. (2024)."}]}},
+         "Dataset.Related Publications.0.relation: 'IsSupplement' is not one of"),
         ("nothing.yaml", {"_schema": "nothing.v9"}, "no schema 'nothing.v9'"),
     ]
     for template, data, error in table:

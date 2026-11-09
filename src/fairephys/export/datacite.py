@@ -10,7 +10,6 @@ are the registry licenses.yaml (SPDX id, name, URL).
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +17,7 @@ import jsonschema
 import yaml
 
 from ..bids.structure import write_bidsignore
+from ..metadata.identifiers import SECTION as PUBLICATIONS, parse_identifier
 from ..registry import RESOURCES, load as load_registry
 
 SCHEMA_PATH = RESOURCES / "schemas" / "datacite.v1.yaml"
@@ -26,11 +26,9 @@ SCHEMA_PATH = RESOURCES / "schemas" / "datacite.v1.yaml"
 LICENSES_DIR = RESOURCES / "licenses"
 
 logger = logging.getLogger(__name__)
-# A DOI anywhere in a full citation (same pattern as the NWB related_publications)
-_DOI_IN_TEXT_RE = re.compile(r"10\.\d{4,9}/[^\s,;]+")
-# GIN DataCite template: a research paper based on the data is referenced with
-# IsSupplementTo (IsReferencedBy is for code and other resources)
-PUBLICATION_REFTYPE = "IsSupplementTo"
+# GIN DataCite template: the id prefix of each identifier type it takes (a
+# Handle as its URL); an ISBN has none
+GIN_ID_PREFIXES = {"DOI": "doi:", "arXiv": "arxiv:", "PMID": "pmid:", "URL": "url:", "Handle": "url:"}
 
 # SPDX id -> {name, url} (the dataset template's licence ids)
 LICENSES: dict[str, dict] = load_registry("licenses.yaml")
@@ -79,13 +77,22 @@ def _funding(f: dict) -> str | None:
     return f"{funder}; {award}" if funder and award else funder
 
 
-def _reference(citation: str) -> dict | None:
-    """GIN reference from a related-publication citation; None without a DOI."""
-    if m := _DOI_IN_TEXT_RE.search(citation):
-        return {"id": f"doi:{m.group(0).rstrip('.')}", "reftype": PUBLICATION_REFTYPE,
-                "citation": citation.strip()}
-    logger.warning("Related publication without a DOI, not in datacite.yml: %s", citation[:80])
-    return None
+def _reference(entry: dict) -> dict | None:
+    """GIN reference of a Related Publications entry: the id with GIN's
+    prefix of its type, the relation as reftype, the citation; an ISBN,
+    which GIN's file cannot hold, raises; an entry without identifier is
+    left out with a warning (None)."""
+    given = _prop(entry, "identifier")
+    if not given:
+        logger.warning("Related publication without identifier, not in datacite.yml: %s", _prop(entry, "citation"))
+        return None
+    identifier = parse_identifier(given)
+    if identifier.type not in GIN_ID_PREFIXES:
+        raise ValueError(f"Related publication '{given}': GIN's datacite.yml takes no {identifier.type} "
+                         f"(its id prefixes: {', '.join(sorted(set(GIN_ID_PREFIXES.values())))})")
+    value = identifier.link if identifier.type == "Handle" else identifier.value
+    return {"id": f"{GIN_ID_PREFIXES[identifier.type]}{value}", "reftype": _prop(entry, "relation"),
+            "citation": str(_prop(entry, "citation") or "").strip()}
 
 
 def _dataset_section(odml_path: Path) -> dict:
@@ -114,8 +121,9 @@ def odml_to_datacite(odml_path: Path) -> dict:
     if f := _sec(ds, "Fundings"):
         if items := [x for s in f.get("sections", []) if s.get("name", "").startswith("Fundings_") and (x := _funding(s))]:
             dc["funding"] = items
-    if v := _prop(ds, "related publications"):
-        if refs := [r for c in (v if isinstance(v, list) else [v]) if c and (r := _reference(str(c)))]:
+    if p := _sec(ds, PUBLICATIONS):
+        if refs := [r for s in p.get("sections", [])
+                    if s.get("name", "").startswith(f"{PUBLICATIONS}_") and (r := _reference(s))]:
             dc["references"] = refs
     schema = _load_schema()
     dc["resourcetype"] = "Dataset"

@@ -20,6 +20,7 @@ import odml
 
 from ..bids.extractors import bracketed
 from ..bids.structure import METADATA_DIRNAME
+from ..metadata.identifiers import related_publications
 from ..metadata.provenance import CURATION_SOFTWARE
 from ..metadata.subjects import session_subject, subject_sections
 from ..odml import prop, subsection, unit
@@ -900,20 +901,9 @@ def _author_contributions(ds: odml.Section) -> str:
 
 
 def _references(ds: odml.Section) -> str:
-    """Format REFERENCES from related publications."""
-    pubs = _values(ds, "related publications")
-    if not pubs:
-        return ""
-    lines = []
-    for i, pub in enumerate(pubs, 1):
-        pub_str = str(pub)
-        if pub_str.startswith("10.") or pub_str.startswith("https://doi.org/"):
-            doi = pub_str
-            if not doi.startswith("https://"):
-                doi = f"https://doi.org/{doi}"
-            lines.append(f"{i}. {doi}")
-        else:
-            lines.append(f"{i}. {pub_str}")
+    """REFERENCES: every Related Publications entry in its order, the
+    citation followed by its link unless the citation holds the identifier."""
+    lines = [f"{i}. {p.reference}" for i, p in enumerate(related_publications(ds), 1)]
     if not lines:
         return ""
     return "## References\n\n" + "\n".join(lines) + "\n"

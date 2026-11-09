@@ -14,7 +14,7 @@ import yaml
 from conftest import sessions
 from fairephys.bids import create_dataset_layout
 from fairephys.bids.builder import load_registry
-from fairephys.export.datacite import license_text, write_datacite
+from fairephys.export.datacite import license_text, odml_to_datacite, validate, write_datacite
 from fairephys.export.readme import odml_to_readme
 from fairephys.metadata import compile_to_odml, provenance, save_odml
 from fairephys.metadata.provenance import source_checkout, source_url
@@ -27,8 +27,10 @@ RICH = {
         "version innovation": "First release.",
         "usage notes": "Channel 7 is noisy.", "ethics statement": "Approved by the ethics committee.",
         "brain regions": ["primary motor cortex"], "original data format": ["Blackrock NSx (.ns5)", "Video (.MTS)"],
-        "related publications": ["Doe, J. A paper. J. Neurosci. 1, 2 (2024). https://doi.org/10.1234/paper",
-                                 "Doe, J. A thesis without identifier (2020)."],
+        "Related Publications": [{"identifier": "10.1234/paper", "relation": "IsSupplementTo",
+                                  "citation": "Doe, J. A paper. J. Neurosci. 1, 2 (2024). https://doi.org/10.1234/paper"},
+                                 {"identifier": "", "relation": "IsSupplementTo",
+                                  "citation": "Doe, J. A thesis without identifier (2020)."}],
         "Project": {"name": "P", "dataset statement": "Part of project P.", "version statement": "NWB files.",
                     "usage statement": "Read with PyNWB.",
                     "records statement": "The recordings{?, provided as {original data format},} were converted."},
@@ -140,6 +142,29 @@ def test_datacite_golden(frozen, make_doc, tmp_path, golden):
     yaml_path, _ = save_odml(make_doc(RICH), tmp_path / "odml" / "test-ds")
     (tmp_path / "out").mkdir()
     golden("datacite.yml", write_datacite(yaml_path, tmp_path / "out").read_text())
+
+
+def test_datacite_references(make_doc, tmp_path):
+    """Each Related Publications entry is a reference with GIN's id prefix of its type and the entry's relation;
+    an ISBN (no GIN prefix) and an identifier of no recognised form raise."""
+    def references(*entries):
+        doc = make_doc(Dataset={"Related Publications": [
+            {"identifier": i, "relation": r, "citation": f"Citation {n}."} for n, (i, r, *_) in enumerate(entries)]})
+        record = odml_to_datacite(save_odml(doc, tmp_path / "t")[0])
+        assert not validate(record)
+        return record["references"]
+
+    entries = [("https://doi.org/10.1234/paper", "IsSupplementTo", "doi:10.1234/paper"),
+               ("10.5678/descriptor", "IsDescribedBy", "doi:10.5678/descriptor"),
+               ("https://github.com/lab/code", "IsReferencedBy", "url:https://github.com/lab/code"),
+               ("arxiv:2201.23456", "IsSupplementTo", "arxiv:2201.23456"),
+               ("pmid:12345", "Cites", "pmid:12345"),
+               ("hdl:11858/00-1735", "IsDescribedBy", "url:https://hdl.handle.net/11858/00-1735")]
+    assert references(*entries) == [{"id": gin_id, "reftype": relation, "citation": f"Citation {n}."}
+                                    for n, (_, relation, gin_id) in enumerate(entries)]
+    for identifier, error in (("isbn:978-3-16-148410-0", "takes no ISBN"), ("Doe 2024", "no recognised form")):
+        with pytest.raises(ValueError, match=error):
+            references((identifier, "IsSupplementTo"))
 
 
 def _sessions_table(text: str) -> list[str]:

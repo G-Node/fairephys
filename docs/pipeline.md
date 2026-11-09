@@ -46,7 +46,7 @@ A dataset is described in YAML files under `metadata/curated/`, in the vocabular
 
 | File | Describes |
 |------|-----------|
-| `dataset.yaml` | Name, description, licence, custodian, contributors, funding, related projects |
+| `dataset.yaml` | Name, description, licence, custodian, contributors, funding, related publications, related projects |
 | `subject.yaml` | Species, sex, age, surgical preparation, and the implanted probes of a chronic recording |
 | `hardware.yaml` | Recording system, hardware filters, probes, auxiliary devices (eye tracker, EMG, motion) |
 | `protocol.yaml` | The behavioural protocol and stimulus presentation |
@@ -57,6 +57,20 @@ A dataset is described in YAML files under `metadata/curated/`, in the vocabular
 | `collection.yaml` | Shared project and consortium of several datasets, in `collection/metadata/` above them (optional) |
 
 What stays the same across sessions is written once; what varies is written per session. `Session Defaults` in `sessions.yaml` and `Recording Defaults` in `recordings.yaml` hold the shared values, and each entry of `Sessions` or `Recordings` overrides only what differs.
+
+### Related publications
+
+`Related Publications` in `dataset.yaml` lists the papers, data descriptors, code and other resources related to the dataset, one entry each as a DataCite related identifier: `identifier` (a DOI as `10.xxxx/...`, `doi:` or `https://doi.org/`, a URL, `arxiv:`, `pmid:`, `hdl:` or `isbn:`; the type is read from the form, any other form is an error; empty for a publication without one, such as a thesis or a manuscript in preparation), `relation` (a DataCite relationType: `IsSupplementTo` for a paper based on the data, `IsDescribedBy` for a data descriptor, `IsReferencedBy` for code or another resource that uses the data, or any other value of the DataCite list) and `citation` (the full citation). A dataset without any writes `Related Publications: []`. Every output lists every entry, in order; an entry without identifier is listed by its citation in the README, BIDS and NWB, and left out of DataCite and openMINDS with a warning naming its citation:
+
+| Output | Each entry |
+|--------|------------|
+| DataCite (`datacite.yml`) | a reference: `id` with GIN's prefix (`doi:`, `arxiv:`, `pmid:`, `url:`; a Handle as `url:https://hdl.handle.net/<handle>`), `reftype` the relation, the citation. An ISBN has no GIN prefix and stops the export |
+| openMINDS | a DOI, Handle or ISBN as the identifier node in `DatasetVersion.related_publications`; a URL, an arXiv id or a PMID has no openMINDS node and is listed in the collection warnings. Without a `documentation url`, the first `IsDescribedBy` entry with a DOI is also `full_documentation` |
+| NWB | `related_publications`: `doi:<DOI>` for a DOI, else the identifier as written, else the citation |
+| BIDS (`dataset_description.json`) | `ReferencesAndLinks`: the citation, followed by its link when the citation does not hold the identifier, before the source dataset URLs |
+| README | References: the citation, followed by its link when the citation does not hold the identifier |
+
+The link is the same in both (`Identifier.link` in `fairephys.metadata.identifiers`): `https://doi.org/<DOI>`, `https://hdl.handle.net/<handle>`, `https://arxiv.org/abs/<id>`, `https://pubmed.ncbi.nlm.nih.gov/<pmid>/`, the URL itself, an ISBN as written (`isbn:<ISBN>`). openMINDS alone writes a Handle as `http://hdl.handle.net/<handle>`, the pattern its HANDLE schema requires.
 
 ### Where a value comes from
 
@@ -107,6 +121,7 @@ src/fairephys/
   metadata/
     compiler.py             # YAML to odML, HTML viewer
     sessions.py, subjects.py, provenance.py
+    identifiers.py          # related publications: identifier type and value (DOI, URL, arXiv, PMID, Handle, ISBN)
   enrichment/
     neo.py                  # extract Neo metadata, enrich odML
     openminds.py            # resolve controlled terms to openMINDS instances
@@ -336,7 +351,7 @@ datalad push -d datasets/my-dataset/curated-data --to gin     # publish the outp
 
 ## openMINDS and the Knowledge Graph
 
-`--openminds-collection` builds the openMINDS collection from the odML and needs a KG token (`EBRAINS_KG_TOKEN` or `~/.config/fairephys/kg_token`), because it reuses the nodes that already exist in the KG. `--all` leaves the collection out without a token, says so in one line and goes on. `--kg-push` uploads the collection to the space `--kg-space` names; `--all` never pushes.
+`--openminds-collection` builds the openMINDS collection from the odML and needs a KG token (`EBRAINS_KG_TOKEN` or `~/.config/fairephys/kg_token`), because it reuses the nodes that already exist in the KG. `--all` leaves the collection out without a token, says so in one line and goes on. `--kg-push` uploads the collection to the space `--kg-space` names; `--all` never pushes. The openMINDS validation output lists the KG nodes referenced as they are that differ from the odML, and the odML values that have no openMINDS node (a related publication by URL, arXiv id or PMID).
 
 ## Short Test Files
 

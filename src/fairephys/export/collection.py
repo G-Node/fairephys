@@ -27,6 +27,7 @@ import fairgraph.openminds.controlled_terms as fgct
 import fairgraph.openminds.ephys as fgephys
 import fairgraph.openminds.sands as fgsands
 
+from ..metadata.identifiers import related_publications
 from ..metadata.sessions import session_identity
 from ..metadata.subjects import session_subject, subject_sections
 from ..odml import nested, prop, props, section_at, unit
@@ -42,8 +43,6 @@ __all__ = ["SchemaBuilder", "KGResolver", "build_collection", "save_collection",
 logger = logging.getLogger(__name__)
 
 _DOI_RE = re.compile(r"^(https?://doi\.org/)?10\.\d{4,}/")
-# A DOI anywhere in a full citation (same pattern as the NWB related_publications)
-_DOI_IN_TEXT_RE = re.compile(r"10\.\d{4,9}/[^\s,;]+")
 # A bare DOI (no resolver prefix)
 _BARE_DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$")
 
@@ -59,7 +58,7 @@ _DAYS_PER_UNIT = {"day": 1, "week": 7}
 DATASET_CITATION = "dataset citation"
 # Registry field types by how build_field resolves them
 _TERM_TYPES = ("term", "multi_term")
-_LINK_TYPES = ("link", "match_link", "doi_list", "custom_anatomy")
+_LINK_TYPES = ("link", "match_link", "identifier_list", "custom_anatomy")
 
 
 def _iri(val: Any) -> IRI:
@@ -194,6 +193,10 @@ class SchemaBuilder:
         # (the odML values do not reach them); reported with the collection
         self.kg_differences: list[str] = []
         self.collection.kg_differences = self.kg_differences
+        # odML values with no openMINDS node (e.g. a related publication by
+        # URL); reported with the collection
+        self.warnings: list[str] = []
+        self.collection.warnings = self.warnings
         self.collection.kg_space = kg_space(doc)
         # (class, existence query values) -> node: one node per identity without a KG id
         self._identity_nodes: dict[tuple, Any] = {}
@@ -613,6 +616,9 @@ class SchemaBuilder:
                     val = fdef.get("default")
                 if val is not None:
                     kwargs[field] = val
+            if field not in kwargs and (fallback := fdef.get("fallback")) and section is not None:
+                if (val := self.build_field(field, fallback, section)) is not None:
+                    kwargs[field] = val
         return kwargs
 
     def build_with_nested(self, schema_name: str, schema: dict, data: dict,
@@ -713,10 +719,10 @@ class SchemaBuilder:
 
     def _link_field(self, fdef: dict, section: odml.Section | None) -> Any:
         """A field linking other entities: link (built earlier), match_link
-        (by a property's value), doi_list, custom_anatomy."""
+        (by a property's value), identifier_list, custom_anatomy."""
         ftype = fdef["type"]
-        if ftype == "doi_list":
-            return self._build_doi_list(fdef, section)
+        if ftype == "identifier_list":
+            return self._identifier_list(fdef, section)
         if ftype == "custom_anatomy":
             return self.anatomy.build(fdef, props(section)) if section is not None else None
         if ftype == "match_link":
@@ -759,23 +765,41 @@ class SchemaBuilder:
         logger.warning("  No %s matching %s='%s'", target_name, fdef.get("match_field"), match_value)
         return None
 
-    def _build_doi_list(self, fdef: dict, section: odml.Section | None) -> list | None:
-        """Build list of DOI entities from odML property.
-
-        Entries may be bare DOIs, DOI URLs or full citations containing a DOI;
-        entries without a DOI are skipped. A DOI built before (e.g. the
-        dataset DOI) is the same node.
-        """
-        dois = []
-        for entry in _as_list(prop(section, fdef.get("odml_field", ""))):
-            m = _DOI_IN_TEXT_RE.search(str(entry or ""))
-            if not m:
+    def _identifier_list(self, fdef: dict, section: odml.Section | None) -> Any:
+        """The identifier nodes of the entries of fdef's odml_section (see
+        fairephys.metadata.identifiers), each as the node `classes` names for
+        its identifier type, with the identifier by the class's pattern;
+        `relation` keeps the entries of that relation, `single` the first
+        node. Entries of a type without a class are listed in the collection
+        warnings by a list field (a single field picks among the entries a
+        list field reports), as are entries without identifier. A node built before (e.g. the dataset DOI) is
+        the same node."""
+        name, classes = fdef["odml_section"], fdef.get("classes", {})
+        nodes = []
+        for entry in related_publications(section, name):
+            if (relation := fdef.get("relation")) and entry.relation != relation:
                 continue
-            doi = self._build_entity(fgcore.DOI, {"identifier": f"https://doi.org/{m.group(0).rstrip('.')}"},
-                                     None, True, "DOI")
-            if not any(d is doi for d in dois):
-                dois.append(doi)
-        return dois or None
+            if entry.identifier is None:
+                if not fdef.get("single"):
+                    self.warnings.append(f"{name} entry '{entry.citation}': no identifier; not in the collection")
+                    logger.warning("  %s", self.warnings[-1])
+                continue
+            kind = entry.identifier.type
+            if kind not in classes:
+                if not fdef.get("single"):
+                    self.warnings.append(f"{name} entry '{entry.given}': openMINDS has no node for a {kind} here "
+                                         f"(only {', '.join(classes)}); not in the collection")
+                    logger.warning("  %s", self.warnings[-1])
+                continue
+            spec = classes[kind]
+            node = self._build_entity(_resolve_fg_class(spec["class"]),
+                                      {"identifier": spec["identifier"].format(entry.identifier.value)},
+                                      None, True, kind)
+            if not any(n is node for n in nodes):
+                nodes.append(node)
+        if fdef.get("single"):
+            return nodes[0] if nodes else None
+        return nodes or None
 
     def _store_kwargs(self, schema_name: str, kwargs: dict) -> None:
         """Store kwargs used during entity build for match_link resolution."""

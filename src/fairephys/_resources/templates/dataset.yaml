@@ -123,11 +123,31 @@ Dataset:
   # copyright year: ""               # e.g., "2025"
 
   # ---------------------------------------------------------------------------
-  # RELATED -> DatasetVersion.related_publications, Project
+  # RELATED -> Project
   # ---------------------------------------------------------------------------
-  related publications: []           # DOIs or full citations containing a DOI
   is part of: ""                     # parent project name (e.g., "MyProject")
   has parts: []                      # sub-datasets
+
+  # ---------------------------------------------------------------------------
+  # RELATED PUBLICATIONS -> DataCite references, DatasetVersion.related_publications
+  # (and .full_documentation for a data descriptor without documentation url)
+  # ---------------------------------------------------------------------------
+  # One entry per publication, data descriptor, code or other resource related
+  # to the dataset; `Related Publications: []` when there is none.
+  # identifier: empty for a publication without one (a thesis, a manuscript in
+  # preparation): the README, BIDS and NWB list it by its citation, DataCite
+  # and openMINDS leave it out with a warning.
+  # relation: a DataCite relationType, from the DataCite list (Metadata Schema
+  # 4.5): IsSupplementTo (a paper based on the data), IsDescribedBy (a data
+  # descriptor), IsReferencedBy (code or another resource that uses the data),
+  # or any other value of that list (e.g. Cites, IsDerivedFrom, IsDocumentedBy).
+  # GIN recommends IsSupplementTo, IsDescribedBy and IsReferencedBy; the other
+  # DataCite relations are accepted by its file format but were not verified
+  # against GIN's DOI service.
+  Related Publications:
+    - identifier: ""     # DOI (bare, doi: or https://doi.org/ form), URL, arXiv id (arxiv:), PMID (pmid:), Handle (hdl:) or ISBN (isbn:); the type is read from the form
+      relation: ""       # DataCite relationType: IsSupplementTo (a paper based on the data), IsDescribedBy (a data descriptor), IsReferencedBy (code or another resource that uses the data), or any other value of the DataCite list
+      citation: ""       # the full citation for human readers (authors, year, title, journal, volume, pages, DOI link)
 
   # ---------------------------------------------------------------------------
   # CUSTODIAN (data steward / PI) -> Dataset.custodians

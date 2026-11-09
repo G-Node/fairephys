@@ -15,7 +15,6 @@ August 2027 (its FutureWarning on every conversion).
 from __future__ import annotations
 
 import logging
-import re
 import uuid
 from datetime import date, datetime, timezone
 from functools import lru_cache
@@ -26,6 +25,7 @@ import odml
 import yaml
 
 from ..bids.resolver import section_to_dict
+from ..metadata.identifiers import related_publications
 from ..metadata.sessions import start_datetime
 from ..metadata.subjects import session_subject
 from ..bids.builder import load_registry
@@ -162,15 +162,11 @@ def _extract_uuid(_doc, _session, _sources, _args) -> str:
     return str(uuid.uuid4())
 
 
-_DOI_RE = re.compile(r"10\.\d{4,9}/[^\s,;]+")
-
-
 def _extract_related_publications(doc: odml.Document, _session, _sources, _args) -> list[str] | None:
-    """Dataset related publications as "doi:<DOI>" where an entry contains a DOI."""
-    pubs = []
-    for value in _as_list(prop(section_at(doc, "Dataset"), "related publications")):
-        m = _DOI_RE.search(str(value))
-        pubs.append(f"doi:{m.group(0).rstrip('.')}" if m else str(value))
+    """Every Related Publications entry: "doi:<DOI>" for a DOI, else the
+    identifier as given, the citation for an entry without identifier."""
+    pubs = [f"doi:{p.identifier.value}" if p.identifier and p.identifier.type == "DOI" else p.given or p.citation
+            for p in related_publications(section_at(doc, "Dataset"))]
     return pubs or None
 
 
