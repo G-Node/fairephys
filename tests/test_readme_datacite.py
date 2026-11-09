@@ -344,7 +344,7 @@ def test_file_descriptions_from_the_files_on_disk(make_doc, curated):
     assert f"{row}, with the columns `name`, `type` and `units` |" in text
     assert "| `*_events.tsv` | TSV | One row per event or annotated interval, with the columns `onset`, `duration` " \
            "and `trial_type` | BIDS 1.11.2, written with fairephys 0.1.0 |" in text
-    assert f"The states this step annotates, one row each: the lab's code in its raw files, {caption} and a " \
+    assert f"The states this step annotates, one row each: the code in the raw files, {caption} and a " \
            "description." in text
     tree = text.split("```", 2)[1]
     assert "sub-MonkeyA_ses-01_task-rest_channels.tsv [the recorded channels, one row each]\n" in tree

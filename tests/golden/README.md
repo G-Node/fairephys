@@ -73,7 +73,7 @@ Resting state in the dark.
 
 **State Annotation** (video annotation)
 
-The states this step annotates, one row each: the lab's code in its raw files, the label and a description.
+The states this step annotates, one row each: the code in the raw files, the label and a description.
 
 | Code | Label | Description |
 |------|-------|-------------|

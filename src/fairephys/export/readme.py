@@ -444,7 +444,7 @@ def _states_table(states: list[dict], events_files: bool = False) -> str:
     with a caption: the code is the lab's raw code, the label the trial_type value of the
     events files (named when the dataset has events files)."""
     columns = (["Code"] if any(_nonempty(s.get("code")) for s in states) else []) + ["Label", "Description"]
-    held = {"Code": "the lab's code in its raw files",
+    held = {"Code": "the code in the raw files",
             "Label": "the label (the trial_type value in the events files)" if events_files else "the label",
             "Description": "a description"}
     caption = f"The states this step annotates, one row each: {_prose_list(held[c] for c in columns)}."

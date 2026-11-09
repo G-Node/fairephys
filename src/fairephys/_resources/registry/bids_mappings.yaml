@@ -110,7 +110,7 @@ probes_tsv:
     # custom
     quality:
       path: Sessions/*/Electrode Placements/*.quality
-      sidecar_description: Signal quality of the placement as labelled by the lab (lab-specific scale, see the dataset documentation)
+      sidecar_description: Signal quality label of the placement (a scale specific to this dataset, see the dataset documentation)
       conflict_types: [coverage]  # not in any standard
 
 # electrodes.tsv: one row per contact of the session's ProbeInterface group
