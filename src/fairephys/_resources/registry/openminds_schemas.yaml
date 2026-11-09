@@ -489,11 +489,11 @@ schemas:
         fields:
           identifier: { odml: "doi", prefix: "https://doi.org/" }
       DocumentationURL:
-        fairgraph_class: core.URL
+        fairgraph_class: core.WebResource
         condition: "documentation url"
         add_to_collection: true
         fields:
-          url: { odml: "documentation url" }
+          iri: { type: iri, odml: "documentation url" }
       InputDataURL:
         fairgraph_class: core.WebResource
         condition: "input data url"

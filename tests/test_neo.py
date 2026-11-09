@@ -170,3 +170,21 @@ def test_extract_reads_streams_segments_and_annotations(monkeypatch):
                                    "channel": {"1": {"impedance": [1.5, 2.5]}}}
     monkeypatch.setattr("sys.argv", ["neo", "raw.ns6", "--format", "blackrock"])
     main()  # the text summary of the same extract
+
+
+def test_value_origin_of_a_dataset_built_dict(enrich):
+    """A dataset's own dict (no Neo reader) with its value_origin: on the filled properties, _neo_fields and every
+    property of the Neo Metadata section, and no property for a key it lacks; Neo's own dicts keep "neo.extract" on
+    the fills and no origin in the section."""
+    own = {"nb_segment": 1, "signal_streams": [{"id": "0", "name": "mat", "sampling_rate": 1000.0, "n_channels": 1}],
+           "signal_channels": [{"name": "ch_001", "id": "1", "sampling_rate": 1000.0, "units": "uV", "stream_id": "0"}],
+           "stream_durations_s": {"0": [120.0]}}
+    for neo_data, curated, origin, fill in ((own, ["0"], ".mat files", ".mat files"),
+                                            (TWO_STREAMS, ["WB"], None, "neo.extract")):
+        session = enrich(neo_data, curated, value_origin=origin)
+        neo = session["Neo Metadata"]
+        assert {session.properties[k].value_origin for k in ("sampling rate", "continuity", "_neo_fields")} == {fill}
+        assert len(list(neo.iterproperties())) > 10 and {p.value_origin for p in neo.iterproperties()} == {origin}
+    assert [p.name for p in neo.properties][:4] == ["format", "block_index", "nb_block", "nb_segment"]
+    neo = enrich(own, ["0"], value_origin=".mat files")["Neo Metadata"]
+    assert [p.name for p in neo.properties] == ["nb_segment", "duration_s", "sampling_rate_hz"]

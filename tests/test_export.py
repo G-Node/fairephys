@@ -11,6 +11,7 @@ from fairgraph import Collection
 from fairgraph.errors import AuthenticationError, AuthorizationError, ResourceExistsError
 
 from conftest import sessions
+from fairephys.enrichment import openminds as enrichment_openminds
 from fairephys.enrichment.openminds import enrich_document as openminds_enrich
 from fairephys.export import kg
 from fairephys.export.anatomy import ATLAS_FIELD, Anatomy, atlas_path, load_atlas
@@ -382,3 +383,12 @@ def test_openminds_enrichment_of_the_odml():
     assert "instances/licenses" in instances["Dataset"]["license"]["CC-BY-4.0"]["instance_uri"]
     assert "in vivo" in instances["Sessions_1"]["preparation design"]
     assert len(warnings) == 1 and "Not A Real Term" in warnings[0]
+
+
+def test_openminds_term_map():
+    """The term map holds the ethics assessment and accessibility fields; a term class that does not resolve raises."""
+    registry = enrichment_openminds.load_schema_registry()
+    assert {"ethics assessment", "accessibility"} <= set(enrichment_openminds._build_term_map(registry))
+    registry["schemas"]["DatasetVersion"]["fields"]["accessibility"]["term_class"] = "controlled_terms.NoSuchTerm"
+    with pytest.raises(ValueError, match="'controlled_terms.NoSuchTerm' does not resolve"):
+        enrichment_openminds._build_term_map(registry)

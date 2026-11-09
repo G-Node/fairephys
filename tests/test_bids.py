@@ -8,14 +8,17 @@ import odml
 import pytest
 
 from conftest import linear_probe, probe_group, sessions
-from fairephys.bids import create_session_layout, generate_aux_sidecars, generate_events_tsv, write_aux_bids_data
+from fairephys.bids import (create_session_layout, generate_aux_sidecars, generate_events_tsv, write_aux_bids_data,
+                            write_bidsignore, write_dataset_files, write_run_sidecars, write_session_sidecars)
 from fairephys.bids.aux import extract_aux_groups, eye_columns
 from fairephys.bids.builder import (channel_electrode_map, coerce_enum, extract_channels, extract_dataset_description,
                                     extract_electrodes, extract_event_codes, extract_event_levels,
                                     extract_events_metadata, extract_participants, extract_sidecar_fields)
 from fairephys.bids.extractors import bracketed
+from fairephys.curation import session_paths
 from fairephys.enrichment.neo import enrich_document
 from fairephys.metadata import compile_to_odml, provenance, save_odml
+from fairephys.probes import write_session_probe_group
 
 PROBES = [{"name": "S-Probe A", "model": "S-Probe", "manufacturer": "Plexon", "number of contacts": 2,
            "contact pitch": "100 micrometer", "conductor material": "platinum iridium"},
@@ -40,6 +43,57 @@ def placed(make_doc):
         enrich_document(doc, _neo(channels), "01")
         return doc, sessions(doc)[0]
     return make
+
+
+def test_session_paths(make_doc, tmp_path):
+    """Session-level files sub_ses (channels.tsv with the acq), run-level sub_ses_task[_acq][_run-NN]; an entry
+    that names its task gives it, the others the protocol's."""
+    doc = make_doc(Sessions=[{"session id": "01", "date": "2025-01-30"},
+                             {"session id": "01", "date": "2025-01-30", "task": "sallet1"}])
+    rest, sallet = sessions(doc)
+    ses, prefix = tmp_path / "sub-MonkeyA" / "ses-01" / "ecephys", "sub-MonkeyA_ses-01"
+    assert session_paths(doc, rest, tmp_path) == {
+        "ses_dir": ses, "prefix": prefix, "run_prefix": f"{prefix}_task-rest", "probes_dir": f"probes/{prefix}",
+        "probe_group": tmp_path / "probes" / prefix / "probe_group.json",
+        **{f"{name}_{ext}": ses / f"{prefix}_{name}.{ext}"
+           for name in ("probes", "electrodes", "channels") for ext in ("tsv", "json")},
+        "ecephys_json": ses / f"{prefix}_task-rest_ecephys.json", "nwb": ses / f"{prefix}_task-rest_ecephys.nwb",
+        "task": "rest", "acq": None, "run": None}
+    probe = session_paths(doc, sallet, tmp_path, acq="V4", run=3)
+    assert (probe["prefix"], probe["channels_tsv"].name, probe["channels_json"].name, probe["nwb"].name) == (
+        prefix, f"{prefix}_acq-V4_channels.tsv", f"{prefix}_channels.json",
+        f"{prefix}_task-sallet1_acq-V4_run-03_ecephys.nwb")
+    assert session_paths(doc, rest, tmp_path, run=1)["ecephys_json"].name == f"{prefix}_task-rest_run-01_ecephys.json"
+    assert session_paths(doc, sallet, tmp_path, task="sallet2")["run_prefix"] == f"{prefix}_task-sallet2"
+
+
+def test_session_run_and_dataset_files(placed, tmp_path):
+    """The session's sidecars at their session_paths names (channels.tsv only from the rows given), the run's
+    ecephys.json, the dataset files with the description fields and the extra .bidsignore lines after the library's."""
+    doc, session = placed([{"probe": "S-Probe A", "brain region": "M1"}])
+    doc["Hardware"]["Probes"].sections[0].append(odml.Property("probe type", values=["silicon-probe"]))
+    paths = session_paths(doc, session, tmp_path)
+    write_session_probe_group(doc, session, paths["probe_group"].parent)
+    write_session_sidecars(doc, session, paths)
+    sidecars = ("probes_tsv", "probes_json", "electrodes_tsv", "electrodes_json", "channels_json")
+    assert sorted(paths["ses_dir"].iterdir()) == sorted(paths[key] for key in sidecars)
+    assert json.loads(paths["probes_json"].read_text())["probe_name"]["Levels"]["S-Probe"]["TermURL"] == (
+        "bids::probes/sub-MonkeyA_ses-01/S-Probe.json")
+    write_session_sidecars(doc, session, paths, extract_channels(session, paths["probe_group"]))
+    rows = paths["channels_tsv"].read_text().splitlines()
+    assert [r.split("\t")[0] for r in rows] == ["name", "c1", "c2", "c3", "c4"]
+    write_run_sidecars(doc, session, paths)
+    assert json.loads(paths["ecephys_json"].read_text())["TaskName"] == "rest"
+    run = session_paths(doc, session, tmp_path, run=1)
+    write_run_sidecars(doc, session, run)  # the run that named the file
+    assert sorted(paths["ses_dir"].glob("*_run-01_ecephys.json")) == [run["ecephys_json"]]
+    write_dataset_files(doc, tmp_path, description={"HEDVersion": "8.3.0"}, bidsignore=("*.MTS",))
+    write_bidsignore(tmp_path)  # a later writer (DataCite) keeps them
+    assert (tmp_path / ".bidsignore").read_text() == "metadata\ndatacite.yml\nLICENSE\n*.MTS\n"
+    description = json.loads((tmp_path / "dataset_description.json").read_text())
+    assert list(description)[-1] == "HEDVersion" and description["Name"] == "Test dataset"
+    assert (tmp_path / "participants.tsv").read_text().splitlines()[1].startswith("sub-MonkeyA\t")
+    assert (tmp_path / "participants.json").is_file()
 
 
 def test_electrodes_from_the_probe_group(placed):

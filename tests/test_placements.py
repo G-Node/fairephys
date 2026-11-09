@@ -14,7 +14,8 @@ from fairephys.converters.base import attach_probes
 from fairephys.odml import props
 from fairephys.placements import (UNPLACED_GROUP, channel_group_names, matched_probes, parse_channels,
                                   placement_position_mm)
-from fairephys.probes import build_probe_group, build_session_probe_group, enrich_odml_positions
+from fairephys.probes import (build_probe_group, build_session_probe_group, enrich_odml_positions,
+                              write_session_probe_group)
 from fairephys.probes.builder import _create_probe, contact_ids, parse_pitch
 from fairephys.probes.library import get_from_library, library_key
 from fairephys.validation.geometry import _probe_positions
@@ -291,3 +292,15 @@ def test_positions_are_local_to_each_probe(monkeypatch, placed):
     stranger = build_probe_group([{"name": "Z", "number of contacts": 1, "contact pitch": 0}])
     with pytest.raises(ValueError, match=r"Probe 'Z' is no Hardware/Probes entry \(NP, V-Probe\)"):
         enrich_odml_positions(doc, stranger)
+
+
+def test_write_session_probe_group_empties_its_folder(placed, tmp_path):
+    """The session's probe group replaces whatever its folder held (files of earlier device ids)."""
+    doc = placed({"01": [{"probe": "S-Probe B"}]})
+    folder = tmp_path / "probes" / "sub-A_ses-01"
+    folder.mkdir(parents=True)
+    (folder / "S-Probe01.json").write_text("{}")
+    path = write_session_probe_group(doc, sessions(doc)[0], folder, title="sub-A ses-01")
+    assert path == folder / "probe_group.json"
+    assert sorted(p.name for p in folder.iterdir()) == [
+        "S-Probe02.json", "S-Probe02.png", "probe_group.json", "probe_group.png"]

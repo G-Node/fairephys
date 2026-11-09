@@ -90,7 +90,7 @@ A new BIDS column or openMINDS field is therefore a new registry entry; the extr
 | `plexon2` | PlexonConverter (neuroconv, Wine DLL; extra `plexon`) | Plexon2RawIO |
 | `intan` | none yet | IntanRawIO |
 
-Datasets with their own file formats (Neuroshare .mcd, MATLAB .mat, SiNAPS) write the NWB with their own converters in `curate.py`, with the shared helpers of `fairephys.converters` (`build_nwb_metadata`, `add_devices`, `channel_positions`, `write_nwbfile`).
+Datasets with their own file formats (Neuroshare .mcd, MATLAB .mat, SiNAPS) read them into a SpikeInterface recording in their own code and give it to `RecordingConverter`, which writes the NWB with the same shared steps as the other converters (`converters/README.md`). Without a Neo reader, such a dataset builds the dict of its Neo Metadata itself and passes it to `neo_enrich_document` with its `value_origin` (`enrichment/README.md`).
 
 ## Module Structure
 
@@ -102,7 +102,7 @@ src/fairephys/
   odml.py                   # reading a compiled document (prop, props, unit, section_at)
   placements.py             # devices and placements: probe ids, matched_probes, channels
   registry.py               # the packaged registries
-  curation.py               # shared CLI (build_parser, run_export_steps) and pipeline commands
+  curation.py               # shared CLI (build_parser, run_pipeline, run_export_steps), session_paths, pipeline commands
   init.py, __main__.py      # fairephys init / compile / validate
   metadata/
     compiler.py             # YAML to odML, HTML viewer
@@ -117,6 +117,7 @@ src/fairephys/
     resolver.py, builder.py # registry-driven extraction from odML
     extractors.py           # extraction functions for the BIDS fields a path alone cannot give
     ecephys.py, dataset.py  # probes, electrodes, channels TSV/JSON; dataset files
+    writers.py              # the session, run and dataset files of a curate.py step
     aux.py                  # auxiliary devices: eye tracking, motion, EMG, other physio
     physio.py, emg.py, motion.py, events.py, hed.py   # auxiliary sidecars and data files
   converters/
@@ -148,17 +149,45 @@ src/fairephys/
 
 ## Dataset curate.py Pattern
 
-`fairephys init <name> --format <format>` renders `curate.py` from `_resources/templates/curate.py.template`. The script implements session discovery and raw file lookup and wires the shared steps:
+`fairephys init <name> --format <format>` renders `curate.py` from `_resources/templates/curate.py.template`. The script holds what is the dataset's own: session discovery, raw file lookup, channel types, the enrichment of its sessions at compile, the converter call and its lab's documented nuance. The rest comes from the library, all read from the odML:
+
+| Function | Does |
+|----------|------|
+| `curation.session_paths(doc, session, curated_dir, acq=None, task=None, run=None)` | every output path of a session entry: session-level files `sub-<sub>_ses-<ses>` (`channels.tsv` with `_acq-<acq>` when given), run-level files (`ecephys.json`, the NWB) `sub-<sub>_ses-<ses>_task-<task>[_acq-<acq>][_run-<nn>]`, the probe group `probes/sub-<sub>_ses-<ses>/probe_group.json`, and the `task`, `acq` and `run` that named them (`task` given: a run of the entry with a task of its own) |
+| `probes.write_session_probe_group(doc, session, output_dir, title)` | the session's ProbeInterface group, its folder emptied first |
+| `bids.write_session_sidecars(doc, session, paths, channels=None)` | probes, electrodes and channels sidecars; `channels.tsv` from the rows the dataset extracted (`builder.extract_channels` with its channel types, references, bad channels) |
+| `bids.write_run_sidecars(doc, session, paths, stream=None)` | the `ecephys.json` of `paths["run"]` (once per run with `session_paths(..., run=run)`, or per probe with `acq` and its stream) |
+| `bids.write_dataset_files(doc, curated_dir, description=None, bidsignore=())` | `.bidsignore` (the dataset's extra lines after the library's), `dataset_description.json` (with fields such as `HEDVersion`), participants |
+| `curation.run_pipeline(args, sessions=, compile=, steps=, odml_path=, curated_dir=, validation_dir=)` | the `main` after `parse_args()` |
 
 ```python
-def compile_cmd(sessions, enrich_openminds=True, shared_dir=None):
-    meta, doc = compile_metadata(TEMPLATES_DIR, shared_dir=shared_dir)   # strict
-    for session_id in sessions:
+def compile_cmd(enrich_openminds: bool = True, shared_dir: Path = None) -> Path:
+    _, doc = compile_metadata(TEMPLATES_DIR, shared_dir=shared_dir)   # strict
+    for session_id in discover_sessions():
         neo_data = enrichment.neo_extract(get_raw_file(session_id), format=RECORDING_FORMAT)
         enrichment.neo_enrich_document(doc, neo_data, session_id)
-    return finalize_compilation(doc, METADATA_DIR, DATASET_NAME, enrich_openminds,
-                                validation_dir=VALIDATION_DIR)
+    return finalize_compilation(doc, METADATA_DIR, DATASET_NAME, enrich_openminds, validation_dir=VALIDATION_DIR)
+
+
+def bids_cmd(doc, session_id: str, args):
+    session = find_session(doc, session_id)
+    paths = session_paths(doc, session, CURATED_DATA_DIR)
+    channels = builder.extract_channels(session, paths["probe_group"], channel_types=CHANNEL_TYPES)
+    bids.write_session_sidecars(doc, session, paths, channels)
+    bids.write_run_sidecars(doc, session, paths)
+    bids.write_dataset_files(doc, CURATED_DATA_DIR)
+
+
+def main():
+    args = build_parser("my-dataset curation pipeline").parse_args()
+    run_pipeline(args, sessions=sessions, compile=compile_cmd,
+                 steps={"build_probes": probes_cmd, "bids_layout": bids_cmd, "convert": convert_cmd,
+                        "sanity": sanity_cmd},
+                 odml_path=METADATA_DIR / f"{DATASET_NAME}.odml.xml",
+                 curated_dir=CURATED_DATA_DIR, validation_dir=VALIDATION_DIR)
 ```
+
+`run_pipeline` runs one `compile` when `--compile` or `--openminds-enrich` is given, then, when a step flag is set, loads the odML once and runs each set step as `step(doc, session, args)` for every session `sessions(args)` returns (the session given with `--session`, else every session; a dataset may return dicts), printing one line per session; then the export steps (`run_export_steps`). The keys of `steps` are argparse destinations: a dataset adds its own flag (`"video": video_cmd`) and step. `--all` sets the compile, every step and every export but `--kg-push`; `--list-sessions` prints the sessions; `--odml` replaces the odML path. A run of exports only (`--readme`, `--datacite`, `--validate`) discovers no sessions. A dataset whose `sessions(args)` enumerates the sessions from the odML loads `args.odml or <its odML path>` itself (dpz-kagan-wilke, sapienza-genovesio). The library functions log at INFO (`configure_logging`), `run_pipeline` and the export steps print.
 
 ```bash
 uv run python my-dataset/curate.py --compile --build-probes

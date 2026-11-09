@@ -10,22 +10,22 @@ Returns (warnings, instances) where instances is a nested dict:
 
 from __future__ import annotations
 
-import importlib
 import logging
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
+import fairgraph.openminds as om
 import yaml
 import odml
+from fairgraph.base import OPENMINDS_VERSION
 
 logger = logging.getLogger(__name__)
 
-# The openMINDS schema version of the property IRIs and the term instances:
-# the newest the installed openminds package ships ("latest": v4 with
-# openminds 0.4.0), which the EBRAINS KG serves and the fairgraph export
-# (export/) resolves against. Pin a version here ("v4") should the KG lag.
-OPENMINDS_VERSION = "latest"
-om = importlib.import_module(f"openminds.{OPENMINDS_VERSION}")
+# The property IRIs and the term instances come from fairgraph's openMINDS
+# classes, the schema version (fairgraph's OPENMINDS_VERSION, v4) the EBRAINS
+# KG serves and the export (export/) pushes. Enrichment and export share one
+# class tree and one instance lookup; the version moves only with fairgraph.
 
 REGISTRY_DIR = Path(__file__).parent.parent / "_resources" / "registry"
 SCHEMAS_PATH = REGISTRY_DIR / "openminds_schemas.yaml"
@@ -53,6 +53,16 @@ def _resolve_class(class_path: str) -> Any | None:
     return obj
 
 
+def _require_class(class_path: str, field: str) -> Any:
+    """The fairgraph openMINDS class of a registry `field`; a path that does not resolve raises."""
+    cls = _resolve_class(class_path)
+    if cls is None or not hasattr(cls, "properties"):
+        raise ValueError(f"openminds_schemas.yaml {field}: {class_path!r} does not resolve in fairgraph.openminds "
+                         f"(openMINDS {OPENMINDS_VERSION}, fairgraph {version('fairgraph')}, "
+                         f"openminds {version('openminds')})")
+    return cls
+
+
 def _build_reference_map(registry: dict) -> dict[str, str]:
     """Build {odml_property_name: property_iri} from registry.
 
@@ -63,19 +73,16 @@ def _build_reference_map(registry: dict) -> dict[str, str]:
     ref_map: dict[str, str] = {}
 
     for schema in registry.get("schemas", {}).values():
-        fg_class = _resolve_class(schema.get("fairgraph_class", ""))
-        if fg_class is None or not hasattr(fg_class, "properties"):
-            continue
+        fg_class = _require_class(schema.get("fairgraph_class", ""), "fairgraph_class")
         prop_lookup = {p.name: p.path for p in fg_class.properties}
 
         field_groups = [(schema.get("fields", {}), prop_lookup)]
         for nested in schema.get("nested", {}).values():
-            ncls = _resolve_class(nested.get("fairgraph_class", ""))
-            if ncls and hasattr(ncls, "properties"):
-                field_groups.append((
-                    nested.get("fields", {}),
-                    {p.name: p.path for p in ncls.properties},
-                ))
+            ncls = _require_class(nested.get("fairgraph_class", ""), "nested fairgraph_class")
+            field_groups.append((
+                nested.get("fields", {}),
+                {p.name: p.path for p in ncls.properties},
+            ))
 
         for fields, lookup in field_groups:
             for fg_name, fdef in fields.items():
@@ -120,6 +127,7 @@ def _build_term_map(registry: dict) -> dict[str, list]:
                     odml_field = field_config.get("odml_field", field_config.get("odml"))
                     prop_names = [odml_field] if odml_field else []
                 class_paths = field_config.get("term_classes", [])
+                registry_field = "term_classes"
             else:
                 odml_field = field_config.get("odml_field", field_config.get("odml"))
                 if not odml_field:
@@ -127,10 +135,11 @@ def _build_term_map(registry: dict) -> dict[str, list]:
                 prop_names = [odml_field]
                 tc = field_config.get("term_class")
                 class_paths = [tc] if tc else []
+                registry_field = "term_class"
 
-            resolved = [c for p in class_paths if (c := _resolve_class(p))]
-            if not resolved:
-                continue
+            if not class_paths:
+                raise ValueError(f"openminds_schemas.yaml {registry_field}: none given for {prop_names}")
+            resolved = [_require_class(p, registry_field) for p in class_paths]
 
             for name in prop_names:
                 existing = term_map.setdefault(name, [])
@@ -144,9 +153,9 @@ def _build_term_map(registry: dict) -> dict[str, list]:
         if not il:
             continue
         from_odml = il.get("from_odml")
-        fg_class = _resolve_class(schema.get("fairgraph_class", ""))
-        if not from_odml or fg_class is None:
+        if not from_odml:
             continue
+        fg_class = _require_class(schema.get("fairgraph_class", ""), "fairgraph_class")
         existing = term_map.setdefault(from_odml, [])
         if fg_class not in existing:
             existing.append(fg_class)
