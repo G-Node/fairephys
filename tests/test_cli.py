@@ -1,6 +1,8 @@
 """The `fairephys` command, the `init` scaffold and the shared curate.py CLI layer."""
 
 import argparse
+import ast
+import inspect
 import logging
 import py_compile
 import runpy
@@ -11,20 +13,26 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from fairephys import curation, init
+from fairephys import converters, curation, init
 from fairephys.__main__ import main as cli
 from fairephys.export import kg
 
 
 @pytest.mark.parametrize("fmt", init.FORMATS)
 def test_init_scaffold(tmp_path, fmt, monkeypatch, capsys):
-    """Each format with a converter scaffolds a curate.py that compiles, names its format and parses its CLI."""
+    """Each format with a converter scaffolds a curate.py that compiles, names its format, calls its converter
+    with the converter's arguments and parses its CLI."""
     dataset_dir = init.init_dataset("org-pi", fmt, multi_subject=fmt == "tdt", acute=fmt != "blackrock",
                                     output_dir=tmp_path)
     curate = dataset_dir / "curate.py"
     py_compile.compile(str(curate), doraise=True)
     text = curate.read_text()
     assert "$" not in text and f'RECORDING_FORMAT = "{fmt}"' in text
+    converter = init.raw_format(fmt)["converter"]
+    [call] = [node for node in ast.walk(ast.parse(text))
+              if isinstance(node, ast.Call) and getattr(node.func, "id", None) == converter]
+    inspect.signature(getattr(converters, converter)).bind(*call.args, **{kw.arg: kw.value for kw in call.keywords})
+    assert ("stream_id" in text) is (fmt == "spikeglx")
     assert (dataset_dir / "metadata" / "curated" / "recordings.yaml").exists() is (fmt != "blackrock")
     subjects = yaml.safe_load((dataset_dir / "metadata" / "curated" / "subject.yaml").read_text())
     assert ("Subjects" in subjects) is (fmt == "tdt")
@@ -50,7 +58,6 @@ def test_fairephys_command(tmp_path, capsys):
         init.converter_args("nope")
     with pytest.raises(ValueError, match="no converter for the raw format 'intan'"):
         init.init_dataset("y", "intan", False, False, tmp_path)
-    assert init.converter_args("spikeglx") == 'source_data={"Recording": {"folder_path": str(raw_path)}},'
 
     (tmp_path / "t").mkdir()
     (tmp_path / "t" / "dataset.yaml").write_text("Dataset:\n  full name: T\n")

@@ -75,7 +75,6 @@ def convert_cmd(doc, session_id: str, args):
     raw_path = get_raw_file(session_id)
     converter = $converter_class(
         $converter_args
-        probe_group_path=paths["probe_group"],  # written by --build-probes
     )
     converter.run_conversion(paths["nwb"], build_nwb_metadata(doc, session), stub_test=args.stub_test)
 

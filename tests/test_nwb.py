@@ -586,6 +586,8 @@ def test_spikeglx_converter_writes_ap_and_lf(make_doc, tmp_path):
     assert report.warnings == [] and report.info["total_probe_contacts"] == 1  # AP and LF row: one electrode
     with pytest.raises(ValueError, match="the LF stream goes with an AP stream"):
         SpikeGLXConverter({"Recording": {"folder_path": str(tmp_path), "stream_id": "imec0.lf"}}, "probe01", lf=True)
+    with pytest.raises(ValueError, match="probe_id is required"):
+        SpikeGLXConverter({"Recording": {"folder_path": str(tmp_path / "none"), "stream_id": "imec0.ap"}}, probe_id="")
 
 
 def test_nidq_times_on_imec_clock(tmp_path):

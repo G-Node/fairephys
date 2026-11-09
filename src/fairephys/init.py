@@ -36,13 +36,22 @@ def _filled(name: str, content: str, old: str | re.Pattern, new) -> str:
 
 
 def converter_args(fmt: str) -> str:
-    """The constructor arguments of the format's converter in curate.py: the
-    neuroconv source_data of the raw path, or the raw path itself for a
-    converter that reads the files without neuroconv."""
+    """The constructor arguments of the format's converter in curate.py, one
+    per line: the neuroconv source_data of the raw path, or the raw path
+    itself for a converter that reads the files without neuroconv, then the
+    probe group of --build-probes. SpikeGLX takes the AP stream and the probe
+    id instead, as its converter reads the probe from the stream's .meta."""
     spec = raw_format(fmt)
-    if spec["source"]:
-        return f'source_data={{"Recording": {{"{spec["source"]}": str(raw_path)}}}},'
-    return f"raw_path,  # TODO: {spec['converter']} reads the raw files itself; check its arguments"
+    if fmt == "spikeglx":
+        args = ['source_data={"Recording": {"folder_path": str(raw_path), "stream_id": "imec0.ap"}},'
+                "  # TODO: the probe's AP stream",
+                "probe_id=\"\",  # TODO: the probe's id in hardware.yaml;"
+                " the converter reads the probe from the stream's .meta"]
+    else:
+        source = (f'source_data={{"Recording": {{"{spec["source"]}": str(raw_path)}}}},' if spec["source"] else
+                  f"raw_path,  # TODO: {spec['converter']} reads the raw files itself; check its arguments")
+        args = [source, 'probe_group_path=paths["probe_group"],  # written by --build-probes']
+    return "\n        ".join(args)
 
 
 def init_dataset(name: str, fmt: str, multi_subject: bool,

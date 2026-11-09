@@ -46,6 +46,8 @@ class SpikeGLXConverter(EphysConverter):
     data_interface_classes = {"Recording": SpikeGLXRecordingInterface, "LF": SpikeGLXRecordingInterface}
 
     def __init__(self, source_data: dict, probe_id: str, lf: bool = False):
+        if not probe_id:
+            raise ValueError("probe_id is required: the probe's id in hardware.yaml (placements.probe_ids)")
         if lf:
             recording = source_data["Recording"]
             device, _, kind = recording["stream_id"].rpartition(".")
