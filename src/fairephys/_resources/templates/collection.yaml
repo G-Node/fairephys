@@ -23,7 +23,11 @@ Dataset:
     description: ""                  # what the project / curation effort is
     # Standard text about the project, written once here and appended to
     # every Dataset description (openMINDS). Use only facts that hold for
-    # every dataset. Leave empty to append nothing.
+    # every dataset. Leave empty to append nothing. The statements below take
+    # the tokens {bids version} and {bids extension} (the target BIDS
+    # specification of fairephys, e.g. "1.11.2" and "BEP032 Microelectrode
+    # Electrophysiology, draft (...)"); any other token in them is an error,
+    # except the dataset fields of the records statement.
     dataset statement: ""
     # Standard text about the data formats, appended to every version
     # innovation (openMINDS DatasetVersion). A dataset whose formats differ

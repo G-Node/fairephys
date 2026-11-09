@@ -23,10 +23,10 @@ from ..bids.structure import METADATA_DIRNAME
 from ..metadata.identifiers import related_publications
 from ..metadata.provenance import CURATION_SOFTWARE
 from ..metadata.subjects import session_subject, subject_sections
-from ..odml import prop, subsection, unit
+from ..odml import prop, section_at, subsection, unit
 from ..placements import matched_probes
 from ..registry import load as load_registry
-from .templating import fill_template
+from .templating import fill_statement, fill_template, spec_tokens
 
 # Units are stored with their openMINDS names; the README shows the symbols
 UNIT_SYMBOLS = {
@@ -141,7 +141,7 @@ def _authors_section(ds: odml.Section) -> str:
         aff_str = ""
         if aff_sec:
             parts = []
-            for field in ("lab", "department", "institution", "country"):
+            for field in ("lab", "department", "institution", "city", "country"):
                 v = prop(aff_sec, field)
                 if _nonempty(v):
                     parts.append(str(v))
@@ -195,9 +195,11 @@ def _corresponding_author(ds: odml.Section) -> str:
 
 
 def _with_statement(ds: odml.Section, field: str, statement: str) -> str:
-    """Dataset text followed by the shared Project statement (as in openMINDS)."""
+    """Dataset text followed by the shared Project statement, its
+    specification tokens filled (as in openMINDS)."""
     project = subsection(ds, "Project")
-    parts = [prop(ds, field), project and prop(project, statement)]
+    shared = project and prop(project, statement)
+    parts = [prop(ds, field), fill_statement(shared) if isinstance(shared, str) else shared]
     return "\n\n".join(str(p).strip() for p in parts if _nonempty(p))
 
 
@@ -634,12 +636,15 @@ def _prose_list(values) -> str:
 
 
 def _records_statement(ds: odml.Section) -> str:
-    """Shared Project records statement, its {tokens} filled from the dataset (lists as prose)."""
+    """Shared Project records statement, its {tokens} filled: the
+    specification tokens (spec_tokens), else from the dataset (lists as prose)."""
     project = subsection(ds, "Project")
     statement = project and prop(project, "records statement")
     if not _nonempty(statement):
         return ""
-    return fill_template(str(statement).strip(), lambda name: _prose_list(_values(ds, name))) or ""
+    tokens = spec_tokens()
+    return fill_template(str(statement).strip(),
+                         lambda name: tokens.get(name) or _prose_list(_values(ds, name))) or ""
 
 
 def _curation_software(doc: odml.Document) -> str:
@@ -668,15 +673,12 @@ def _curation_software(doc: odml.Document) -> str:
 
 def _layout_standard(output_dir: Path) -> str:
     """Name the layout standard (BEP032 when there are ecephys files)."""
-    from ..bids.builder import load_registry as load_bids_registry
-
-    spec = load_bids_registry().get("spec", {})
-    bids_version = spec.get("bids_version", "")
+    spec = spec_tokens()
     if any(output_dir.rglob("*_ecephys.*")):
         return ("The data are organised following the BIDS extension proposal "
-                f"{spec.get('ecephys_extension', 'BEP032')}, which builds on BIDS "
-                f"{bids_version} and is not yet part of the BIDS specification.")
-    return f"The data are organised following BIDS {bids_version}."
+                f"{spec['bids extension']}, which builds on BIDS "
+                f"{spec['bids version']} and is not yet part of the BIDS specification.")
+    return f"The data are organised following BIDS {spec['bids version']}."
 
 
 def _repository_name(ds: odml.Section) -> str:
@@ -686,70 +688,70 @@ def _repository_name(ds: odml.Section) -> str:
     return f"{name}/" if name else "repository root"
 
 
-def _build_tree(root: Path, root_name: str, files: dict[str, dict], max_depth: int = 4) -> list[str]:
-    """Build directory tree lines, collapsing repeated ses-* dirs; the first file
-    of each file type is followed by its short description in brackets."""
-    described: set[str] = set()
+# A session folder: ses-<label> in a subject folder, sub-<label>_ses-<label> in probes/
+_SESSION_DIR_RE = re.compile(r"^(?:(sub-[^_]+)_)?(ses-.+)$")
 
+
+def _session_key(directory: Path) -> tuple[str, str] | None:
+    """(subject folder, session folder) of a session folder, None for any other."""
+    if not (m := _SESSION_DIR_RE.match(directory.name)):
+        return None
+    return m.group(1) or directory.parent.name, m.group(2)
+
+
+def _example_session(root: Path) -> tuple[str, str] | None:
+    """The session the tree shows: the one whose folders (its subject's
+    ses-* and its probes/ folder) hold the most file types, the first in
+    order of subject and session among equals."""
+    types: dict[tuple[str, str], set[str]] = {}
+    for pattern in ("sub-*/ses-*", "probes/sub-*_ses-*"):
+        for d in root.glob(pattern):
+            if d.is_dir() and (key := _session_key(d)):
+                types.setdefault(key, set()).update(
+                    match[0] for f in d.rglob("*") if f.is_file() and (match := _file_type(f.relative_to(root))))
+    return min(types, key=lambda key: (-len(types[key]), key)) if types else None
+
+
+def _build_tree(root: Path, root_name: str, files: dict[str, dict], max_depth: int = 4) -> list[str]:
+    """Build directory tree lines: of the session folders of a folder (ses-*
+    of a subject, sub-*_ses-* of probes/) only the example session's is
+    shown, the others counted; every file is followed by the one-sentence
+    description of its file type in square brackets (registry readme.yaml,
+    tree)."""
     def describe(path: Path) -> str:
         match = _file_type(path.relative_to(root))
-        if match is None or match[0] not in files or match[0] in described:
+        if match is None or match[0] not in files:
             return ""
-        described.add(match[0])
-        return f" ({files[match[0]]['tree']})"
+        return f" [{files[match[0]]['tree']}]"
 
     lines = [root_name]
-    _walk_tree(root, lines, indent="    ", depth=0, max_depth=max_depth,
-               first_session_shown=False, describe=describe)
+    _walk_tree(root, lines, "    ", 0, max_depth, _example_session(root), describe)
     return lines
 
 
-def _walk_tree(directory: Path, lines: list[str], indent: str,
-               depth: int, max_depth: int,
-               first_session_shown: bool, describe) -> bool:
-    """Recursively walk directory, appending tree lines.
-
-    Returns updated first_session_shown flag.
-    """
+def _walk_tree(directory: Path, lines: list[str], indent: str, depth: int, max_depth: int,
+               example: tuple[str, str] | None, describe) -> None:
+    """Append the tree lines of a directory: its other folders, the example
+    session's folder and the count of the other session folders, its files."""
     if depth >= max_depth:
-        return first_session_shown
-
+        return
     entries = sorted(directory.iterdir(), key=lambda p: (not p.is_dir(), p.name))
     dirs = [e for e in entries if e.is_dir() and not e.name.startswith(".")]
     files = [e for e in entries if e.is_file() and not e.name.startswith(".")]
+    session_dirs = [d for d in dirs if _session_key(d)]
 
-    # Separate session dirs from other dirs
-    session_dirs = [d for d in dirs if d.name.startswith("ses-")]
-    other_dirs = [d for d in dirs if not d.name.startswith("ses-")]
-
-    # Show non-session dirs normally
-    for d in other_dirs:
+    for d in dirs:
+        if d not in session_dirs:
+            lines.append(f"{indent}{d.name}/")
+            _walk_tree(d, lines, indent + "    ", depth + 1, max_depth, example, describe)
+    shown = [d for d in session_dirs if _session_key(d) == example]
+    for d in shown:
         lines.append(f"{indent}{d.name}/")
-        first_session_shown = _walk_tree(
-            d, lines, indent + "    ", depth + 1, max_depth,
-            first_session_shown, describe)
-
-    # Show session dirs: expand first, collapse rest
-    if session_dirs:
-        if not first_session_shown:
-            # Expand first session
-            first = session_dirs[0]
-            lines.append(f"{indent}{first.name}/")
-            _walk_tree(first, lines, indent + "    ", depth + 1,
-                       max_depth, True, describe)
-            first_session_shown = True
-            remaining = session_dirs[1:]
-        else:
-            remaining = session_dirs
-
-        if remaining:
-            lines.append(f"{indent}... ({_count(len(remaining), 'more session')})")
-
-    # Show files
+        _walk_tree(d, lines, indent + "    ", depth + 1, max_depth, example, describe)
+    if remaining := len(session_dirs) - len(shown):
+        lines.append(f"{indent}... ({_count(remaining, 'more session')})")
     for f in files:
         lines.append(f"{indent}{f.name}{describe(f)}")
-
-    return first_session_shown
 
 
 def _file_type(relative: Path) -> tuple[str, dict] | None:
@@ -786,6 +788,17 @@ def _shared_and_more(names: list[list[str]]) -> tuple[str, str]:
     return _prose_list(f"`{n}`" for n in shared), _prose_list(f"`{n}`" for n in more)
 
 
+def _devices_of_type(doc: odml.Document, device_type: str) -> dict[str, str]:
+    """{camera} (manufacturer and model) and {recording software} (with its
+    version) of the Hardware Auxiliary Devices of a device type, as prose lists."""
+    devices = section_at(doc, "Hardware/Auxiliary Devices")
+    matched = [d for d in (devices.sections if devices else []) if str(prop(d, "device type") or "") == device_type]
+    camera = [" ".join(str(v) for v in (prop(d, "manufacturer"), prop(d, "model")) if _nonempty(v)) for d in matched]
+    software = [" ".join(str(v) for v in (prop(d, "recording software"), prop(d, "software version")) if _nonempty(v))
+                for d in matched if _nonempty(prop(d, "recording software"))]
+    return {"camera": _prose_list(camera), "recording software": _prose_list(software)}
+
+
 def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
     """The file types present under output_dir, in registry order, as
     {key: {pattern, tree, format, content, specification}} (see readme.yaml files).
@@ -799,9 +812,7 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
     content; the specification names the software with the version the odML
     Curation Software section records.
     """
-    from ..bids.builder import load_registry as load_bids_registry
-
-    bids_version = str(load_bids_registry().get("spec", {}).get("bids_version", ""))
+    spec = spec_tokens()
     tools = subsection(doc, CURATION_SOFTWARE)
     versions = {str(prop(t, "name")): str(prop(t, "version"))
                 for t in (tools.sections if tools else []) if _nonempty(prop(t, "version"))}
@@ -815,7 +826,7 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
 
     types = {}
     for key, (entry, paths) in sorted(found.items(), key=lambda item: registry.index(item[1][0])):
-        values = {"suffix": paths[0].suffix.lstrip(".").upper(), "bids version": bids_version,
+        values = {**spec, "suffix": paths[0].suffix.lstrip(".").upper(),
                   "rows": entry.get("rows", "")}
         content = entry["content"]
         if "rows" in entry:
@@ -828,6 +839,8 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
                 content = entry["empty content"]
             elif len(held) < len(paths):
                 values["no entries"] = f"{len(paths) - len(held)} of {len(paths)} files"
+        if device_type := entry.get("device type"):
+            values.update(_devices_of_type(doc, device_type))
         if entry.get("suffixes"):
             values["suffixes"] = _prose_list(sorted({p.name.split(".")[0].rpartition("_")[2] for p in paths}))
         if "labels" in entry:
@@ -957,9 +970,10 @@ def odml_to_readme(doc: odml.Document, output_dir: Path) -> str:
         raise ValueError("Dataset section not found in odML document")
 
     title = prop(ds, "full name") or "Dataset"
-    # short name and version under the title, each when filled (EBRAINS descriptor template)
+    # short name, version and repository under the title, each when filled (EBRAINS descriptor template)
     header = " | ".join(f"{label}: {value}" for label, value in (
-        ("Short name", prop(ds, "short name")), ("Version", prop(ds, "version identifier"))) if _nonempty(value))
+        ("Short name", prop(ds, "short name")), ("Version", prop(ds, "version identifier")),
+        ("Repository", prop(ds, "repository url"))) if _nonempty(value))
 
     # Assemble sections, skipping empty ones
     parts = [f"# {title}\n"] + ([f"{header}\n"] if header else [])

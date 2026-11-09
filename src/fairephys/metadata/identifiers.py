@@ -4,7 +4,8 @@ The types are those of DataCite's relatedIdentifierType that an entry of
 dataset.yaml 'Related Publications' can name, read from the form of the
 identifier: a DOI (bare 10.xxxx/..., doi:10.xxxx/... or a doi.org URL), an
 arXiv id (arxiv:), a PubMed id (pmid:), a Handle (hdl: or a hdl.handle.net
-URL), an ISBN (isbn:) or a URL (http(s)://). Any other form is an error.
+URL), an ISBN (hyphenated as openMINDS requires, isbn: optional) or a URL
+(http(s)://). Any other form is an error.
 """
 
 from __future__ import annotations
@@ -18,19 +19,23 @@ from ..odml import prop, subsection
 
 # The Dataset subsection of the entries, one subsection each (Related Publications_1, ...)
 SECTION = "Related Publications"
+# openMINDS v4 ISBN.schema.tpl.json: hyphenated groups 3-1-3-5-1 (13 digits)
+# or 1-3-5-1 (10 digits), no checksum
+ISBN_PATTERN = "^([0-9]{3}-|)[0-9]{1}-[0-9]{3}-[0-9]{5}-[0-9]{1}$"
 FORMS = ("a DOI (10.xxxx/..., doi:10.xxxx/... or https://doi.org/10.xxxx/...), a URL (http(s)://...), "
-         "arxiv:<id>, pmid:<number>, hdl:<handle> or isbn:<ISBN>")
+         f"arxiv:<id>, pmid:<number>, hdl:<handle> or an ISBN as openMINDS writes it ({ISBN_PATTERN}, "
+         "e.g. 978-3-161-48410-0, isbn: optional)")
 
 _DOI_RE = re.compile(r"(?:doi:|https?://(?:dx\.)?doi\.org/)?(10\.\d{4,9}/\S+)", re.IGNORECASE)
 _HANDLE_RE = re.compile(r"(?:hdl:|https?://hdl\.handle\.net/)(\d[\w.]*/\S+)", re.IGNORECASE)
 _ARXIV_RE = re.compile(r"arxiv:(\S+)", re.IGNORECASE)
 _PMID_RE = re.compile(r"pmid:(\d+)", re.IGNORECASE)
-_ISBN_RE = re.compile(r"isbn:((?:\d-?){9}[\dXx]|(?:\d-?){12}\d)", re.IGNORECASE)
+_ISBN_RE = re.compile(rf"(?:isbn:)?({ISBN_PATTERN[1:-1]})", re.IGNORECASE)
 _URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
 # The link of each type, as DataCite and readers take it: the resolver URL
 # (a Handle by https, the form DataCite uses; openMINDS writes its own
-# pattern, see openminds_schemas.yaml), an ISBN as written (it has none)
+# pattern, see openminds_schemas.yaml), an ISBN as isbn:<ISBN> (it has none)
 _LINKS = {"DOI": "https://doi.org/{}", "arXiv": "https://arxiv.org/abs/{}",
           "PMID": "https://pubmed.ncbi.nlm.nih.gov/{}/", "Handle": "https://hdl.handle.net/{}", "URL": "{}",
           "ISBN": "isbn:{}"}
@@ -44,7 +49,7 @@ class Identifier(NamedTuple):
 
     @property
     def link(self) -> str:
-        """The resolvable URL, an ISBN as written (isbn:<ISBN>)."""
+        """The resolvable URL, an ISBN as isbn:<ISBN>."""
         return _LINKS[self.type].format(self.value)
 
 
@@ -55,6 +60,9 @@ def parse_identifier(text: str) -> Identifier:
                           ("ISBN", _ISBN_RE), ("URL", _URL_RE)):
         if m := pattern.fullmatch(text):
             return Identifier(kind, m.group(1) if pattern.groups else m.group(0))
+    if text.lower().startswith("isbn:"):
+        raise ValueError(f"ISBN '{text}' is not in the form openMINDS requires: {ISBN_PATTERN} "
+                         "(hyphenated, e.g. 978-3-161-48410-0 or 3-161-48410-0)")
     raise ValueError(f"Identifier '{text}' has no recognised form: give {FORMS}")
 
 

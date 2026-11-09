@@ -106,6 +106,9 @@ properties:
             serial number: {type: string}
             software version: {type: string}
             device type: {type: string}
+            # the software that wrote the device's files, e.g. a camera's
+            # capture software (README file table, with 'software version')
+            recording software: {type: string}
             electrode manufacturer: {type: string}
             electrode model: {type: string}
             # Description (flows to openMINDS core.Device.description)

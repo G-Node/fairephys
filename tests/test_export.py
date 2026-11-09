@@ -17,7 +17,7 @@ from fairephys.export import kg
 from fairephys.export.anatomy import ATLAS_FIELD, Anatomy, atlas_path, load_atlas
 from fairephys.export.collection import SCHEMAS_PATH, SchemaBuilder, _load_yaml, build_collection, save_collection
 from fairephys.export.kg_lookup import KGResolver
-from fairephys.export.templating import fill_template, machine_label
+from fairephys.export.templating import fill_statement, fill_template, machine_label
 from fairephys.metadata import compile_to_odml, dict_to_section, save_odml
 
 
@@ -101,7 +101,7 @@ def test_registry_driven_fields(make_doc):
         "Related Publications": [{"identifier": i, "relation": r, "citation": "A. Title."} for i, r in (
             ("10.1000/abc", "IsSupplementTo"), ("https://doi.org/10.1000/def", "IsDescribedBy"),
             ("doi:10.1234/abc", "IsSupplementTo"), ("hdl:11858/00-1735", "IsSupplementTo"),
-            ("isbn:978-3-16-148410-0", "Cites"), ("https://github.com/lab/code", "IsReferencedBy"),
+            ("isbn:978-3-161-48410-0", "Cites"), ("https://github.com/lab/code", "IsReferencedBy"),
             ("", "IsSupplementTo"))],
         "Project": {"name": "P", "description": "Project text", "dataset statement": "Part of P.",
                     "version statement": "Formats used."},
@@ -128,6 +128,7 @@ def test_registry_driven_fields(make_doc):
     released = _builder(make_doc(Dataset={"release date": "2025-09-15"}))
     assert released.dataset_citation() == "Doe, 2025"  # a first publication elsewhere gives its year
     assert released.build_all() and released.entities["DatasetVersion"].release_date == date(2025, 9, 15)
+    assert version.release_date is None  # no release date: none, never the export date
     assert [str(r.iri.value) for r in protocol.described_in] == ["https://doi.org/10.1234/x"]
     with pytest.raises(ValueError, match="Not an IRI"):  # a citation in `described in` is not dropped silently
         _builder(make_doc({"Behavioral Protocol": {"described in": "Author et al., 2026"}})).build_all()
@@ -135,7 +136,7 @@ def test_registry_driven_fields(make_doc):
         "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc"]
     assert [n.identifier for n in version.related_publications] == [
         "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc",
-        "http://hdl.handle.net/11858/00-1735", "978-3-16-148410-0"]
+        "http://hdl.handle.net/11858/00-1735", "978-3-161-48410-0"]
     assert version.full_documentation is version.related_publications[1]
     assert collection.warnings == ["Related Publications entry 'https://github.com/lab/code': openMINDS has no node "
                                    "for a URL here (only DOI, Handle, ISBN); not in the collection",
@@ -178,7 +179,8 @@ def test_chronic_implants_give_one_usage_per_session(make_doc):
 
 
 def test_template_rendering():
-    """Missing tokens give None; empty optional tokens drop with their words and brackets."""
+    """Missing tokens give None; empty optional tokens drop with their words and brackets; a shared statement gets
+    the BIDS specification tokens of the BIDS registry."""
     values = {"description": "Text", "note": "N"}
     cases = [
         ("{description}\n\n{?note}", {}, "Text\n\nN"), ("{description}\n\n{?missing}", {}, "Text"),
@@ -192,6 +194,9 @@ def test_template_rendering():
         lookup = {**values, **override}.get
         assert fill_template(template, lookup) == expected, template
     assert machine_label(" test-ds_Probe 1 ") == "test-ds_Probe-1"
+    assert fill_statement("following the BIDS extension proposal {bids extension}, which builds on BIDS {bids version}") \
+        == ("following the BIDS extension proposal BEP032 Microelectrode Electrophysiology, draft (bids-specification "
+            "PR #2307 at commit 508cfc7b), which builds on BIDS 1.11.2")
 
 
 def _fake_kg(builder, monkeypatch, found: dict):

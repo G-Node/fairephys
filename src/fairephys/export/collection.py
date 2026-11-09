@@ -35,7 +35,7 @@ from ..placements import matched_probes
 from ..registry import REGISTRY_DIR, load as load_registry
 from .anatomy import Anatomy, atlas_path, load_atlas
 from .kg_lookup import KGResolver
-from .templating import fill_template, machine_label
+from .templating import fill_statement, fill_template, machine_label, spec_tokens
 
 __all__ = ["SchemaBuilder", "KGResolver", "build_collection", "save_collection", "kg_space",
            "fill_template", "SCHEMAS_PATH", "NO_SPACE_HELP"]
@@ -431,10 +431,12 @@ class SchemaBuilder:
         """Fill "{token}" placeholders of a registry template from odML.
 
         Resolution order per token: a key of `context` (per-session values
-        such as session_id), "dataset citation" (dataset_citation), an
-        absolute odML path when the token contains
-        "/" ("{Dataset/short name}"), else a property of `section`
-        ("{subject id}"). A missing, empty or multi-valued token makes the
+        such as session_id), "dataset citation" (dataset_citation), the
+        specification tokens "bids version" and "bids extension"
+        (spec_tokens), an absolute odML path when the token contains
+        "/" ("{Dataset/short name}"; a text value, such as a shared
+        statement, with its specification tokens filled, fill_statement),
+        else a property of `section` ("{subject id}"). A missing, empty or multi-valued token makes the
         whole result None so the field is skipped; optional "{?token}"s
         render as empty text (see fill_template).
         """
@@ -443,9 +445,12 @@ class SchemaBuilder:
                 return context[name]
             if name == DATASET_CITATION:
                 return self.dataset_citation()
+            if name in (tokens := spec_tokens()):
+                return tokens[name]
             if "/" in name:
                 sec_path, name = name.rsplit("/", 1)
-                return prop(self.get_section(sec_path), name)
+                value = prop(self.get_section(sec_path), name)
+                return fill_statement(value) if isinstance(value, str) else value
             return prop(section, name)
 
         return fill_template(template, lookup)
@@ -456,8 +461,8 @@ class SchemaBuilder:
         Contributors (the DataCite authors, in order), "<family name>, <year>"
         with one. The year is that of the Dataset's `release date` (a first
         publication elsewhere), else the release year of this export (the
-        citation's build year); the DatasetVersion's release_date follows the
-        same rule. None
+        citation's build year). The DatasetVersion's release_date is that
+        date alone, none without it. None
         without contributors or a family name of the first."""
         ds = self.get_section("Dataset")
         authors = [s for s in ds["Contributors"].sections if s.name.startswith("Contributors_")] \
@@ -659,7 +664,7 @@ class SchemaBuilder:
         return self._value_field(field, fdef, section)
 
     def _value_field(self, field: str, fdef: dict, section: odml.Section | None) -> Any:
-        """A field of a plain value: literal, template, iri, today, datetime,
+        """A field of a plain value: literal, template, iri, date, datetime,
         odml (the property, a list when `list`), quantity."""
         ftype = fdef.get("type", "odml")
         if ftype == "literal":
@@ -670,9 +675,9 @@ class SchemaBuilder:
         if ftype == "iri":
             val = fdef.get("value") or prop(section, fdef.get("odml", ""))
             return _iri(val) if val else None
-        if ftype == "today":
-            stated = prop(section, fdef["odml"]) if fdef.get("odml") else None
-            return date.fromisoformat(str(stated)) if stated else date.today()
+        if ftype == "date":
+            stated = prop(section, _odml_field_name(fdef, field))
+            return date.fromisoformat(str(stated)) if stated else None
         if ftype == "datetime":
             val = prop(section, _odml_field_name(fdef, field))
             try:
@@ -1069,8 +1074,8 @@ class SchemaBuilder:
         so the collection builds and its validation lists them:
         ElectrodeArray.device_type (openMINDS has no DeviceType term for
         electrode arrays yet), DatasetVersion.digital_identifier (the DOI is
-        registered after the push), Contribution.types (a contributor
-        without roles), Setup.description and has_parts (a system without
+        registered after the push) and release_date (set once GIN
+        publishes), Contribution.types (a contributor without roles), Setup.description and has_parts (a system without
         model or probes), CustomAnnotation.coordinate_space (a laterality
         needs none)."""
         for cls in (fgephys.ElectrodeArray, fgcore.DatasetVersion, fgcore.Contribution, fgcore.Setup,

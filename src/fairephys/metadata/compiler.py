@@ -16,8 +16,10 @@ import odml
 import yaml
 from odml.tools import XMLWriter, xmlparser
 
+from ..odml import subsection
 from ..registry import load as load_registry
 from ..validation.schema import validate_template as validate, validate_document
+from .identifiers import related_publications
 from .provenance import CURATION_SOFTWARE, curation_software
 
 logger = logging.getLogger(__name__)
@@ -378,6 +380,9 @@ def compile_to_odml(metadata: dict, omit_empty: bool = False, author: str = None
 
     _set_dataset_citation(doc)
     _add_curation_software(doc)
+    # an identifier of no recognised form, or an entry with neither identifier
+    # nor citation, raises here rather than in an output step
+    related_publications(subsection(doc, "Dataset"))
     validate_document(doc)
     return doc
 
@@ -412,13 +417,18 @@ def _initials(given: str) -> str:
     return " ".join("-".join(f"{p[0]}." for p in word.split("-") if p) for word in given.split())
 
 
+# The citation's link while the dataset has no DOI: a placeholder that reads
+# as one, never a DOI (Reema, 2026-11-05)
+DOI_PLACEHOLDER = "DOI to be assigned at publication on GIN"
+
+
 def _set_dataset_citation(doc: odml.Document) -> None:
     """Fill the Dataset 'how to cite' with the citation of the dataset itself.
 
     Same style as the related publications: "Family, G., ... & Family, G. <full name>,
-    version <version identifier>. <https://doi.org/<doi> or repository url> (<year>)."
+    version <version identifier>. <https://doi.org/<doi> or DOI_PLACEHOLDER> (<year>)."
     The year is the build year (the release year in the release build); the DOI
-    replaces the repository URL once it is in the metadata. A 'how to cite' given in
+    replaces the placeholder once it is in the metadata. A 'how to cite' given in
     the YAML overrides this pattern.
     """
     if "Dataset" not in doc.sections:
@@ -437,11 +447,10 @@ def _set_dataset_citation(doc: odml.Document) -> None:
     authors = " & ".join(filter(None, [", ".join(names[:-1]), names[-1]])) if names else ""
     version = f", version {v}" if (v := value(ds, "version identifier")) else ""
     doi = re.sub(r"^(https?://doi\.org/|doi:)", "", value(ds, "doi"))
-    link = f"https://doi.org/{doi}" if doi else value(ds, "repository url")
+    link = f"https://doi.org/{doi}" if doi else DOI_PLACEHOLDER
     text = (authors if authors.endswith(".") else f"{authors}.") + " " if authors else ""
-    text += f"{value(ds, 'full name')}{version}" + (f". {link}" if link else "") \
-        + f" ({date.today().year})."
-    origin = "generated: Contributors, full name, version identifier, doi or repository url, build year"
+    text += f"{value(ds, 'full name')}{version}. {link} ({date.today().year})."
+    origin = "generated: Contributors, full name, version identifier, doi, else a placeholder, build year"
     if "how to cite" in ds.properties:
         prop = ds.properties["how to cite"]
         prop.values, prop.value_origin = [text], origin

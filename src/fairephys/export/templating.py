@@ -4,12 +4,40 @@ from __future__ import annotations
 
 import re
 
+from ..registry import load as load_registry
+
 # A template token "{name}", or an optional group "{?words {name} words}"
 # (groups: words before, token, words after; plain token)
 _TEMPLATE_TOKEN_RE = re.compile(r"\{\?([^{}]*)\{([^{}]+)\}([^{}]*)\}|\{([^{}]+)\}")
 _EMPTY_OPTIONAL = "\x00"  # marks an empty optional template token while rendering
 # An empty optional token, with parentheses that hold nothing else, and the whitespace before it
 _EMPTY_OPTIONAL_RE = re.compile(r"\s*(?:\(\x00\)|\x00)")
+
+
+def spec_tokens() -> dict[str, str]:
+    """The template tokens of the target BIDS specification, from the BIDS
+    registry spec (bids_mappings.yaml): {bids version} (bids_version) and
+    {bids extension} (ecephys_extension). A missing value raises."""
+    spec = load_registry("bids_mappings.yaml").get("spec") or {}
+    tokens = {"bids version": spec.get("bids_version"), "bids extension": spec.get("ecephys_extension")}
+    if missing := [name for name, value in tokens.items() if not value]:
+        raise ValueError(f"bids_mappings.yaml spec gives no value for the template token(s) "
+                         f"{', '.join('{' + m + '}' for m in missing)}")
+    return {name: str(value) for name, value in tokens.items()}
+
+
+def fill_statement(text: str) -> str:
+    """A shared statement (collection metadata) with its specification tokens
+    (spec_tokens) filled; any other token raises."""
+    tokens = spec_tokens()
+
+    def lookup(name: str) -> str:
+        if name not in tokens:
+            raise ValueError(f"Unknown template token {{{name}}} in a statement; statements take "
+                             f"{', '.join('{' + t + '}' for t in tokens)}")
+        return tokens[name]
+
+    return fill_template(str(text), lookup) or ""
 
 
 def machine_label(text: str) -> str:

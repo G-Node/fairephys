@@ -37,7 +37,8 @@ RICH = {
         "Contributors": [
             {"given name": "Jane", "family name": "Doe", "roles": ["data collection"],
              "contribution description": "Recordings", "digital identifier": {"type": "ORCID", "value": "0000-0001"},
-             "affiliation": {"lab": "Test Lab", "institution": "Test Uni", "country": "Germany"}},
+             "affiliation": {"lab": "Test Lab", "institution": "Test Uni", "city": "Testville",
+                             "country": "Germany"}},
             {"given name": "Bo", "family name": "Lee", "roles": ["data management", "coordination"],
              "affiliation": {"institution": "Other Uni"}}],
         "Fundings": [{"funder": "Test Foundation", "award number": "GRANT-001", "award title": "Test Grant"},
@@ -54,7 +55,9 @@ RICH = {
                              "number of contacts": 96, "contact pitch": "400 micrometer",
                              "notes": "Channels 1 to 4 were broken from the first session (lab, 2024-04-01)."},
                             {"name": "Tungsten", "manufacturer": "FHC", "probe type": "single electrode",
-                             "number of contacts": 1}]},
+                             "number of contacts": 1}],
+                 "Auxiliary Devices": [{"name": "Front camera", "device type": "video camera", "manufacturer": "TestCam",
+                                        "model": "TC-1", "recording software": "TestCapture", "software version": "2.0"}]},
     "Behavioral Protocol": {"description": "Resting state in the dark.", "task": "none", "head fixation": True,
                             "head fixation method": "headpost", "primate chair": True, "body position": "seated",
                             "eye tracking": True, "eye tracking method": "video", "other tasks performed": True,
@@ -134,7 +137,8 @@ def test_stale_openminds_collection_is_not_this_runs_output(frozen, make_doc, cu
 def test_sections_without_data_are_left_out(tmp_path):
     """A dataset with a title alone gives the title and its citation, no empty sections."""
     doc = compile_to_odml({"Dataset": {"full name": "T"}})
-    assert odml_to_readme(doc, tmp_path / "missing") == f"# T\n\n## How to Cite\n\nT ({date.today().year}).\n"
+    assert odml_to_readme(doc, tmp_path / "missing") == \
+        f"# T\n\n## How to Cite\n\nT. DOI to be assigned at publication on GIN ({date.today().year}).\n"
 
 
 def test_datacite_golden(frozen, make_doc, tmp_path, golden):
@@ -144,9 +148,9 @@ def test_datacite_golden(frozen, make_doc, tmp_path, golden):
     golden("datacite.yml", write_datacite(yaml_path, tmp_path / "out").read_text())
 
 
-def test_datacite_references(make_doc, tmp_path):
+def test_datacite_references(make_doc, tmp_path, caplog):
     """Each Related Publications entry is a reference with GIN's id prefix of its type and the entry's relation;
-    an ISBN (no GIN prefix) and an identifier of no recognised form raise."""
+    an ISBN (no GIN prefix) is left out with a warning; an identifier of no recognised form raises."""
     def references(*entries):
         doc = make_doc(Dataset={"Related Publications": [
             {"identifier": i, "relation": r, "citation": f"Citation {n}."} for n, (i, r, *_) in enumerate(entries)]})
@@ -159,12 +163,14 @@ def test_datacite_references(make_doc, tmp_path):
                ("https://github.com/lab/code", "IsReferencedBy", "url:https://github.com/lab/code"),
                ("arxiv:2201.23456", "IsSupplementTo", "arxiv:2201.23456"),
                ("pmid:12345", "Cites", "pmid:12345"),
-               ("hdl:11858/00-1735", "IsDescribedBy", "url:https://hdl.handle.net/11858/00-1735")]
-    assert references(*entries) == [{"id": gin_id, "reftype": relation, "citation": f"Citation {n}."}
-                                    for n, (_, relation, gin_id) in enumerate(entries)]
-    for identifier, error in (("isbn:978-3-16-148410-0", "takes no ISBN"), ("Doe 2024", "no recognised form")):
-        with pytest.raises(ValueError, match=error):
-            references((identifier, "IsSupplementTo"))
+               ("hdl:11858/00-1735", "IsDescribedBy", "url:https://hdl.handle.net/11858/00-1735"),
+               ("isbn:978-3-161-48410-0", "Cites", None)]
+    with caplog.at_level(logging.WARNING):
+        assert references(*entries) == [{"id": gin_id, "reftype": relation, "citation": f"Citation {n}."}
+                                        for n, (_, relation, gin_id) in enumerate(entries) if gin_id]
+    assert any("not in datacite.yml: Citation 6." in r.getMessage() for r in caplog.records)
+    with pytest.raises(ValueError, match="no recognised form"):
+        references(("Doe 2024", "IsSupplementTo"))
 
 
 def _sessions_table(text: str) -> list[str]:
@@ -183,13 +189,15 @@ def test_session_durations_in_minutes(make_doc, tmp_path):
 
 
 def test_how_to_cite_generated_unless_given(make_doc):
-    """The citation is built from contributors, title, version, DOI or repository and year unless given."""
+    """The citation is built from contributors, title, version, the DOI or a placeholder for it and year unless
+    given."""
     for dataset, expected in [
-        ({}, "Doe, J. Test dataset (YEAR)."),
+        ({}, "Doe, J. Test dataset. DOI to be assigned at publication on GIN (YEAR)."),
         ({"Contributors": [{"given name": "Jean-Pierre", "family name": "Roux"},
                            {"given name": "Bo Ya", "family name": "Lee"}, {"given name": "A", "family name": "Zed"}],
           "version identifier": "1.0.0", "repository url": "https://gin.example/R"},
-         "Roux, J.-P., Lee, B. Y. & Zed, A. Test dataset, version 1.0.0. https://gin.example/R (YEAR)."),
+         "Roux, J.-P., Lee, B. Y. & Zed, A. Test dataset, version 1.0.0. DOI to be assigned at publication on GIN "
+         "(YEAR)."),
         ({"repository url": "https://gin.example/R", "doi": "doi:10.1234/x"},
          "Doe, J. Test dataset. https://doi.org/10.1234/x (YEAR)."),
         ({"how to cite": "Cite the paper."}, "Cite the paper."),
@@ -303,19 +311,27 @@ def test_datacite_files_next_to_the_record(make_doc, tmp_path):
 
 
 def test_header_line_and_tree_root(make_doc, curated):
-    """Short name and version under the title, each when filled; the tree root is the repository name, else
-    "repository root"."""
+    """Short name, version and repository under the title, each when filled; the tree root is the repository name, else
+    "repository root"; probes/ shows the example session's folder and counts the others; the example session is
+    the one with the most file types; the video row names no camera without one."""
+    (curated / "probes" / "sub-MonkeyA_ses-02").mkdir()
     text = odml_to_readme(make_doc(RICH), curated)
-    assert text.startswith("# Test dataset\n\nShort name: test-ds | Version: 1.0.0\n\n## Authors")
+    assert "        ... (1 more session)\n        Utah.json [" in text
+    for name in ("events.tsv", "events.json", "recording-cardiac_physio.json"):  # 8 file types, ses-01 7
+        (curated / "sub-MonkeyA" / "ses-02" / "ecephys" / f"sub-MonkeyA_ses-02_task-rest_{name}").write_text("{}")
+    assert "    sub-MonkeyA/\n        ses-02/\n" in odml_to_readme(make_doc(RICH), curated)
+    assert text.startswith("# Test dataset\n\nShort name: test-ds | Version: 1.0.0 | Repository: "
+                           "https://gin.example/Org/Test\n\n## Authors")
     assert "```\nTest/\n    metadata/" in text
     text = odml_to_readme(make_doc(), curated)
     assert text.startswith("# Test dataset\n\nShort name: test-ds\n\n## Authors")
     assert "```\nrepository root\n    metadata/" in text
+    assert "| Video file in the format of the camera (MTS) |" in text  # no camera in the metadata: as before
 
 
 def test_file_descriptions_from_the_files_on_disk(make_doc, curated):
-    """A TSV with a header row lists its columns in the file table; the tree gives the short description after
-    the first file of each type; the states caption names the events files when there are any."""
+    """A TSV with a header row lists its columns in the file table; the tree gives the one-sentence description
+    in square brackets after every file; the states caption names the events files when there are any."""
     channels = curated / "sub-MonkeyA" / "ses-01" / "ecephys" / "sub-MonkeyA_ses-01_task-rest_channels.tsv"
     row = "| `ecephys/*_channels.tsv` | TSV | One row per recorded channel"
     caption = "the label (the trial_type value in the events files)"
@@ -323,6 +339,7 @@ def test_file_descriptions_from_the_files_on_disk(make_doc, curated):
     assert f"{row} | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |" in text and caption not in text
     channels.write_text("name\ttype\tunits\nCh1\tEXT\tuV\n")
     (channels.parent / "sub-MonkeyA_ses-01_task-rest_events.tsv").write_text("onset\tduration\ttrial_type\n")
+    (curated / "probes" / "sub-MonkeyA_ses-01" / "probe_group.json").write_text("{}")
     text = odml_to_readme(make_doc(RICH), curated)
     assert f"{row}, with the columns `name`, `type` and `units` |" in text
     assert "| `*_events.tsv` | TSV | One row per event or annotated interval, with the columns `onset`, `duration` " \
@@ -330,8 +347,9 @@ def test_file_descriptions_from_the_files_on_disk(make_doc, curated):
     assert f"The states this step annotates, one row each: the lab's code in its raw files, {caption} and a " \
            "description." in text
     tree = text.split("```", 2)[1]
-    assert "sub-MonkeyA_ses-01_task-rest_channels.tsv (channel list)\n" in tree
-    assert tree.count("(probe geometry)") == tree.count("(channel list)") == 1
+    assert "sub-MonkeyA_ses-01_task-rest_channels.tsv [the recorded channels, one row each]\n" in tree
+    session_probes = "[contact geometry of the devices placed in the session, of one device or all (probe_group.json)]"
+    assert f"Utah.json {session_probes}\n" in tree and f"probe_group.json {session_probes}\n" in tree
 
 
 def test_columns_all_files_have_then_those_some_have(make_doc, curated):
@@ -354,7 +372,7 @@ def test_channels_files_described_per_datatype(make_doc, curated):
     assert "| `ecephys/*_channels.tsv` | TSV | One row per recorded channel, with the columns `name`, " \
            "`electrode_name` and `type` |" in text
     assert "| `emg/*_channels.tsv` | TSV | One row per EMG channel, with the columns `name`, `type` and `status` |" in text
-    assert "sub-MonkeyA_ses-01_task-rest_channels.tsv (EMG channel list)\n" in text.split("```", 2)[1]
+    assert "sub-MonkeyA_ses-01_task-rest_channels.tsv [the EMG channels, one row each]\n" in text.split("```", 2)[1]
 
 
 
@@ -384,7 +402,7 @@ def test_channels_files_outside_the_datatype_folders(make_doc, curated):
     (ieeg / "sub-MonkeyA_ses-01_task-rest_channels.tsv").write_text("name\ttype\tunits\n")
     text = odml_to_readme(make_doc(RICH), curated)
     assert "| `*_channels.tsv` | TSV | One row per channel, with the columns `name`, `type` and `units` |" in text
-    assert "    ieeg/\n                sub-MonkeyA_ses-01_task-rest_channels.tsv (channel list)\n" in text
+    assert "    ieeg/\n                sub-MonkeyA_ses-01_task-rest_channels.tsv [the channels, one row each]\n" in text
 
 def test_first_mentions_link_and_write_out_once(frozen, make_doc, tmp_path):
     """The first plain mention of a registry software name is linked once (an existing link is kept), and the

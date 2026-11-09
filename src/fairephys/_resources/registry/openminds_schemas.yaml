@@ -17,7 +17,7 @@
 #   match_link  - link by matching field value (match_field + match_attrs)
 #   literal     - hardcoded value
 #   iri         - IRI value (wraps in fairgraph.IRI)
-#   today       - current date; with `odml`, that property's date when set
+#   date        - the odML property as a date (ISO), none when empty
 #   datetime    - ISO datetime string from odML
 #   identifier_list - the identifier nodes of the entries of a subsection
 #                 (odml_section, one subsection per entry with its 'identifier'
@@ -418,8 +418,11 @@ schemas:
       # when that statement is filled (an empty required token skips the field)
       description: { type: template, value: "{description}\n\n{?Dataset/Project/dataset statement}\n\n{Dataset/Project/usage statement}" }
       version_identifier: { odml: "version identifier", default: "1.0" }
-      # a first publication elsewhere (dataset.yaml 'release date'), else the export date
-      release_date: { type: today, odml: "release date" }
+      # the real release date (dataset.yaml 'release date', the GIN publication
+      # or a first publication elsewhere); none while it is empty, so the
+      # collection validation lists it as missing (EBRAINS KG curators,
+      # 2026-11-05: never the export date)
+      release_date: { type: date, odml: "release date" }
       how_to_cite: { odml: "how to cite" }
       homepage: { odml: "homepage url" }
       support_channels: { odml: "support channel", list: true }

@@ -1,6 +1,6 @@
 # Test dataset
 
-Short name: test-ds | Version: 1.0.0
+Short name: test-ds | Version: 1.0.0 | Repository: https://gin.example/Org/Test
 
 ## Authors
 
@@ -8,7 +8,7 @@ Jane Doe (1), Bo Lee (2)
 
 ### Affiliations
 
-1. Test Lab, Test Uni, Germany
+1. Test Lab, Test Uni, Testville, Germany
 2. Other Uni
 
 ### Corresponding Author(s)
@@ -110,26 +110,26 @@ The data are organised following the BIDS extension proposal BEP032 Microelectro
 ```
 Test/
     metadata/
-        test-ds.instances.yaml (openMINDS terms)
+        test-ds.instances.yaml [openMINDS terms of the controlled vocabulary values in the odML record]
     probes/
         sub-MonkeyA_ses-01/
-            Utah.json (probe geometry of the session)
-        Utah.json (probe geometry)
+            Utah.json [contact geometry of the devices placed in the session, of one device or all (probe_group.json)]
+        Utah.json [contact geometry of one device and the wiring of its contacts to the recording channels]
     sub-MonkeyA/
         ses-01/
             beh/
-                sub-MonkeyA_ses-01_task-rest_video.MTS (video)
+                sub-MonkeyA_ses-01_task-rest_video.MTS [video recording of the session]
             ecephys/
-                sub-MonkeyA_ses-01_task-rest_channels.tsv (channel list)
-                sub-MonkeyA_ses-01_task-rest_ecephys.nwb (neural recording)
-                sub-MonkeyA_ses-01_task-rest_electrodes.tsv (contact positions)
-                sub-MonkeyA_ses-01_task-rest_probes.tsv (probe placements)
-                sub-MonkeyA_ses-01_task-rest_recording-eye_physio.tsv.gz (physiological signals)
+                sub-MonkeyA_ses-01_task-rest_channels.tsv [the recorded channels, one row each]
+                sub-MonkeyA_ses-01_task-rest_ecephys.nwb [continuous neural recording of the session with its electrodes, devices and subject metadata]
+                sub-MonkeyA_ses-01_task-rest_electrodes.tsv [the electrode contacts with their positions, one row each]
+                sub-MonkeyA_ses-01_task-rest_probes.tsv [the probes placed in the session, one row each]
+                sub-MonkeyA_ses-01_task-rest_recording-eye_physio.tsv.gz [continuous physiological signals of the session, one column per signal]
         ... (1 more session)
-    LICENSE (licence)
-    datacite.yml (citation metadata)
-    dataset_description.json (dataset description)
-    participants.tsv (subjects)
+    LICENSE [licence of the dataset with its legal code]
+    datacite.yml [citation metadata for the DOI registration on GIN]
+    dataset_description.json [name, BIDS version, licence, authors, funding and references of the dataset]
+    participants.tsv [the subjects, one row each]
 ```
 
 One row per file type: its format, what the files hold, and the format specification with the software that wrote them.
@@ -141,7 +141,7 @@ One row per file type: its format, what the files hold, and the format specifica
 | `*_electrodes.tsv` | TSV | One row per electrode contact | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |
 | `*_probes.tsv` | TSV | One row per probe placed in the session | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |
 | `*_physio.tsv.gz` | TSV (gzip) | Continuous physiological signals (eye), one column per signal and no header row; the matching physio.json gives the column names, sampling frequency and start time | BIDS 1.11.2, written with fairephys 0.1.0 |
-| `*_video.MTS` | Video (MTS) | Video recording of the session | Video file in the format of the camera (MTS) |
+| `*_video.MTS` | Video (MTS) | Video recording of the session | Video file in the format of the camera TestCam TC-1 (MTS), recorded with TestCapture 2.0 |
 | `dataset_description.json` | JSON | Name, BIDS version, licence, authors, funding, references and the software that generated the dataset | BIDS 1.11.2, written with fairephys 0.1.0 |
 | `participants.tsv` | TSV | One row per subject | BIDS 1.11.2, written with fairephys 0.1.0 |
 | `datacite.yml` | YAML | Citation metadata for the DOI registration on GIN: title, authors, description, keywords, licence, funding and references | GIN datacite.yml (DataCite), written with fairephys 0.1.0 |
@@ -152,7 +152,7 @@ One row per file type: its format, what the files hold, and the format specifica
 
 ## How to Cite
 
-Doe, J. & Lee, B. Test dataset, version 1.0.0. https://gin.example/Org/Test (2026).
+Doe, J. & Lee, B. Test dataset, version 1.0.0. DOI to be assigned at publication on GIN (2026).
 
 ## Acknowledgements
 

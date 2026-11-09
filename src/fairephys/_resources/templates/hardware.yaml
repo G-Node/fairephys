@@ -98,11 +98,20 @@ Hardware:
   # When aux signals are acquired through the main recording system
   # (e.g., analog inputs on Blackrock/TDT), set "same as recording system: true"
   # and device metadata fields are inherited from Recording System.
+  #
+  # A video camera is an entry with device type "video camera", its
+  # manufacturer, model and recording software (no modality, no channels):
+  # the README names it at the video files (*_video.*, *_video.json).
   Auxiliary Devices: []
   # Auxiliary Devices:
     # - name: ""
     #   same as recording system: false
     #   description: ""              # free-text (flows to openMINDS core.Device)
+    #   device type: ""              # e.g., "video camera"
+    #   manufacturer: ""
+    #   model: ""
+    #   recording software: ""       # the software that wrote the device's files
+    #   software version: ""
     #   modality: ""                 # physio | motion | emg
     #   channels: []                 # raw data channel names (must match Neo exactly); an
     #                                # eye tracker lists the horizontal, then the vertical

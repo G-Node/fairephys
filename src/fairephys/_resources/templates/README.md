@@ -43,7 +43,9 @@ YOUR-DATASET/
 | `datacite.yaml` | DOI registration metadata |
 | `collection.yaml` | Shared Project/Consortium of a curation project; lives in `collection/metadata/` above the datasets, or is given with `--shared-metadata` |
 
-`Related Publications` in `dataset.yaml` holds one entry per related paper, data descriptor, code or other resource: `identifier` (a DOI, a URL, `arxiv:`, `pmid:`, `hdl:` or `isbn:`; empty for a publication without one), `relation` (a DataCite relationType such as `IsSupplementTo`, `IsDescribedBy` or `IsReferencedBy`) and `citation`; `Related Publications: []` when there is none. `docs/pipeline.md` (Related publications) says what each output makes of an entry.
+The `affiliation` of the Custodian and of each Contributor in `dataset.yaml` holds `institution`, `lab`, `department`, `address`, `city` and `country`; the descriptor lists each affiliation as "lab, department, institution, city, country" (the parts that are filled), openMINDS takes the institution.
+
+`Related Publications` in `dataset.yaml` holds one entry per related paper, data descriptor, code or other resource: `identifier` (a DOI, a URL, `arxiv:`, `pmid:`, `hdl:` or a hyphenated ISBN such as `978-3-161-48410-0`; empty for a publication without one), `relation` (a DataCite relationType such as `IsSupplementTo`, `IsDescribedBy` or `IsReferencedBy`) and `citation`; `Related Publications: []` when there is none. `docs/pipeline.md` (Related publications) says what each output makes of an entry.
 
 ## Example
 

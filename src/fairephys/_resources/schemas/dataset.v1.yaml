@@ -132,10 +132,23 @@ $defs:
       family name: {type: string}
       email: {type: string}
       digital identifier: {type: object}
-      affiliation: {type: object}
+      affiliation: {$ref: "#/$defs/Affiliation"}
       # true: the person is a member of the shared Consortium
       # (collection/metadata) -> Affiliation.member_of on the Person
       consortium member: {type: boolean}
+
+  # The README prints "lab, department, institution, city, country" (the
+  # EBRAINS data descriptor's "Institute (working group) department,
+  # university, city, country"); openMINDS takes the institution only
+  Affiliation:
+    type: object
+    properties:
+      institution: {type: string}
+      lab: {type: string}
+      department: {type: string}
+      address: {type: string}
+      city: {type: string}
+      country: {type: string}
 
   Contributor:
     type: object
@@ -144,14 +157,14 @@ $defs:
       given name: {type: string}
       family name: {type: string}
       digital identifier: {type: object}
-      affiliation: {type: object}
+      affiliation: {$ref: "#/$defs/Affiliation"}
       roles: {type: array, items: {type: string}}
       role: {type: string}
       contribution description: {type: string}
 
   # A publication or resource related to the dataset, as a DataCite
   # relatedIdentifier: the identifier (its type read from its form: a DOI,
-  # doi:, https://doi.org/, a URL, arxiv:, pmid:, hdl: or isbn:; see
+  # doi:, https://doi.org/, a URL, arxiv:, pmid:, hdl: or a hyphenated ISBN; see
   # fairephys.metadata.identifiers; empty for a publication without one,
   # listed by its citation), the DataCite relationType and the full citation
   RelatedPublication:

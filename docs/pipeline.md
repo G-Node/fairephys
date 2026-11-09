@@ -60,17 +60,17 @@ What stays the same across sessions is written once; what varies is written per 
 
 ### Related publications
 
-`Related Publications` in `dataset.yaml` lists the papers, data descriptors, code and other resources related to the dataset, one entry each as a DataCite related identifier: `identifier` (a DOI as `10.xxxx/...`, `doi:` or `https://doi.org/`, a URL, `arxiv:`, `pmid:`, `hdl:` or `isbn:`; the type is read from the form, any other form is an error; empty for a publication without one, such as a thesis or a manuscript in preparation), `relation` (a DataCite relationType: `IsSupplementTo` for a paper based on the data, `IsDescribedBy` for a data descriptor, `IsReferencedBy` for code or another resource that uses the data, or any other value of the DataCite list) and `citation` (the full citation). A dataset without any writes `Related Publications: []`. Every output lists every entry, in order; an entry without identifier is listed by its citation in the README, BIDS and NWB, and left out of DataCite and openMINDS with a warning naming its citation:
+`Related Publications` in `dataset.yaml` lists the papers, data descriptors, code and other resources related to the dataset, one entry each as a DataCite related identifier: `identifier` (a DOI as `10.xxxx/...`, `doi:` or `https://doi.org/`, a URL, `arxiv:`, `pmid:`, `hdl:` or an ISBN hyphenated as openMINDS requires (`978-3-161-48410-0` or `3-161-48410-0`, `isbn:` optional); the type is read from the form, any other form is an error; empty for a publication without one, such as a thesis or a manuscript in preparation), `relation` (a DataCite relationType: `IsSupplementTo` for a paper based on the data, `IsDescribedBy` for a data descriptor, `IsReferencedBy` for code or another resource that uses the data, or any other value of the DataCite list) and `citation` (the full citation). A dataset without any writes `Related Publications: []`. Every output lists every entry, in order; an entry without identifier is listed by its citation in the README, BIDS and NWB, and left out of DataCite and openMINDS with a warning naming its citation:
 
 | Output | Each entry |
 |--------|------------|
-| DataCite (`datacite.yml`) | a reference: `id` with GIN's prefix (`doi:`, `arxiv:`, `pmid:`, `url:`; a Handle as `url:https://hdl.handle.net/<handle>`), `reftype` the relation, the citation. An ISBN has no GIN prefix and stops the export |
+| DataCite (`datacite.yml`) | a reference: `id` with GIN's prefix (`doi:`, `arxiv:`, `pmid:`, `url:`; a Handle as `url:https://hdl.handle.net/<handle>`), `reftype` the relation, the citation. An ISBN has no GIN prefix and is left out with a warning naming its citation |
 | openMINDS | a DOI, Handle or ISBN as the identifier node in `DatasetVersion.related_publications`; a URL, an arXiv id or a PMID has no openMINDS node and is listed in the collection warnings. Without a `documentation url`, the first `IsDescribedBy` entry with a DOI is also `full_documentation` |
 | NWB | `related_publications`: `doi:<DOI>` for a DOI, else the identifier as written, else the citation |
-| BIDS (`dataset_description.json`) | `ReferencesAndLinks`: the citation, followed by its link when the citation does not hold the identifier, before the source dataset URLs |
+| BIDS (`dataset_description.json`) | `ReferencesAndLinks`: the citation, followed by its link when the citation does not hold the identifier, then the dataset's `repository url` and the source dataset URLs |
 | README | References: the citation, followed by its link when the citation does not hold the identifier |
 
-The link is the same in both (`Identifier.link` in `fairephys.metadata.identifiers`): `https://doi.org/<DOI>`, `https://hdl.handle.net/<handle>`, `https://arxiv.org/abs/<id>`, `https://pubmed.ncbi.nlm.nih.gov/<pmid>/`, the URL itself, an ISBN as written (`isbn:<ISBN>`). openMINDS alone writes a Handle as `http://hdl.handle.net/<handle>`, the pattern its HANDLE schema requires.
+The link is the same in both (`Identifier.link` in `fairephys.metadata.identifiers`): `https://doi.org/<DOI>`, `https://hdl.handle.net/<handle>`, `https://arxiv.org/abs/<id>`, `https://pubmed.ncbi.nlm.nih.gov/<pmid>/`, the URL itself, an ISBN as `isbn:<ISBN>`. openMINDS alone writes a Handle as `http://hdl.handle.net/<handle>`, the pattern its HANDLE schema requires.
 
 ### Where a value comes from
 

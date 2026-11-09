@@ -81,9 +81,10 @@ Dataset:
   # ---------------------------------------------------------------------------
   # TEMPORAL (documentary: for DataCite and README)
   # ---------------------------------------------------------------------------
-  # release date: the date the dataset was first published, for a dataset
-  # already published elsewhere (e.g. under its DOI), with its source; empty
-  # for a first publication here. Its year qualifies the KG paradigm name
+  # release date: the date the dataset was first published, with its source:
+  # the GIN publication date once known (empty until then), or the date of a
+  # publication elsewhere (e.g. under its DOI). It is the openMINDS release
+  # date (none while empty); its year qualifies the KG paradigm name
   release date: ""                   # e.g., 2025-09-15
   collection start date: ""          # e.g., 2015-03-27
   collection end date: ""            # e.g., 2015-05-20
@@ -112,8 +113,9 @@ Dataset:
   # VERSION INFO -> DatasetVersion.version_innovation, .how_to_cite
   # ---------------------------------------------------------------------------
   version innovation: ""             # what changed in this version
-  # empty = the generated citation (authors, full name, version, DOI or repository
-  # URL, year); a value here overrides that pattern
+  # empty = the generated citation (authors, full name, version, the DOI, else
+  # "DOI to be assigned at publication on GIN", year); a value here overrides
+  # that pattern
   how to cite: ""
 
   # ---------------------------------------------------------------------------
@@ -145,7 +147,7 @@ Dataset:
   # DataCite relations are accepted by its file format but were not verified
   # against GIN's DOI service.
   Related Publications:
-    - identifier: ""     # DOI (bare, doi: or https://doi.org/ form), URL, arXiv id (arxiv:), PMID (pmid:), Handle (hdl:) or ISBN (isbn:); the type is read from the form
+    - identifier: ""     # DOI (bare, doi: or https://doi.org/ form), URL, arXiv id (arxiv:), PMID (pmid:), Handle (hdl:) or ISBN (hyphenated as openMINDS requires, e.g. 978-3-161-48410-0, isbn: optional); the type is read from the form
       relation: ""       # DataCite relationType: IsSupplementTo (a paper based on the data), IsDescribedBy (a data descriptor), IsReferencedBy (code or another resource that uses the data), or any other value of the DataCite list
       citation: ""       # the full citation for human readers (authors, year, title, journal, volume, pages, DOI link)
 
@@ -165,6 +167,7 @@ Dataset:
       lab: ""
       department: ""
       address: ""
+      city: ""                       # e.g., "Marseille" (README affiliations)
       country: ""
 
   # ---------------------------------------------------------------------------
@@ -187,6 +190,7 @@ Dataset:
         institution: ""
         lab: ""
         department: ""
+        city: ""
         country: ""
       roles: []
       contribution description: ""

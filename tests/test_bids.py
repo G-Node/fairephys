@@ -236,12 +236,12 @@ def test_participants(doc):
 
 def test_dataset_description(make_doc, monkeypatch):
     """Funding, ethics and acknowledgements without doubled brackets; GeneratedBy with the commit; a publication's
-    citation followed by its link."""
+    citation followed by its link, then the repository and source dataset URLs."""
     monkeypatch.setattr(provenance, "source_checkout", lambda *a: {"commit": "abc1234", "uncommitted changes": True})
     doc = make_doc(Dataset={"ethics authority": "EC 1 (Ethics Committee)", "ethics approval id": "123.4",
-                            "doi": "10.1234/abc", "Related Publications": [{"identifier": "doi:10.1234/paper",
-                                                                      "relation": "IsSupplementTo",
-                                                                      "citation": "Doe, J. A paper (2024)."}],
+                            "doi": "10.1234/abc", "repository url": "https://gin.example/curated",
+                            "Related Publications": [{"identifier": "doi:10.1234/paper", "relation": "IsSupplementTo",
+                                                      "citation": "Doe, J. A paper (2024)."}],
                             "Related Projects": [{"project name": "Raw", "project url": "https://gin.example/raw"}],
                             "Fundings": [
         {"funder": "Deutsche Forschungsgemeinschaft (DFG)", "award number": "SFB-1528"},
@@ -256,7 +256,8 @@ def test_dataset_description(make_doc, monkeypatch):
         == ["EC (1)", "DFG (Germany), 1", "a, b (c)", "EC", "1"]
     assert (desc["Authors"], desc["DatasetDOI"]) == (["Jane Doe"], "10.1234/abc")
     assert desc["SourceDatasets"] == [{"URL": "https://gin.example/raw", "Name": "Raw"}]
-    assert desc["ReferencesAndLinks"] == ["Doe, J. A paper (2024). https://doi.org/10.1234/paper", "https://gin.example/raw"]
+    assert desc["ReferencesAndLinks"] == ["Doe, J. A paper (2024). https://doi.org/10.1234/paper",
+                                          "https://gin.example/curated", "https://gin.example/raw"]
 
     bare = compile_to_odml({"Dataset": {"full name": "T", "ethics authority": "EC"}})
     bare.remove(bare["Curation Software"])  # an odML compiled before the section existed

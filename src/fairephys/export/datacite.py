@@ -14,10 +14,12 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
+import odml
 import yaml
 
 from ..bids.structure import write_bidsignore
-from ..metadata.identifiers import SECTION as PUBLICATIONS, parse_identifier
+from ..metadata.identifiers import Publication, related_publications
+from ..odml import subsection
 from ..registry import RESOURCES, load as load_registry
 
 SCHEMA_PATH = RESOURCES / "schemas" / "datacite.v1.yaml"
@@ -77,22 +79,22 @@ def _funding(f: dict) -> str | None:
     return f"{funder}; {award}" if funder and award else funder
 
 
-def _reference(entry: dict) -> dict | None:
-    """GIN reference of a Related Publications entry: the id with GIN's
-    prefix of its type, the relation as reftype, the citation; an ISBN,
-    which GIN's file cannot hold, raises; an entry without identifier is
-    left out with a warning (None)."""
-    given = _prop(entry, "identifier")
-    if not given:
-        logger.warning("Related publication without identifier, not in datacite.yml: %s", _prop(entry, "citation"))
+def _reference(publication: Publication) -> dict | None:
+    """GIN reference of a Related Publications entry (identifiers.related_publications):
+    the id with GIN's prefix of its type, the relation as reftype, the
+    citation; an entry without identifier, or of a type GIN's file has no
+    prefix for (an ISBN), is left out with a warning (None)."""
+    identifier = publication.identifier
+    if identifier is None:
+        logger.warning("Related publication without identifier, not in datacite.yml: %s", publication.citation)
         return None
-    identifier = parse_identifier(given)
     if identifier.type not in GIN_ID_PREFIXES:
-        raise ValueError(f"Related publication '{given}': GIN's datacite.yml takes no {identifier.type} "
-                         f"(its id prefixes: {', '.join(sorted(set(GIN_ID_PREFIXES.values())))})")
+        logger.warning("Related publication by %s (GIN's datacite.yml has no prefix for it), not in datacite.yml: %s",
+                       identifier.type, publication.citation)
+        return None
     value = identifier.link if identifier.type == "Handle" else identifier.value
-    return {"id": f"{GIN_ID_PREFIXES[identifier.type]}{value}", "reftype": _prop(entry, "relation"),
-            "citation": str(_prop(entry, "citation") or "").strip()}
+    return {"id": f"{GIN_ID_PREFIXES[identifier.type]}{value}", "reftype": publication.relation,
+            "citation": publication.citation}
 
 
 def _dataset_section(odml_path: Path) -> dict:
@@ -121,10 +123,9 @@ def odml_to_datacite(odml_path: Path) -> dict:
     if f := _sec(ds, "Fundings"):
         if items := [x for s in f.get("sections", []) if s.get("name", "").startswith("Fundings_") and (x := _funding(s))]:
             dc["funding"] = items
-    if p := _sec(ds, PUBLICATIONS):
-        if refs := [r for s in p.get("sections", [])
-                    if s.get("name", "").startswith(f"{PUBLICATIONS}_") and (r := _reference(s))]:
-            dc["references"] = refs
+    publications = related_publications(subsection(odml.load(str(odml_path), "yaml"), "Dataset"))
+    if refs := [r for p in publications if (r := _reference(p))]:
+        dc["references"] = refs
     schema = _load_schema()
     dc["resourcetype"] = "Dataset"
     dc["templateversion"] = schema["properties"]["templateversion"]["const"]
