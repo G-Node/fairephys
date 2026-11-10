@@ -7,6 +7,7 @@ import pytest
 from neo.rawio import ExampleRawIO, TdtRawIO
 from neo.rawio.tdtrawio import tsq_dtype
 
+from fairephys.bhv2 import load_bhv2
 from fairephys.events import bhv2_trials, event_times, match_codes, read_tdt_epocs
 
 
@@ -99,6 +100,36 @@ def _bhv2_field(name, value):
 def _trial(codes, times, condition=1, error=9, start=1000.0):
     return {"Condition": condition, "TrialError": error, "ReactionTime": np.nan, "AbsoluteTrialStartTime": start,
             "BehavioralCodes": {"CodeTimes": times, "CodeNumbers": codes}}
+
+
+def _ml_var(name, type_name, dims, body):
+    """One BHV2 variable as mlbhv2.m writes it: name, type, size, then the column-major data."""
+    def text(s):
+        return struct.pack("<Q", len(s)) + s.encode()
+    return text(name) + text(type_name) + struct.pack(f"<{len(dims) + 1}Q", len(dims), *dims) + body
+
+
+EYE = np.array([[1.5, -1.0], [2.5, -2.0], [3.5, -3.0]])
+ML_FILE = (_ml_var("Eye", "double", EYE.shape, EYE.ravel(order="F").astype("<f8").tobytes())
+           + _ml_var("Names", "char", (2, 3), b"axbycz")
+           + _ml_var("Codes", "double", (3, 1), struct.pack("<3d", 9, 21, 18))
+           + _ml_var("Cell", "cell", (1, 2), _ml_var("", "char", (1, 2), b"ab") + _ml_var("", "char", (1, 2), b"cd")))
+
+
+def test_load_bhv2_column_major(tmp_path):
+    path = tmp_path / "run.bhv2"
+    path.write_bytes(ML_FILE)
+    data = load_bhv2(path)
+    assert data["Eye"].tolist() == EYE.tolist() and data["Names"] == ["abc", "xyz"]
+    assert data["Codes"].tolist() == [[9.0], [21.0], [18.0]]
+    assert data["Cell"] == ["ab", "cd"] and data["Cell"].dims == (1, 2)
+
+
+def test_load_bhv2_truncated(tmp_path):
+    path = tmp_path / "run.bhv2"
+    path.write_bytes(ML_FILE[:-1])
+    with pytest.raises(ValueError, match=r"run\.bhv2: damaged BHV2 variable at byte \d+"):
+        load_bhv2(path)
 
 
 def test_bhv2_trials(tmp_path):
