@@ -141,7 +141,7 @@ One row per file type: its format, what the files hold, and the format specifica
 | `*_electrodes.tsv` | TSV | One row per electrode contact | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |
 | `*_probes.tsv` | TSV | One row per probe placed in the session | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |
 | `*_physio.tsv.gz` | TSV (gzip) | Continuous physiological signals (eye), one column per signal and no header row; the matching physio.json gives the column names, sampling frequency and start time | BIDS 1.11.2, written with fairephys 0.1.0 |
-| `*_video.MTS` | Video (MTS) | Video recording of the session | Video file in the format of the camera TestCam TC-1 (MTS), recorded with TestCapture 2.0 |
+| `*_video.MTS` | Video (MTS) | Video recording of the session | MTS video, camera TestCam TC-1, recorded with TestCapture 2.0 |
 | `dataset_description.json` | JSON | Name, BIDS version, licence, authors, funding, references and the software that generated the dataset | BIDS 1.11.2, written with fairephys 0.1.0 |
 | `participants.tsv` | TSV | One row per subject | BIDS 1.11.2, written with fairephys 0.1.0 |
 | `datacite.yml` | YAML | Citation metadata for the DOI registration on GIN: title, authors, description, keywords, licence, funding and references | GIN datacite.yml (DataCite), written with fairephys 0.1.0 |

@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 def write_session_sidecars(doc: odml.Document, session: odml.Section, paths: dict,
                            channels: list[dict] = None) -> None:
     """The session-level files: probes.tsv and .json, electrodes.tsv (from the
-    session's probe group) and .json, channels.json, and channels.tsv from
+    session's probe group) and .json, channels.json (when the registry
+    describes a column), and channels.tsv from
     the rows the dataset extracted (builder.extract_channels); channels None
     writes no channels.tsv (a dataset that writes one per probe itself)."""
     paths["ses_dir"].mkdir(parents=True, exist_ok=True)

@@ -121,7 +121,7 @@ def test_one_nwb_per_probe_is_compared_with_its_probe(geometry_files, tmp_path):
         tmp_path / "hp.tsv", sep="\t", index=False)  # hardware high-passed AP channels are neural
     report = geometry.check_electrode_consistency(tmp_path / "hp.tsv", only_b, _report())
     assert report.errors == [] and report.info["channel_names_matched"] is True
-    assert report.info["channel_count_consistency"] == "PASSED (neural=2, NWB auxiliary=0)"
+    assert report.info["channel_count_consistency"] == "PASSED (neural=2, NWB non-neural electrodes=0)"
 
 
 def test_electrode_count_by_name_only_when_every_row_is_named(tmp_path):

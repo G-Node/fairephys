@@ -212,14 +212,14 @@ files:
     format: JSON
     content: Metadata of the matching video file, such as its frame rate and format
     device type: video camera
-    specification: "JSON{?, of the video of the camera {camera}}{?, recorded with {recording software}}"
+    specification: "JSON, video metadata{?; camera: {camera}}{?; recorded with {recording software}}"
   - pattern: "*_video.*"
     per suffix: true
     tree: "video recording of the session"
     format: "Video ({suffix})"
     content: Video recording of the session
     device type: video camera
-    specification: "Video file in the format of the camera{? {camera}} ({suffix}){?, recorded with {recording software}}"
+    specification: "{suffix} video{?, camera {camera}}{?, recorded with {recording software}}"
   - pattern: dataset_description.json
     tree: "name, BIDS version, licence, authors, funding and references of the dataset"
     format: JSON

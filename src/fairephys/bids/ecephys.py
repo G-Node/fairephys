@@ -22,8 +22,8 @@ def generate_electrodes_tsv(electrodes: list[dict], output_path: Path) -> Path:
     return _write_tsv(electrodes, columns, output_path)
 
 
-def generate_electrodes_json(output_path: Path) -> Path:
-    """Write electrodes.json sidecar with column definitions."""
+def generate_electrodes_json(output_path: Path) -> Path | None:
+    """Write electrodes.json sidecar with column definitions (none without any)."""
     return _write_column_sidecar("electrodes_tsv", output_path)
 
 
@@ -68,8 +68,8 @@ def generate_probes_json(probes: list[dict], output_path: Path, probes_dir: str 
     return output_path
 
 
-def generate_channels_json(output_path: Path) -> Path:
-    """Write channels.json sidecar with column definitions."""
+def generate_channels_json(output_path: Path) -> Path | None:
+    """Write channels.json sidecar with column definitions (none without any)."""
     return _write_column_sidecar("channels_tsv", output_path)
 
 
@@ -87,9 +87,9 @@ def generate_coordsystem_json(metadata: dict, output_path: Path) -> Path:
     return output_path
 
 
-def _write_column_sidecar(registry_key: str, output_path: Path) -> Path:
-    """Write JSON sidecar with column descriptions from registry ({} when it
-    describes none)."""
+def _write_column_sidecar(registry_key: str, output_path: Path) -> Path | None:
+    """Write JSON sidecar with column descriptions from registry; none (and
+    an earlier one removed) when it describes no column."""
     from .builder import load_registry
 
     sidecar = {}
@@ -97,6 +97,9 @@ def _write_column_sidecar(registry_key: str, output_path: Path) -> Path:
         if definition := _column_definition(spec):
             sidecar[col] = definition
 
+    if not sidecar:
+        output_path.unlink(missing_ok=True)
+        return None
     output_path.write_text(json.dumps(sidecar, indent=2))
     return output_path
 

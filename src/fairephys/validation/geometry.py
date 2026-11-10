@@ -79,11 +79,11 @@ def check_electrode_consistency(bids_tsv: Path, nwb_path: Path, report: Validati
         report.add_error(
             "Sanity",
             f"Neural channel count mismatch: BIDS neural={n_neural}, NWB neural={n_nwb_neural} "
-            f"(NWB total={len(nwb_df)}, NWB auxiliary={len(nwb_aux_only)})",
+            f"(NWB total={len(nwb_df)}, NWB non-neural electrodes={len(nwb_aux_only)})",
         )
     else:
         report.add_info("channel_count_consistency",
-                        f"PASSED (neural={n_neural}, NWB auxiliary={len(nwb_aux_only)})")
+                        f"PASSED (neural={n_neural}, NWB non-neural electrodes={len(nwb_aux_only)})")
 
     if invalid_types := set(bids_df["type"].unique()) - bids_channel_types():
         report.add_error("Sanity", f"Invalid BIDS channel types: {sorted(invalid_types)} "

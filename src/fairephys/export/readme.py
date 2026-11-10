@@ -628,9 +628,14 @@ def _data_records(doc: odml.Document, output_dir: Path) -> str:
           for row in files.values())]) if files else ""
 
     # How the data were converted and validated; the software versions only after
-    # a records statement (a dataset the pipeline did not convert has none)
+    # a records statement (a dataset the pipeline did not convert has none); the
+    # layout standard unless the version statement (Version Specifications) names
+    # the BIDS extension through its {bids extension} token
     statement = _records_statement(doc["Dataset"])
-    parts = [statement, statement and _curation_software(doc), _layout_standard(output_dir), tree, table]
+    project = subsection(doc["Dataset"], "Project")
+    version = str((project and prop(project, "version statement")) or "")
+    layout = "" if "{bids extension}" in version else _layout_standard(output_dir)
+    parts = [statement, statement and _curation_software(doc), layout, tree, table]
     return "## Data Records\n\n" + "\n\n".join(p for p in parts if p) + "\n"
 
 

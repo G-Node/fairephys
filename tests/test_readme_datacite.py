@@ -313,7 +313,8 @@ def test_datacite_files_next_to_the_record(make_doc, tmp_path):
 def test_header_line_and_tree_root(make_doc, curated):
     """Short name, version and repository under the title, each when filled; the tree root is the repository name, else
     "repository root"; probes/ shows the example session's folder and counts the others; the example session is
-    the one with the most file types; the video row names no camera without one."""
+    the one with the most file types; the video row names no camera without one; the layout standard in Data Records
+    unless the version statement names the BIDS extension."""
     (curated / "probes" / "sub-MonkeyA_ses-02").mkdir()
     text = odml_to_readme(make_doc(RICH), curated)
     assert "        ... (1 more session)\n        Utah.json [" in text
@@ -326,7 +327,10 @@ def test_header_line_and_tree_root(make_doc, curated):
     text = odml_to_readme(make_doc(), curated)
     assert text.startswith("# Test dataset\n\nShort name: test-ds\n\n## Authors")
     assert "```\nrepository root\n    metadata/" in text
-    assert "| Video file in the format of the camera (MTS) |" in text  # no camera in the metadata: as before
+    assert "| MTS video |" in text  # no camera in the metadata
+    assert "The data are organised following the BIDS extension proposal" in text  # no version statement gives it
+    named = make_doc(Dataset={"Project": {"version statement": "Organised following {bids extension}."}})
+    assert odml_to_readme(named, curated).count("BEP032 Microelectrode Electrophysiology, draft") == 1
 
 
 def test_file_descriptions_from_the_files_on_disk(make_doc, curated):
