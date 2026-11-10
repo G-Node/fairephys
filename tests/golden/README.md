@@ -73,7 +73,7 @@ Resting state in the dark.
 
 **State Annotation** (video annotation)
 
-The table lists the behavioural states of this annotation. For each state it gives the code used in the raw files, the label and a short description.
+**Table 1.** Behavioural states of this annotation: the code used in the raw files, the label and a short description.
 
 | Code | Label | Description |
 |------|-------|-------------|
@@ -84,7 +84,7 @@ The table lists the behavioural states of this annotation. For each state it giv
 
 2 recording sessions from 2024-03-15 to 2024-03-18.
 
-The table lists the recordings. For each it gives the session id, the date, the duration, the probes placed (brain region and hemisphere) and a short description.
+**Table 2.** The recordings: session id, date, duration, the probes placed (brain region and hemisphere) and a short description.
 
 | Session | Date | Duration | Probes | Description |
 |---------|------|----------|--------|-------------|
@@ -132,7 +132,7 @@ Test/
     participants.tsv [one row per subject]
 ```
 
-The table lists the file types of the dataset. For each it gives the format, the content, the specification the files follow and the software that wrote them.
+**Table 3.** The file types of the dataset: format, content, the specification the files follow and the software that wrote them.
 
 | File | Format | Content | Specification |
 |------|--------|---------|---------------|

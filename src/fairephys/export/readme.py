@@ -46,9 +46,21 @@ _MINUTES_PER_UNIT = {"millisecond": 1 / 60000, "second": 1 / 60, "minute": 1, "h
 # the property that details them
 _POSITIONING_FLAGS = [("head fixation", "head fixation method"), ("primate chair", None)]
 # What each column of the Recording Sessions table holds (its caption)
-_SESSION_COLUMNS = {"Session": "the session id", "Subject": "the subject id", "Task": "the task", "Date": "the date",
-                    "Duration": "the duration", "Probes": "the probes placed (brain region and hemisphere)",
+_SESSION_COLUMNS = {"Session": "session id", "Subject": "subject id", "Task": "task", "Date": "date",
+                    "Duration": "duration", "Probes": "the probes placed (brain region and hemisphere)",
                     "Description": "a short description"}
+
+# Table captions start with this mark; odml_to_readme numbers the tables in order of appearance ("**Table 1.**")
+_TABLE = "\x00TABLE\x00"
+
+
+def _number_tables(text: str) -> str:
+    """Replace each table mark by its number in order of appearance."""
+    n = 0
+    while _TABLE in text:
+        n += 1
+        text = text.replace(_TABLE, f"**Table {n}.**", 1)
+    return text
 
 
 def _count(n, noun: str) -> str:
@@ -452,8 +464,7 @@ def _states_table(states: list[dict], events_files: bool = False) -> str:
     held = {"Code": "the code used in the raw files",
             "Label": "the label used in the events files (column trial_type)" if events_files else "the label",
             "Description": "a short description"}
-    caption = ("The table lists the behavioural states of this annotation. For each state it gives "
-               f"{_prose_list(held[c] for c in columns)}.")
+    caption = f"{_TABLE} Behavioural states of this annotation: {_prose_list(held[c] for c in columns)}."
     rows = [caption, "", "| " + " | ".join(columns) + " |", "|" + "|".join("-" * (len(c) + 2) for c in columns) + "|"]
     rows += ["| " + " | ".join(str(s.get(c.lower(), "")).strip() for c in columns) + " |" for s in states]
     return "\n".join(rows)
@@ -555,7 +566,7 @@ def _methods_sessions(doc: odml.Document) -> str:
         "Description": prop(s, "description") or "",
     } for s in session_list]
     columns = [c for c in rows[0] if c == "Session" or any(_nonempty(r[c]) for r in rows)]
-    lines += [f"The table lists the recordings. For each it gives {_prose_list(_SESSION_COLUMNS[c] for c in columns)}.", ""]
+    lines += [f"{_TABLE} The recordings: {_prose_list(_SESSION_COLUMNS[c] for c in columns)}.", ""]
     lines.append("| " + " | ".join(columns) + " |")
     lines.append("|" + "|".join("-" * (len(c) + 2) for c in columns) + "|")
     lines += ["| " + " | ".join(str(r[c]) for c in columns) + " |" for r in rows]
@@ -622,8 +633,8 @@ def _data_records(doc: odml.Document, output_dir: Path) -> str:
     tree = "```\n" + "\n".join(_build_tree(output_dir, _repository_name(doc["Dataset"]), files)) + "\n```"
 
     table = "\n".join([
-        "The table lists the file types of the dataset. For each it gives the format, the content, "
-        "the specification the files follow and the software that wrote them.", "",
+        f"{_TABLE} The file types of the dataset: format, content, the specification the files follow "
+        "and the software that wrote them.", "",
         "| File | Format | Content | Specification |", "|------|--------|---------|---------------|",
         *(f"| `{row['pattern']}` | {row['format']} | {row['content']} | {row['specification']} |"
           for row in files.values())]) if files else ""
@@ -1024,7 +1035,7 @@ def odml_to_readme(doc: odml.Document, output_dir: Path) -> str:
         if text:
             parts.append(text)
 
-    return _first_mentions(doc, "\n".join(parts))
+    return _number_tables(_first_mentions(doc, "\n".join(parts)))
 
 
 def write_readme(doc: odml.Document, output_dir: Path) -> Path:
