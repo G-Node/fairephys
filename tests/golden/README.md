@@ -1,6 +1,6 @@
 # Test dataset
 
-Short name: test-ds | Version: 1.0.0 | Repository: https://gin.example/Org/Test
+Short Title: test-ds | version: 1.0.0
 
 ## Authors
 
@@ -73,7 +73,7 @@ Resting state in the dark.
 
 **State Annotation** (video annotation)
 
-The states this step annotates, one row each: the code in the raw files, the label and a description.
+**Table 1.** Behavioural states of this annotation: the code used in the raw files, the label and a short description.
 
 | Code | Label | Description |
 |------|-------|-------------|
@@ -84,7 +84,7 @@ The states this step annotates, one row each: the code in the raw files, the lab
 
 2 recording sessions from 2024-03-15 to 2024-03-18.
 
-One row per recording: session id, date, duration, the probes placed (with brain region and hemisphere) and a description.
+**Table 2.** The recordings: session id, date, duration, the probes placed (brain region and hemisphere) and a short description.
 
 | Session | Date | Duration | Probes | Description |
 |---------|------|----------|--------|-------------|
@@ -120,19 +120,19 @@ Test/
             beh/
                 sub-MonkeyA_ses-01_task-rest_video.MTS [video recording of the session]
             ecephys/
-                sub-MonkeyA_ses-01_task-rest_channels.tsv [the recorded channels, one row each]
+                sub-MonkeyA_ses-01_task-rest_channels.tsv [one row per recorded channel]
                 sub-MonkeyA_ses-01_task-rest_ecephys.nwb [continuous neural recording of the session with its electrodes, devices and subject metadata]
-                sub-MonkeyA_ses-01_task-rest_electrodes.tsv [the electrode contacts with their positions, one row each]
-                sub-MonkeyA_ses-01_task-rest_probes.tsv [the probes placed in the session, one row each]
+                sub-MonkeyA_ses-01_task-rest_electrodes.tsv [one row per electrode contact, with its position]
+                sub-MonkeyA_ses-01_task-rest_probes.tsv [one row per probe placed in the session]
                 sub-MonkeyA_ses-01_task-rest_recording-eye_physio.tsv.gz [continuous physiological signals of the session, one column per signal]
         ... (1 more session)
     LICENSE [licence of the dataset with its legal code]
     datacite.yml [citation metadata for the DOI registration on GIN]
     dataset_description.json [name, BIDS version, licence, authors, funding and references of the dataset]
-    participants.tsv [the subjects, one row each]
+    participants.tsv [one row per subject]
 ```
 
-One row per file type: its format, what the files hold, and the format specification with the software that wrote them.
+**Table 3.** The file types of the dataset: format, content, the specification the files follow and the software that wrote them.
 
 | File | Format | Content | Specification |
 |------|--------|---------|---------------|
