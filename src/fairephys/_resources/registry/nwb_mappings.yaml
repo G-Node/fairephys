@@ -182,11 +182,16 @@ Ecephys:
 
   ElectricalSeries:
     mode: single
+    source_section: Hardware
     fields:
       name:
         default: "ElectricalSeries"
       description:
         default: "Raw acquisition traces"
+      # the Recording System's analog filters (Hardware Filters), in the
+      # sentence of the data descriptor; left out without filters
+      filtering:
+        extract: hardware_filters
 
   Electrodes:
     mode: from_registry

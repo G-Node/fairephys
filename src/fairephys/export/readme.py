@@ -265,6 +265,28 @@ def _nested_bullets(sec: odml.Section) -> list[str]:
             for p in sec.properties if p.values and _prop_str(sec, p.name)]
 
 
+def hardware_filters_text(section: odml.Section) -> str | None:
+    """The Hardware Filters listed by `section` (Hardware, or an auxiliary
+    device) as one sentence, "Highpass at 0.3 Hz (Butterworth, order 1);
+    ...", shared by the data descriptor and the NWB ElectricalSeries
+    filtering; None without filters."""
+    filt_sec = subsection(section, "Hardware Filters")
+    if filt_sec is None:
+        return None
+    filt_container = subsection(filt_sec, "Filters")
+    parts = []
+    for f in (filt_container.sections if filt_container else filt_sec.sections):
+        # name, else type; a filter with neither and no cutoff is left out
+        fname = str(prop(f, "name") or prop(f, "type") or "")
+        cutoff = _prop_str(f, "cutoff")
+        if not (fname or cutoff):
+            continue
+        desc = f"{fname} at {cutoff}" if fname and cutoff else fname or f"Cutoff {cutoff}"
+        order = f"order {prop(f, 'order')}" if prop(f, "order") else ""
+        parts.append(bracketed(desc, ", ".join(filter(None, [str(prop(f, "implementation") or ""), order]))))
+    return "; ".join(parts) or None
+
+
 def _methods_hardware(doc: odml.Document) -> str:
     """Format recording setup subsection for Materials and Methods."""
     hw = subsection(doc, "Hardware")
@@ -297,25 +319,8 @@ def _methods_hardware(doc: odml.Document) -> str:
                 sw_str += f" {sw_ver}"
             lines.append(f"- **Acquisition software:** {sw_str}")
 
-    # Hardware filters
-    filt_sec = subsection(hw, "Hardware Filters")
-    if filt_sec:
-        filt_container = subsection(filt_sec, "Filters")
-        filt_list = (filt_container.sections if filt_container
-                     else filt_sec.sections)
-        if filt_list:
-            filt_parts = []
-            for f in filt_list:
-                # name, else type; a filter with neither and no cutoff is left out
-                fname = str(prop(f, "name") or prop(f, "type") or "")
-                cutoff = _prop_str(f, "cutoff")
-                if not (fname or cutoff):
-                    continue
-                desc = f"{fname} at {cutoff}" if fname and cutoff else fname or f"Cutoff {cutoff}"
-                filt_parts.append(bracketed(desc, str(prop(f, "implementation") or "")))
-            if filt_parts:
-                lines.append(
-                    f"- **Hardware filters:** {'; '.join(filt_parts)}")
+    if filters := hardware_filters_text(hw):
+        lines.append(f"- **Hardware filters:** {filters}")
 
     # Probes
     probes_sec = subsection(hw, "Probes")

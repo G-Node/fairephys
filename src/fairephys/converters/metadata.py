@@ -29,6 +29,7 @@ from ..metadata.identifiers import related_publications
 from ..metadata.sessions import start_datetime
 from ..metadata.subjects import session_subject
 from ..bids.builder import load_registry
+from ..export.readme import hardware_filters_text
 from ..odml import prop, props, section_at
 from ..placements import matched_probes, placement_position_mm, session_probe_ids
 
@@ -311,6 +312,11 @@ def _extract_placement_position(data: dict, ctx: dict = None, placement: dict = 
     return placement_position_mm(placement, (ctx or {}).get("run")) if placement else None
 
 
+def _extract_hardware_filters(data: dict, section: odml.Section = None, **_) -> str | None:
+    """The analog filters of the source section, as the data descriptor states them."""
+    return hardware_filters_text(section) if section is not None else None
+
+
 _ECEPHYS_EXTRACTORS = {
     "device_description": _extract_device_description,
     "probe_description": _extract_probe_description,
@@ -318,16 +324,17 @@ _ECEPHYS_EXTRACTORS = {
     "electrode_group_description": _extract_electrode_group_description,
     "placement_location": _extract_placement_location,
     "placement_position": _extract_placement_position,
+    "hardware_filters": _extract_hardware_filters,
 }
 
 
 def _ecephys_resolve_field(
-    fspec: dict, data: dict, ctx: dict = None, idx: int = 0, placement: dict = None,
+    fspec: dict, data: dict, ctx: dict = None, idx: int = 0, placement: dict = None, section: odml.Section = None,
 ) -> Any:
     """Resolve a single ecephys field from its spec."""
     if extract_name := fspec.get("extract"):
         fn = _ECEPHYS_EXTRACTORS.get(extract_name)
-        return fn(data, ctx=ctx, idx=idx, placement=placement, spec=fspec) if fn else None
+        return fn(data, ctx=ctx, idx=idx, placement=placement, spec=fspec, section=section) if fn else None
     for key in fspec.get("keys", []):
         if (val := data.get(key)) is not None:
             return val
@@ -341,7 +348,7 @@ def _build_ecephys_single(doc: odml.Document, spec: dict) -> dict:
     data = section_to_dict(sec) if sec is not None else {}
     result = {}
     for field, fspec in spec.get("fields", {}).items():
-        val = _require(_ecephys_resolve_field(fspec, data), field, fspec, source_path or "Ecephys")
+        val = _require(_ecephys_resolve_field(fspec, data, section=sec), field, fspec, source_path or "Ecephys")
         if val is not None:
             result[field] = val
     return result

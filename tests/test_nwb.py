@@ -220,7 +220,8 @@ class MockConverter(EphysConverter):
 @pytest.fixture
 def converted(make_doc, tmp_path):
     """A compiled session of two probes on 5 of 7 channels: its probe group, BIDS files and a test NWB."""
-    doc = make_doc(Hardware={"Probes": [
+    doc = make_doc(Hardware={"Hardware Filters": {"Filters": [
+        {"name": "Highpass", "cutoff": "0.3 hertz", "order": 1, "implementation": "Butterworth"}]}, "Probes": [
         {"name": "P", "manufacturer": "Plexon", "model": "S", "probe type": "silicon-probe", "number of contacts": 3,
          "contact pitch": 100},
         {"name": "Q", "probe type": "silicon-probe", "number of contacts": 2, "contact pitch": 50}]}, Sessions=[
@@ -251,11 +252,12 @@ def converted(make_doc, tmp_path):
 
 
 def test_conversion_end_to_end(converted):
-    """The test NWB holds 100 samples from the first sample on, every device with its model, unplaced channels,
-    the hook's trials inside the test file's span."""
+    """The test NWB holds 100 samples from the first sample on, the hardware filters, every device with its model,
+    unplaced channels, the hook's trials inside the test file's span."""
     with NWBHDF5IO(str(converted["nwb"]), "r") as io:
         nwb = io.read()
         assert nwb.acquisition["ElectricalSeries"].data.shape == (100, 7)
+        assert nwb.acquisition["ElectricalSeries"].filtering == "Highpass at 0.3 Hz (Butterworth, order 1)"
         assert nwb.session_start_time == datetime(2024, 1, 1, 9, 59, 59, 750000, tzinfo=timezone.utc)
         assert nwb.trials.to_dataframe()["condition"].tolist() == [1, 2]
         assert (set(nwb.devices), set(nwb.device_models)) == ({"MySystem", "P", "Q"}, {"Cerebus", "S"})
