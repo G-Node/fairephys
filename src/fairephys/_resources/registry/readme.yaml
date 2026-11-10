@@ -71,7 +71,7 @@ files:
     specification: "BIDS {bids version}, BEP032 draft"
     software: [fairephys]
   - pattern: "ecephys/*_channels.tsv"
-    tree: "the recorded channels, one row each"
+    tree: "one row per recorded channel"
     format: TSV
     rows: One row per recorded channel
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
@@ -86,7 +86,7 @@ files:
     specification: "BIDS {bids version}, BEP032 draft"
     software: [fairephys]
   - pattern: "*_electrodes.tsv"
-    tree: "the electrode contacts with their positions, one row each"
+    tree: "one row per electrode contact, with its position"
     format: TSV
     rows: One row per electrode contact
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
@@ -101,7 +101,7 @@ files:
     specification: "BIDS {bids version}, BEP032 draft"
     software: [fairephys]
   - pattern: "*_probes.tsv"
-    tree: "the probes placed in the session, one row each"
+    tree: "one row per probe placed in the session"
     format: TSV
     rows: One row per probe placed in the session
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
@@ -116,7 +116,7 @@ files:
     specification: "BIDS {bids version}, BEP032 draft"
     software: [fairephys]
   - pattern: "*_events.tsv"
-    tree: "events and annotated intervals of the session, one row each"
+    tree: "one row per event or annotated interval of the session"
     format: TSV
     rows: One row per event or annotated interval
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
@@ -163,7 +163,7 @@ files:
     specification: "BIDS {bids version}"
     software: [fairephys]
   - pattern: "motion/*_channels.tsv"
-    tree: "the motion tracking channels, one row each"
+    tree: "one row per motion tracking channel"
     format: TSV
     rows: One row per motion tracking channel
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
@@ -186,14 +186,14 @@ files:
     specification: "BIDS {bids version}"
     software: [fairephys]
   - pattern: "emg/*_channels.tsv"
-    tree: "the EMG channels, one row each"
+    tree: "one row per EMG channel"
     format: TSV
     rows: One row per EMG channel
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
     specification: "BIDS {bids version}"
     software: [fairephys]
   - pattern: "*_channels.tsv"
-    tree: "the channels, one row each"
+    tree: "one row per channel"
     format: TSV
     rows: One row per channel
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
@@ -229,7 +229,7 @@ files:
     specification: "BIDS {bids version}"
     software: [fairephys]
   - pattern: participants.tsv
-    tree: "the subjects, one row each"
+    tree: "one row per subject"
     format: TSV
     rows: One row per subject
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
@@ -244,7 +244,7 @@ files:
     specification: "BIDS {bids version}"
     software: [fairephys]
   - pattern: "*_scans.tsv"
-    tree: "the data files of the session, one row each"
+    tree: "one row per data file of the session"
     format: TSV
     rows: One row per data file of the session
     content: "{rows}{?, with the columns {columns}}{?; some files also: {more columns}}"
