@@ -4,7 +4,7 @@ from urllib.error import HTTPError, URLError
 
 import numpy as np
 import pytest
-from probeinterface import generate_linear_probe
+from probeinterface import generate_linear_probe, read_probeinterface
 from spikeinterface.core import NumpyRecording
 
 from conftest import linear_probe, probe_group, sessions
@@ -130,7 +130,8 @@ def test_channel_group_names_unplaced_and_unconnected(placed):
 
 
 def test_session_probe_group_wires_each_placement(placed):
-    """One probe per placement on its channels (else the block after the previous), with the device's identity."""
+    """One probe per placement on its channels (else the block after the previous), with the device's identity;
+    contacts without a documented size are marked as ProbeInterface's default."""
     doc = placed({"01": [{"probe": "S-Probe A", "brain region": "PUL", "hemisphere": "left", "channels": "5-8"},
                          {"probe": "V-Probe", "brain region": "MD"}]})
     first, second = build_session_probe_group(doc, sessions(doc)[0]).probes
@@ -140,6 +141,7 @@ def test_session_probe_group_wires_each_placement(placed):
     assert {k: first.annotations[k] for k in ("probe_id", "brain_region", "hemisphere", "contact_size")} == {
         "probe_id": "S-Probe01", "brain_region": "PUL", "hemisphere": "left", "contact_size": "12 micrometer"}
     assert second.contact_positions[:, 1].tolist() == [0.0, 100.0]  # 0.1 millimeter pitch
+    assert second.annotations["contact_shape_source"] == "ProbeInterface default, contact size not documented"
 
     short = placed({"01": [{"probe": "S-Probe A", "brain region": "VPL", "channels": "1-2"}]})
     with pytest.raises(ValueError, match="channels '1-2' give 2 channels for 4 contacts"):
@@ -147,17 +149,34 @@ def test_session_probe_group_wires_each_placement(placed):
 
 
 def test_parametric_contact_ids_and_order():
-    """Zero-padded contact ids in contact order from the tip, or from the top with 'first contact: top'."""
+    """Zero-padded contact ids in contact order from the tip, or from the top with 'first contact: top'; no
+    outline."""
     assert contact_ids(3) == ["01", "02", "03"] and contact_ids(128)[::127] == ["001", "128"]
     cfg = {"name": "LMA", "number of contacts": 3, "contact pitch": 200}
     assert _create_probe(cfg).contact_positions[:, 1].tolist() == [0.0, 200.0, 400.0]
     top = _create_probe({**cfg, "first contact": "top"})
     assert list(top.contact_ids) == ["01", "02", "03"]
     assert top.contact_positions[:, 1].tolist() == [400.0, 200.0, 0.0]
-    assert min(y for _, y in top.probe_planar_contour) < 0  # the tip stays at the bottom
+    assert top.probe_planar_contour is None  # no metadata states where the tip is
     matrix = _create_probe({"name": "U", "number of contacts": 48, "contact pitch": 400,
                             "contact arrangement": "matrix", "number of columns": 5, "number of rows": 10})
     assert matrix.get_contact_count() == 48 and len(set(matrix.contact_positions[:, 0])) == 5
+
+
+def test_stated_contact_size_and_shape():
+    """'contact size' is a circle's diameter or a square's side; an unmapped shape draws the default circle, marked;
+    a size that is no length is an error."""
+    cfg = {"name": "P", "number of contacts": 2, "contact pitch": 100, "contact size": "15 micrometer"}
+    circle = _create_probe({**cfg, "contact shape": "circular"})
+    assert (list(circle.contact_shapes), circle.contact_shape_params[0]) == (["circle"] * 2, {"radius": 7.5})
+    assert "contact_shape_source" not in circle.annotations
+    square = _create_probe({**cfg, "contact shape": "square"})
+    assert (square.contact_shapes[0], square.contact_shape_params[0]) == ("square", {"width": 15.0})
+    cone = _create_probe({**cfg, "contact shape": "conical"})
+    assert cone.annotations["contact_shape_source"] == (
+        'ProbeInterface default shape (circle), contact shape "conical" not drawn')
+    with pytest.raises(ValueError, match="Probe 'P': contact size 'wide' is no length"):
+        _create_probe({**cfg, "contact size": "wide"})
 
 
 def test_generated_probe_takes_the_electrode_identifiers_as_contact_ids(placed):
@@ -292,6 +311,16 @@ def test_positions_are_local_to_each_probe(monkeypatch, placed):
     stranger = build_probe_group([{"name": "Z", "number of contacts": 1, "contact pitch": 0}])
     with pytest.raises(ValueError, match=r"Probe 'Z' is no Hardware/Probes entry \(NP, V-Probe\)"):
         enrich_odml_positions(doc, stranger)
+
+
+def test_device_files_in_the_probes_own_frame(placed, tmp_path):
+    """Each device file holds its probe at x 0 as in BIDS and NWB; probe_group.json keeps the spaced layout."""
+    doc = placed({"01": [{"probe": "S-Probe A"}, {"probe": "V-Probe"}]})
+    path = write_session_probe_group(doc, sessions(doc)[0], tmp_path)
+    device, = read_probeinterface(str(tmp_path / "V-Probe.json")).probes
+    assert device.contact_positions[:, 0].tolist() == [0.0, 0.0] and "x_offset" not in device.annotations
+    assert list(device.device_channel_indices) == [4, 5]
+    assert read_probeinterface(str(path)).probes[1].contact_positions[0, 0] == 800.0
 
 
 def test_write_session_probe_group_empties_its_folder(placed, tmp_path):

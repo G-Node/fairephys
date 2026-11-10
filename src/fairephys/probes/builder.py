@@ -34,19 +34,47 @@ YAML_POSITIONS = "the YAML's contact positions"
 
 # Micrometer per pitch unit
 _UM_PER_UNIT = {"um": 1.0, "micrometer": 1.0, "mm": 1000.0, "millimeter": 1000.0}
+# ProbeInterface contact shape of a 'contact shape' word; another word draws the default circle
+_CONTACT_SHAPES = {"circle": "circle", "circular": "circle", "round": "circle", "square": "square"}
 
 
-def parse_pitch(value, unit: str | None = None) -> float:
-    """The contact pitch in micrometer: a number in `unit` (micrometer when
-    none), or text such as '200 um', '0.2 millimeter' or '200'. 0.0 for an
-    empty value or 'n/a' (a single-contact probe has no pitch)."""
+def parse_pitch(value, unit: str | None = None, field: str = "contact pitch") -> float:
+    """The contact pitch (or another length `field`) in micrometer: a number
+    in `unit` (micrometer when none), or text such as '200 um', '0.2
+    millimeter' or '200'. 0.0 for an empty value or 'n/a' (a single-contact
+    probe has no pitch)."""
     if isinstance(value, str):
         value, unit = parse_value(value.strip())
         if str(value).lower() in ("", "n/a", "none", "na"):
             return 0.0
     if unit and unit not in _UM_PER_UNIT:
-        raise ValueError(f"contact pitch unit {unit!r}: one of {', '.join(_UM_PER_UNIT)}")
+        raise ValueError(f"{field} unit {unit!r}: one of {', '.join(_UM_PER_UNIT)}")
     return float(value) * _UM_PER_UNIT[unit or "micrometer"]
+
+
+def _contact_shape(cfg: dict, units: dict, label: str) -> tuple[dict, str | None]:
+    """The contacts' shape of a generated or positioned probe as set_contacts
+    arguments: 'contact size' is the diameter of a circle and the side of a
+    square, 'contact shape' a word of _CONTACT_SHAPES (another word, or none,
+    keeps the circle); {} without a size (ProbeInterface's default circle).
+    With it the contact_shape_source annotation when a default is drawn
+    (None when size and shape are the entry's). A size that is no length is
+    an error."""
+    word = str(cfg.get("contact shape") or "").strip()
+    shape = _CONTACT_SHAPES.get(word.lower())
+    try:
+        size = parse_pitch(cfg.get("contact size") or "", units.get("contact size"), "contact size")
+    except ValueError as exc:
+        raise ValueError(f"{label}: contact size {cfg.get('contact size')!r} is no length: {exc}") from exc
+    not_drawn = f'contact shape "{word}" not drawn'
+    if not size:
+        return {}, "ProbeInterface default, contact size not documented" + (
+            f"; {not_drawn}" if word and shape != "circle" else "")
+    params = {"width": size} if shape == "square" else {"radius": size / 2}
+    if shape:
+        return {"shapes": shape, "shape_params": params}, None
+    return {"shapes": "circle", "shape_params": params}, "ProbeInterface default shape (circle), " + (
+        not_drawn if word else "contact shape not documented")
 
 
 def contact_ids(n: int) -> list[str]:
@@ -103,7 +131,7 @@ def _library_probe(cfg: dict, label: str):
     return probe
 
 
-def _parametric_probe(cfg: dict, label: str, units: dict):
+def _parametric_probe(cfg: dict, label: str, units: dict, shape: dict):
     """A probe generated from pitch and arrangement (linear, or a matrix of
     'number of columns' by 'number of rows', else as many rows as fit, its
     'column spacing' and 'row spacing' where they differ from the pitch).
@@ -118,14 +146,10 @@ def _parametric_probe(cfg: dict, label: str, units: dict):
         if cfg.get("row spacing") or cfg.get("column spacing"):
             raise ValueError(f"{label}: 'row spacing' and 'column spacing' are for matrix probes; "
                              "a linear probe's spacing is its 'contact pitch'")
-        probe = generate_linear_probe(num_elec=n_contacts, ypitch=pitch)
-        if first == "top":
-            probe.set_contacts(positions=probe.contact_positions[::-1], shapes=probe.contact_shapes[::-1],
-                               shape_params=list(probe.contact_shape_params[::-1]),
-                               plane_axes=probe.contact_plane_axes[::-1])
-        elif first != "tip":
+        if first not in ("tip", "top"):
             raise ValueError(f"{label}: first contact {first!r} is neither 'tip' nor 'top'")
-        return probe
+        order = slice(None, None, -1) if first == "top" else slice(None)
+        return _contacts_only(generate_linear_probe(num_elec=n_contacts, ypitch=pitch), order, shape)
     if cfg.get("first contact"):
         raise ValueError(f"{label}: 'first contact' applies to linear probes only")
     n_cols = cfg.get("number of columns")
@@ -138,12 +162,22 @@ def _parametric_probe(cfg: dict, label: str, units: dict):
     ypitch = parse_pitch(cfg["row spacing"], units.get("row spacing")) if cfg.get("row spacing") else pitch
     probe = generate_multi_columns_probe(num_columns=n_cols, num_contact_per_column=n_rows,
                                          xpitch=xpitch, ypitch=ypitch)
-    if n_contacts < n_rows * n_cols:
-        probe = probe.get_slice(np.arange(n_contacts))
+    return _contacts_only(probe, slice(n_contacts), shape)
+
+
+def _contacts_only(generated: Probe, order: slice, shape: dict) -> Probe:
+    """The contacts of a generated probe in `order` with the `shape`
+    (_contact_shape; the generator's default when empty), without the
+    outline the generator draws at a fixed margin around them: no metadata
+    states where the tip is."""
+    probe = Probe(ndim=2, si_units="um")
+    default = {"shapes": generated.contact_shapes[order], "shape_params": list(generated.contact_shape_params[order])}
+    probe.set_contacts(positions=generated.contact_positions[order], plane_axes=generated.contact_plane_axes[order],
+                       **(shape or default))
     return probe
 
 
-def _positioned_probe(cfg: dict, label: str):
+def _positioned_probe(cfg: dict, label: str, shape: dict):
     """A probe at the entry's 'contact positions' (x and y in micrometer of
     each of its 'contact ids'), None when the entry gives none."""
     if not (positions := cfg.get("contact positions")):
@@ -155,7 +189,7 @@ def _positioned_probe(cfg: dict, label: str):
     if cfg.get("first contact"):
         raise ValueError(f"{label}: contact positions place every contact; 'first contact' is for generated probes")
     probe = Probe(ndim=2, si_units="um")
-    probe.set_contacts(positions=np.column_stack([xs, ys]).astype(float))
+    probe.set_contacts(positions=np.column_stack([xs, ys]).astype(float), **shape)
     probe.set_contact_ids([str(i) for i in ids])
     probe.annotate(geometry_origin=YAML_POSITIONS)
     return probe
@@ -174,19 +208,22 @@ def _create_probe(cfg: dict, units: dict | None = None):
     micrometer when absent."""
     label = f"Probe {cfg.get('name')!r}"
     ids = [str(i) for i in _as_list(cfg.get("electrode identifiers"))]
-    if (probe := _positioned_probe(cfg, label)) is not None:
+    shape, source = _contact_shape(cfg, units or {}, label)
+    if (probe := _positioned_probe(cfg, label, shape)) is not None:
         if ids and ids != list(probe.contact_ids):
             raise ValueError(f"{label}: 'electrode identifiers' differ from the contact ids of 'contact positions'")
+    elif (probe := _library_probe(cfg, label)) is not None:
+        if cfg.get("first contact"):
+            raise ValueError(f"{label}: a library probe keeps the library's contact order; "
+                             "'first contact' is for generated probes")
         return probe
-    probe = _library_probe(cfg, label)
-    if probe is not None and cfg.get("first contact"):
-        raise ValueError(f"{label}: a library probe keeps the library's contact order; "
-                         "'first contact' is for generated probes")
-    if probe is None:
-        probe = _parametric_probe(cfg, label, units or {})
+    else:
+        probe = _parametric_probe(cfg, label, units or {}, shape)
         if ids and len(ids) != probe.get_contact_count():
             raise ValueError(f"{label}: {len(ids)} electrode identifiers for {probe.get_contact_count()} contacts")
         probe.set_contact_ids(ids or contact_ids(probe.get_contact_count()))
+    if source:
+        probe.annotate(contact_shape_source=source)
     return probe
 
 
@@ -407,11 +444,22 @@ def save_probe_group(group: ProbeGroup, output_dir: Path, title: str = "Probe Gr
     for probe in group.probes:
         # Use probe_id annotation for consistent lowercase naming (probe01, probe02)
         probe_id = probe.annotations.get("probe_id", probe.name.replace(" ", "_"))
-        write_probeinterface(output_dir / f"{probe_id}.json", probe)
-        _plot_probe(probe, output_dir / f"{probe_id}.png")
+        device = _own_frame(probe)
+        write_probeinterface(output_dir / f"{probe_id}.json", device)
+        _plot_probe(device, output_dir / f"{probe_id}.png")
 
     write_probeinterface(output_dir / "probe_group.json", group)
     _plot_group(group, output_dir / "probe_group.png", title)
+
+
+def _own_frame(probe):
+    """A copy of a probe of the group in its own coordinates, as in BIDS and
+    NWB: its x_offset subtracted and the annotation removed, the wiring kept."""
+    device = probe.copy()
+    device.move([-float(device.annotations.pop("x_offset", 0.0)), 0])
+    if probe.device_channel_indices is not None:
+        device.set_device_channel_indices(probe.device_channel_indices)
+    return device
 
 
 def write_session_probe_group(doc, session, output_dir: Path, title: str = "Probe Group") -> Path:
