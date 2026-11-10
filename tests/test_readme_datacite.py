@@ -311,7 +311,7 @@ def test_datacite_files_next_to_the_record(make_doc, tmp_path):
 
 
 def test_header_line_and_tree_root(make_doc, curated):
-    """Short name, version and repository under the title, each when filled; the tree root is the repository name, else
+    """Short title and version under the title, each when filled; the tree root is the repository name, else
     "repository root"; probes/ shows the example session's folder and counts the others; the example session is
     the one with the most file types; the video row names no camera without one; the layout standard in Data Records
     unless the version statement names the BIDS extension."""
@@ -321,11 +321,10 @@ def test_header_line_and_tree_root(make_doc, curated):
     for name in ("events.tsv", "events.json", "recording-cardiac_physio.json"):  # 8 file types, ses-01 7
         (curated / "sub-MonkeyA" / "ses-02" / "ecephys" / f"sub-MonkeyA_ses-02_task-rest_{name}").write_text("{}")
     assert "    sub-MonkeyA/\n        ses-02/\n" in odml_to_readme(make_doc(RICH), curated)
-    assert text.startswith("# Test dataset\n\nShort name: test-ds | Version: 1.0.0 | Repository: "
-                           "https://gin.example/Org/Test\n\n## Authors")
+    assert text.startswith("# Test dataset\n\nShort Title: test-ds | version: 1.0.0\n\n## Authors")
     assert "```\nTest/\n    metadata/" in text
     text = odml_to_readme(make_doc(), curated)
-    assert text.startswith("# Test dataset\n\nShort name: test-ds\n\n## Authors")
+    assert text.startswith("# Test dataset\n\nShort Title: test-ds\n\n## Authors")
     assert "```\nrepository root\n    metadata/" in text
     assert "| MTS video |" in text  # no camera in the metadata
     assert "The data are organised following the BIDS extension proposal" in text  # no version statement gives it

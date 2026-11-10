@@ -980,10 +980,9 @@ def odml_to_readme(doc: odml.Document, output_dir: Path) -> str:
         raise ValueError("Dataset section not found in odML document")
 
     title = prop(ds, "full name") or "Dataset"
-    # short name, version and repository under the title, each when filled (EBRAINS descriptor template)
+    # short title and version under the title, each when filled (EBRAINS descriptor template)
     header = " | ".join(f"{label}: {value}" for label, value in (
-        ("Short name", prop(ds, "short name")), ("Version", prop(ds, "version identifier")),
-        ("Repository", prop(ds, "repository url"))) if _nonempty(value))
+        ("Short Title", prop(ds, "short name")), ("version", prop(ds, "version identifier"))) if _nonempty(value))
 
     # Assemble sections, skipping empty ones
     parts = [f"# {title}\n"] + ([f"{header}\n"] if header else [])

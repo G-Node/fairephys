@@ -1,6 +1,6 @@
 # Test dataset
 
-Short name: test-ds | Version: 1.0.0 | Repository: https://gin.example/Org/Test
+Short Title: test-ds | version: 1.0.0
 
 ## Authors
 
