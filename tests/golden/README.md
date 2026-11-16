@@ -99,11 +99,11 @@ The data are shared under the [CC BY 4.0](https://creativecommons.org/licenses/b
 
 ## Data Records
 
-The data are organised following the BIDS extension proposal BEP032 Microelectrode Electrophysiology, draft (bids-specification PR #2307 at commit 508cfc7b), which builds on BIDS 1.11.2 and is not yet part of the BIDS specification. Beyond BIDS, the layout holds the metadata folder with the open metadata Markup Language (odML) record and the openMINDS metadata; the file table below names every file type.
+The data are organised following the BIDS extension proposal BEP032 Microelectrode Electrophysiology ([bids-specification pull request #2307](https://github.com/bids-standard/bids-specification/pull/2307), [preview](https://bids-specification--2307.org.readthedocs.build/en/2307/)), which builds on BIDS 1.11.2 and is not yet part of the BIDS specification. Beyond BIDS, the layout holds the metadata folder with the open metadata Markup Language (odML) record and the openMINDS metadata; the file table below names every file type.
 
 The recordings, provided as Blackrock NSx (.ns5) and Video (.MTS), were converted.
 
-Validation: [BIDS validator](https://github.com/bids-standard/bids-validator) 2.2.6 with the BEP032 schema (commit 508cfc7b) and [NWB Inspector](https://nwbinspector.readthedocs.io/) 0.7.2. Conversion: fairephys 0.1.0 (commit abc1234, with uncommitted changes) and [NeuroConv](https://neuroconv.readthedocs.io/) 0.10.2.
+Validation: [BIDS validator](https://github.com/bids-standard/bids-validator) 2.2.6 with the BEP032 schema (commit 508cfc7b) and [NWB Inspector](https://nwbinspector.readthedocs.io/) 0.7.2. Conversion: fairephys 0.1.0 and [NeuroConv](https://neuroconv.readthedocs.io/) 0.10.2.
 
 ```
 Test/

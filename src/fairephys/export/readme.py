@@ -668,8 +668,9 @@ def _curation_software(doc: odml.Document) -> str:
     """Curation software versions from the odML 'Curation Software' section, one
     sentence per purpose: "Validation: BIDS validator <version> with the BEP032
     schema (commit <commit>), NWB Inspector <version> and ... Conversion:
-    fairephys <version> (commit <commit>), ..."; ", with uncommitted changes"
-    follows the commit of a source that had them."""
+    fairephys <version>, ...". The source commit of a tool and whether it had
+    uncommitted changes stay in the odML record, not in the descriptor; the
+    schema commit names the specification state and is kept."""
     tools = subsection(doc, CURATION_SOFTWARE)
     by_purpose: dict[str, list[str]] = {}
     for tool in tools.sections if tools else []:
@@ -677,9 +678,6 @@ def _curation_software(doc: odml.Document) -> str:
         if not (_nonempty(name) and _nonempty(version)):
             continue
         text = f"{name} {version}"
-        if commit := prop(tool, "commit"):
-            changes = ", with uncommitted changes" if prop(tool, "uncommitted changes") is True else ""
-            text += f" (commit {commit}{changes})"
         if schema := prop(tool, "schema"):
             commit = prop(tool, "schema commit")
             text += f" with the {schema} schema" + (f" (commit {commit})" if commit else "")
