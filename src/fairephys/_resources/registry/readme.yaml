@@ -290,8 +290,8 @@ files:
       openMINDS metadata of the dataset for the EBRAINS Knowledge Graph,
       derived from the odML record
     stale content: >-
-      openMINDS collection: not built in this run (no KG token); the file of
-      {built} predates this odML record
+      openMINDS metadata of the dataset for the EBRAINS Knowledge Graph, from
+      an earlier state of the odML record (built on {built})
   - pattern: "{metadata dir}/*.instances.yaml"
     tree: "openMINDS terms of the controlled vocabulary values in the odML record"
     format: YAML

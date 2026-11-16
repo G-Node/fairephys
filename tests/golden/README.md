@@ -99,7 +99,7 @@ The data are shared under the [CC BY 4.0](https://creativecommons.org/licenses/b
 
 ## Data Records
 
-The data are organised following the BIDS extension proposal BEP032 Microelectrode Electrophysiology, draft (bids-specification PR #2307 at commit 508cfc7b), which builds on BIDS 1.11.2 and is not yet part of the BIDS specification. Beyond BIDS, the layout holds the NWB recordings, the probe geometry files in probes/ and the metadata folder with the open metadata Markup Language (odML) record and the openMINDS metadata; the file table below names every file type.
+The data are organised following the BIDS extension proposal BEP032 Microelectrode Electrophysiology, draft (bids-specification PR #2307 at commit 508cfc7b), which builds on BIDS 1.11.2 and is not yet part of the BIDS specification. Beyond BIDS, the layout holds the metadata folder with the open metadata Markup Language (odML) record and the openMINDS metadata; the file table below names every file type.
 
 The recordings, provided as Blackrock NSx (.ns5) and Video (.MTS), were converted.
 
@@ -147,10 +147,6 @@ Test/
 | `probes/*.json` | JSON ([ProbeInterface](https://probeinterface.readthedocs.io/)) | Contact geometry of each device: contact positions and shapes and the wiring of the contacts to the recording channels |
 | `probes/sub-*_ses-*/*.json` | JSON (ProbeInterface) | Contact geometry of the devices placed in the session, one file per device and probe_group.json for all: contact positions and shapes and the wiring of the contacts to the recording channels |
 | `metadata/*.instances.yaml` | YAML | openMINDS terms of the controlled vocabulary values in the odML record |
-
-## How to Cite
-
-Doe, J. & Lee, B. Test dataset, version 1.0.0. DOI to be assigned at publication on GIN (2026).
 
 ## Acknowledgements
 

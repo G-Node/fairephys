@@ -121,24 +121,23 @@ def test_readme_golden(frozen, make_doc, curated, golden):
 
 
 def test_stale_openminds_collection_is_not_this_runs_output(frozen, make_doc, curated):
-    """A JSON-LD older than the odML (--all without a KG token) is listed as not built in this run, not as derived."""
+    """A JSON-LD older than the odML (--all without a KG token) is said to come from an earlier state of the record, with its build date."""
     metadata = curated / "metadata"
     collection = metadata / "test-ds.openminds.jsonld"
     collection.write_text("{}")
     os.utime(collection, (1_700_000_000, 1_700_000_000))  # 2023-11-14
     (metadata / "test-ds.odml.xml").write_text("<odML/>")
     text = odml_to_readme(make_doc(RICH), curated)
-    assert "openMINDS collection: not built in this run (no KG token); the file of 2023-11-14 predates this odML" in text
+    assert "from an earlier state of the odML record (built on 2023-11-14)" in text
     assert "derived from the odML record" not in text
     os.utime(collection, None)  # rebuilt after the odML: this run's output
     assert "derived from the odML record" in odml_to_readme(make_doc(RICH), curated)
 
 
 def test_sections_without_data_are_left_out(tmp_path):
-    """A dataset with a title alone gives the title and its citation, no empty sections."""
+    """A dataset with a title alone gives the title, no empty sections."""
     doc = compile_to_odml({"Dataset": {"full name": "T"}})
-    assert odml_to_readme(doc, tmp_path / "missing") == \
-        f"# T\n\n## How to Cite\n\nT. DOI to be assigned at publication on GIN ({date.today().year}).\n"
+    assert odml_to_readme(doc, tmp_path / "missing") == "# T\n"
 
 
 def test_datacite_golden(frozen, make_doc, tmp_path, golden):
@@ -189,15 +188,14 @@ def test_session_durations_in_minutes(make_doc, tmp_path):
 
 
 def test_how_to_cite_generated_unless_given(make_doc):
-    """The citation is built from contributors, title, version, the DOI or a placeholder for it and year unless
-    given."""
+    """The citation is built from contributors, title, version, the DOI link (else the repository url) and year
+    unless given."""
     for dataset, expected in [
-        ({}, "Doe, J. Test dataset. DOI to be assigned at publication on GIN (YEAR)."),
+        ({}, "Doe, J. Test dataset. (YEAR)."),
         ({"Contributors": [{"given name": "Jean-Pierre", "family name": "Roux"},
                            {"given name": "Bo Ya", "family name": "Lee"}, {"given name": "A", "family name": "Zed"}],
           "version identifier": "1.0.0", "repository url": "https://gin.example/R"},
-         "Roux, J.-P., Lee, B. Y. & Zed, A. Test dataset, version 1.0.0. DOI to be assigned at publication on GIN "
-         "(YEAR)."),
+         "Roux, J.-P., Lee, B. Y. & Zed, A. Test dataset, version 1.0.0. https://gin.example/R (YEAR)."),
         ({"repository url": "https://gin.example/R", "doi": "doi:10.1234/x"},
          "Doe, J. Test dataset. https://doi.org/10.1234/x (YEAR)."),
         ({"how to cite": "Cite the paper."}, "Cite the paper."),
