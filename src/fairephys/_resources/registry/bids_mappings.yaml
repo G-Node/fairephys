@@ -13,7 +13,10 @@
 # newer spec state (the microelectrode extension is not yet in a release).
 spec:
   bids_version: &bids_version "1.11.2"
-  ecephys_extension: "BEP032 Microelectrode Electrophysiology, draft (bids-specification PR #2307 at commit 508cfc7b)"
+  # Named as in a paper: the proposal, its pull request and the rendered preview; the
+  # commit the layout and the validator follow is the schema file below, which the
+  # descriptor names in its validation sentence
+  ecephys_extension: "BEP032 Microelectrode Electrophysiology ([bids-specification pull request #2307](https://github.com/bids-standard/bids-specification/pull/2307), [preview](https://bids-specification--2307.org.readthedocs.build/en/2307/))"
   # Used by --validate: the schema file lives in _resources/bids/ and was
   # generated with `bst export` from the same spec commit; override with the
   # BIDS_SCHEMA environment variable. Named schema-<extension>-<commit>.json:

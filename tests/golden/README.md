@@ -1,6 +1,6 @@
 # Test dataset
 
-Short name: test-ds | Version: 1.0.0 | Repository: https://gin.example/Org/Test
+Short Title: test-ds | version: 1.0.0
 
 ## Authors
 
@@ -24,8 +24,6 @@ Part of project P.
 ## Version Specifications
 
 First release.
-
-NWB files.
 
 ## Materials and Methods
 
@@ -73,7 +71,7 @@ Resting state in the dark.
 
 **State Annotation** (video annotation)
 
-The states this step annotates, one row each: the code in the raw files, the label and a description.
+**Table 1.** Behavioural states of this annotation: the code used in the raw files, the label and a short description.
 
 | Code | Label | Description |
 |------|-------|-------------|
@@ -84,7 +82,7 @@ The states this step annotates, one row each: the code in the raw files, the lab
 
 2 recording sessions from 2024-03-15 to 2024-03-18.
 
-One row per recording: session id, date, duration, the probes placed (with brain region and hemisphere) and a description.
+**Table 2.** The recordings: session id, date, duration, the probes placed (brain region and hemisphere) and a short description.
 
 | Session | Date | Duration | Probes | Description |
 |---------|------|----------|--------|-------------|
@@ -101,11 +99,11 @@ The data are shared under the [CC BY 4.0](https://creativecommons.org/licenses/b
 
 ## Data Records
 
+The data are organised following the BIDS extension proposal BEP032 Microelectrode Electrophysiology ([bids-specification pull request #2307](https://github.com/bids-standard/bids-specification/pull/2307), [preview](https://bids-specification--2307.org.readthedocs.build/en/2307/)), which builds on BIDS 1.11.2 and is not yet part of the BIDS specification. Beyond BIDS, the layout holds the metadata folder with the open metadata Markup Language (odML) record and the openMINDS metadata; the file table below names every file type.
+
 The recordings, provided as Blackrock NSx (.ns5) and Video (.MTS), were converted.
 
-Validation: [BIDS validator](https://github.com/bids-standard/bids-validator) 2.2.6 with the BEP032 schema (commit 508cfc7b) and [NWB Inspector](https://nwbinspector.readthedocs.io/) 0.7.2. Conversion: fairephys 0.1.0 (commit abc1234, with uncommitted changes) and [NeuroConv](https://neuroconv.readthedocs.io/) 0.10.2.
-
-The data are organised following the BIDS extension proposal BEP032 Microelectrode Electrophysiology, draft (bids-specification PR #2307 at commit 508cfc7b), which builds on BIDS 1.11.2 and is not yet part of the BIDS specification.
+Validation: [BIDS validator](https://github.com/bids-standard/bids-validator) 2.2.6 with the BEP032 schema (commit 508cfc7b) and [NWB Inspector](https://nwbinspector.readthedocs.io/) 0.7.2. Conversion: fairephys 0.1.0 and [NeuroConv](https://neuroconv.readthedocs.io/) 0.10.2.
 
 ```
 Test/
@@ -120,39 +118,35 @@ Test/
             beh/
                 sub-MonkeyA_ses-01_task-rest_video.MTS [video recording of the session]
             ecephys/
-                sub-MonkeyA_ses-01_task-rest_channels.tsv [the recorded channels, one row each]
+                sub-MonkeyA_ses-01_task-rest_channels.tsv [one row per recorded channel]
                 sub-MonkeyA_ses-01_task-rest_ecephys.nwb [continuous neural recording of the session with its electrodes, devices and subject metadata]
-                sub-MonkeyA_ses-01_task-rest_electrodes.tsv [the electrode contacts with their positions, one row each]
-                sub-MonkeyA_ses-01_task-rest_probes.tsv [the probes placed in the session, one row each]
+                sub-MonkeyA_ses-01_task-rest_electrodes.tsv [one row per electrode contact, with its position]
+                sub-MonkeyA_ses-01_task-rest_probes.tsv [one row per probe placed in the session]
                 sub-MonkeyA_ses-01_task-rest_recording-eye_physio.tsv.gz [continuous physiological signals of the session, one column per signal]
         ... (1 more session)
     LICENSE [licence of the dataset with its legal code]
     datacite.yml [citation metadata for the DOI registration on GIN]
     dataset_description.json [name, BIDS version, licence, authors, funding and references of the dataset]
-    participants.tsv [the subjects, one row each]
+    participants.tsv [one row per subject]
 ```
 
-One row per file type: its format, what the files hold, and the format specification with the software that wrote them.
+**Table 3.** The file types of the dataset: format and content.
 
-| File | Format | Content | Specification |
-|------|--------|---------|---------------|
-| `*_ecephys.nwb` | NWB (HDF5) | Continuous neural recording of the session with its electrode table, devices and subject metadata, and the trials, intervals, events or sorted units the dataset holds | Neurodata Without Borders (NWB), written with NeuroConv 0.10.2 and PyNWB |
-| `ecephys/*_channels.tsv` | TSV | One row per recorded channel | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |
-| `*_electrodes.tsv` | TSV | One row per electrode contact | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |
-| `*_probes.tsv` | TSV | One row per probe placed in the session | BIDS 1.11.2, BEP032 draft, written with fairephys 0.1.0 |
-| `*_physio.tsv.gz` | TSV (gzip) | Continuous physiological signals (eye), one column per signal and no header row; the matching physio.json gives the column names, sampling frequency and start time | BIDS 1.11.2, written with fairephys 0.1.0 |
-| `*_video.MTS` | Video (MTS) | Video recording of the session | MTS video, camera TestCam TC-1, recorded with TestCapture 2.0 |
-| `dataset_description.json` | JSON | Name, BIDS version, licence, authors, funding, references and the software that generated the dataset | BIDS 1.11.2, written with fairephys 0.1.0 |
-| `participants.tsv` | TSV | One row per subject | BIDS 1.11.2, written with fairephys 0.1.0 |
-| `datacite.yml` | YAML | Citation metadata for the DOI registration on GIN: title, authors, description, keywords, licence, funding and references | GIN datacite.yml (DataCite), written with fairephys 0.1.0 |
-| `LICENSE` | Text | Licence of the dataset with its legal code | Plain text, written with fairephys 0.1.0 |
-| `probes/*.json` | JSON ([ProbeInterface](https://probeinterface.readthedocs.io/)) | Contact geometry of each device: contact positions and shapes and the wiring of the contacts to the recording channels | ProbeInterface JSON, written with ProbeInterface |
-| `probes/sub-*_ses-*/*.json` | JSON (ProbeInterface) | Contact geometry of the devices placed in the session, one file per device and probe_group.json for all: contact positions and shapes and the wiring of the contacts to the recording channels | ProbeInterface JSON, written with ProbeInterface |
-| `metadata/*.instances.yaml` | YAML | openMINDS terms of the controlled vocabulary values in the open metadata Markup Language (odML) record | YAML, written with fairephys 0.1.0 |
-
-## How to Cite
-
-Doe, J. & Lee, B. Test dataset, version 1.0.0. DOI to be assigned at publication on GIN (2026).
+| File | Format | Content |
+|------|--------|---------|
+| `*_ecephys.nwb` | NWB (HDF5) | Continuous neural recording of the session with its electrode table, devices and subject metadata, and the trials, intervals, events or sorted units the dataset holds |
+| `ecephys/*_channels.tsv` | TSV | One row per recorded channel |
+| `*_electrodes.tsv` | TSV | One row per electrode contact |
+| `*_probes.tsv` | TSV | One row per probe placed in the session |
+| `*_physio.tsv.gz` | TSV (gzip) | Continuous physiological signals (eye), one column per signal and no header row; the matching physio.json gives the column names, sampling frequency and start time |
+| `*_video.MTS` | Video (MTS) | Video recording of the session |
+| `dataset_description.json` | JSON | Name, BIDS version, licence, authors, funding, references and the software that generated the dataset |
+| `participants.tsv` | TSV | One row per subject |
+| `datacite.yml` | YAML | Citation metadata for the DOI registration on GIN: title, authors, description, keywords, licence, funding and references |
+| `LICENSE` | Text | Licence of the dataset with its legal code |
+| `probes/*.json` | JSON ([ProbeInterface](https://probeinterface.readthedocs.io/)) | Contact geometry of each device: contact positions and shapes and the wiring of the contacts to the recording channels |
+| `probes/sub-*_ses-*/*.json` | JSON (ProbeInterface) | Contact geometry of the devices placed in the session, one file per device and probe_group.json for all: contact positions and shapes and the wiring of the contacts to the recording channels |
+| `metadata/*.instances.yaml` | YAML | openMINDS terms of the controlled vocabulary values in the odML record |
 
 ## Acknowledgements
 

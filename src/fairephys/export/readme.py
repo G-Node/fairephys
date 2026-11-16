@@ -47,8 +47,20 @@ _MINUTES_PER_UNIT = {"millisecond": 1 / 60000, "second": 1 / 60, "minute": 1, "h
 _POSITIONING_FLAGS = [("head fixation", "head fixation method"), ("primate chair", None)]
 # What each column of the Recording Sessions table holds (its caption)
 _SESSION_COLUMNS = {"Session": "session id", "Subject": "subject id", "Task": "task", "Date": "date",
-                    "Duration": "duration", "Probes": "the probes placed (with brain region and hemisphere)",
-                    "Description": "a description"}
+                    "Duration": "duration", "Probes": "the probes placed (brain region and hemisphere)",
+                    "Description": "a short description"}
+
+# Table captions start with this mark; odml_to_readme numbers the tables in order of appearance ("**Table 1.**")
+_TABLE = "\x00TABLE\x00"
+
+
+def _number_tables(text: str) -> str:
+    """Replace each table mark by its number in order of appearance."""
+    n = 0
+    while _TABLE in text:
+        n += 1
+        text = text.replace(_TABLE, f"**Table {n}.**", 1)
+    return text
 
 
 def _count(n, noun: str) -> str:
@@ -212,8 +224,9 @@ def _summary_section(ds: odml.Section) -> str:
 
 
 def _version_section(ds: odml.Section) -> str:
-    """Format VERSION SPECIFICATIONS from version innovation + version statement."""
-    text = _with_statement(ds, "version innovation", "version statement")
+    """Format VERSION SPECIFICATIONS from the version innovation; the layout
+    standard is stated once, at the top of Data Records."""
+    text = str(prop(ds, "version innovation") or "").strip()
     if not text:
         return ""
     return f"## Version Specifications\n\n{text}\n"
@@ -449,10 +462,10 @@ def _states_table(states: list[dict], events_files: bool = False) -> str:
     with a caption: the code is the lab's raw code, the label the trial_type value of the
     events files (named when the dataset has events files)."""
     columns = (["Code"] if any(_nonempty(s.get("code")) for s in states) else []) + ["Label", "Description"]
-    held = {"Code": "the code in the raw files",
-            "Label": "the label (the trial_type value in the events files)" if events_files else "the label",
-            "Description": "a description"}
-    caption = f"The states this step annotates, one row each: {_prose_list(held[c] for c in columns)}."
+    held = {"Code": "the code used in the raw files",
+            "Label": "the label used in the events files (column trial_type)" if events_files else "the label",
+            "Description": "a short description"}
+    caption = f"{_TABLE} Behavioural states of this annotation: {_prose_list(held[c] for c in columns)}."
     rows = [caption, "", "| " + " | ".join(columns) + " |", "|" + "|".join("-" * (len(c) + 2) for c in columns) + "|"]
     rows += ["| " + " | ".join(str(s.get(c.lower(), "")).strip() for c in columns) + " |" for s in states]
     return "\n".join(rows)
@@ -554,7 +567,7 @@ def _methods_sessions(doc: odml.Document) -> str:
         "Description": prop(s, "description") or "",
     } for s in session_list]
     columns = [c for c in rows[0] if c == "Session" or any(_nonempty(r[c]) for r in rows)]
-    lines += [f"One row per recording: {_prose_list(_SESSION_COLUMNS[c] for c in columns)}.", ""]
+    lines += [f"{_TABLE} The recordings: {_prose_list(_SESSION_COLUMNS[c] for c in columns)}.", ""]
     lines.append("| " + " | ".join(columns) + " |")
     lines.append("|" + "|".join("-" * (len(c) + 2) for c in columns) + "|")
     lines += ["| " + " | ".join(str(r[c]) for c in columns) + " |" for r in rows]
@@ -621,21 +634,15 @@ def _data_records(doc: odml.Document, output_dir: Path) -> str:
     tree = "```\n" + "\n".join(_build_tree(output_dir, _repository_name(doc["Dataset"]), files)) + "\n```"
 
     table = "\n".join([
-        "One row per file type: its format, what the files hold, and the format specification "
-        "with the software that wrote them.", "",
-        "| File | Format | Content | Specification |", "|------|--------|---------|---------------|",
-        *(f"| `{row['pattern']}` | {row['format']} | {row['content']} | {row['specification']} |"
-          for row in files.values())]) if files else ""
+        f"{_TABLE} The file types of the dataset: format and content.", "",
+        "| File | Format | Content |", "|------|--------|---------|",
+        *(f"| `{row['pattern']}` | {row['format']} | {row['content']} |" for row in files.values())]) if files else ""
 
-    # How the data were converted and validated; the software versions only after
-    # a records statement (a dataset the pipeline did not convert has none); the
-    # layout standard unless the version statement (Version Specifications) names
-    # the BIDS extension through its {bids extension} token
+    # The layout standard first, then how the data were converted and validated
+    # (the software versions only after a records statement: a dataset the
+    # pipeline did not convert has none), the tree and the file table
     statement = _records_statement(doc["Dataset"])
-    project = subsection(doc["Dataset"], "Project")
-    version = str((project and prop(project, "version statement")) or "")
-    layout = "" if "{bids extension}" in version else _layout_standard(output_dir)
-    parts = [statement, statement and _curation_software(doc), layout, tree, table]
+    parts = [_layout_standard(output_dir), statement, statement and _curation_software(doc), tree, table]
     return "## Data Records\n\n" + "\n\n".join(p for p in parts if p) + "\n"
 
 
@@ -661,8 +668,9 @@ def _curation_software(doc: odml.Document) -> str:
     """Curation software versions from the odML 'Curation Software' section, one
     sentence per purpose: "Validation: BIDS validator <version> with the BEP032
     schema (commit <commit>), NWB Inspector <version> and ... Conversion:
-    fairephys <version> (commit <commit>), ..."; ", with uncommitted changes"
-    follows the commit of a source that had them."""
+    fairephys <version>, ...". The source commit of a tool and whether it had
+    uncommitted changes stay in the odML record, not in the descriptor; the
+    schema commit names the specification state and is kept."""
     tools = subsection(doc, CURATION_SOFTWARE)
     by_purpose: dict[str, list[str]] = {}
     for tool in tools.sections if tools else []:
@@ -670,9 +678,6 @@ def _curation_software(doc: odml.Document) -> str:
         if not (_nonempty(name) and _nonempty(version)):
             continue
         text = f"{name} {version}"
-        if commit := prop(tool, "commit"):
-            changes = ", with uncommitted changes" if prop(tool, "uncommitted changes") is True else ""
-            text += f" (commit {commit}{changes})"
         if schema := prop(tool, "schema"):
             commit = prop(tool, "schema commit")
             text += f" with the {schema} schema" + (f" (commit {commit})" if commit else "")
@@ -685,10 +690,17 @@ def _layout_standard(output_dir: Path) -> str:
     """Name the layout standard (BEP032 when there are ecephys files)."""
     spec = spec_tokens()
     if any(output_dir.rglob("*_ecephys.*")):
-        return ("The data are organised following the BIDS extension proposal "
+        text = ("The data are organised following the BIDS extension proposal "
                 f"{spec['bids extension']}, which builds on BIDS "
                 f"{spec['bids version']} and is not yet part of the BIDS specification.")
-    return f"The data are organised following BIDS {spec['bids version']}."
+    else:
+        text = f"The data are organised following BIDS {spec['bids version']}."
+    # NWB files and the probes/ directory with ProbeInterface files are part of BEP032;
+    # the metadata folder (odML record, openMINDS metadata) is this project's addition
+    if (output_dir / "metadata").is_dir():
+        text += (" Beyond BIDS, the layout holds the metadata folder with the odML record and the "
+                 "openMINDS metadata; the file table below names every file type.")
+    return text
 
 
 def _repository_name(ds: odml.Section) -> str:
@@ -811,7 +823,7 @@ def _devices_of_type(doc: odml.Document, device_type: str) -> dict[str, str]:
 
 def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
     """The file types present under output_dir, in registry order, as
-    {key: {pattern, tree, format, content, specification}} (see readme.yaml files).
+    {key: {pattern, tree, format, content}} (see readme.yaml files).
 
     The content of a TSV with a header row lists the columns all its files
     have, then those only some have (header rows only; an empty file has
@@ -819,13 +831,9 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
     entries counted, the empty content when none has any), the BIDS suffixes
     and an entity's labels are those of the file names, a stale file (older than
     the odML record beside it, --all without a KG token) takes the stale
-    content; the specification names the software with the version the odML
-    Curation Software section records.
+    content.
     """
     spec = spec_tokens()
-    tools = subsection(doc, CURATION_SOFTWARE)
-    versions = {str(prop(t, "name")): str(prop(t, "version"))
-                for t in (tools.sections if tools else []) if _nonempty(prop(t, "version"))}
     registry = load_registry("readme.yaml")["files"]
     found: dict[str, tuple[dict, list[Path]]] = {}
     for path in sorted(output_dir.rglob("*")):
@@ -860,19 +868,9 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
             built = datetime.fromtimestamp(paths[0].stat().st_mtime)
             if any(built < datetime.fromtimestamp(o.stat().st_mtime) for o in paths[0].parent.glob("*.odml.xml")):
                 content, values["built"] = entry["stale content"], f"{built:%Y-%m-%d}"
-        software = _prose_list(f"{name} {versions[name]}" if name in versions else name
-                               for name in entry.get("software", []))
-        specification = fill_template(entry["specification"], values.get) or ""
         types[key] = {"pattern": key, "tree": entry["tree"], "format": fill_template(entry["format"], values.get),
-                      "content": fill_template(content.strip(), values.get),
-                      "specification": f"{specification}, written with {software}" if software else specification}
+                      "content": fill_template(content.strip(), values.get)}
     return types
-
-
-def _how_to_cite(ds: odml.Section) -> str:
-    """Format HOW TO CITE from 'how to cite' (generated by the compiler unless the YAML gives one)."""
-    text = _prop_str(ds, "how to cite")
-    return f"## How to Cite\n\n{text.strip()}\n" if text else ""
 
 
 def _acknowledgements(ds: odml.Section) -> str:
@@ -980,10 +978,9 @@ def odml_to_readme(doc: odml.Document, output_dir: Path) -> str:
         raise ValueError("Dataset section not found in odML document")
 
     title = prop(ds, "full name") or "Dataset"
-    # short name, version and repository under the title, each when filled (EBRAINS descriptor template)
+    # short title and version under the title, each when filled (EBRAINS descriptor template)
     header = " | ".join(f"{label}: {value}" for label, value in (
-        ("Short name", prop(ds, "short name")), ("Version", prop(ds, "version identifier")),
-        ("Repository", prop(ds, "repository url"))) if _nonempty(value))
+        ("Short Title", prop(ds, "short name")), ("version", prop(ds, "version identifier"))) if _nonempty(value))
 
     # Assemble sections, skipping empty ones
     parts = [f"# {title}\n"] + ([f"{header}\n"] if header else [])
@@ -1015,7 +1012,6 @@ def odml_to_readme(doc: odml.Document, output_dir: Path) -> str:
     for section_fn in [
         lambda: _usage_notes(ds),
         lambda: _data_records(doc, output_dir),
-        lambda: _how_to_cite(ds),
         lambda: _acknowledgements(ds),
         lambda: _author_contributions(ds),
         lambda: _references(ds),
@@ -1024,7 +1020,7 @@ def odml_to_readme(doc: odml.Document, output_dir: Path) -> str:
         if text:
             parts.append(text)
 
-    return _first_mentions(doc, "\n".join(parts))
+    return _number_tables(_first_mentions(doc, "\n".join(parts)))
 
 
 def write_readme(doc: odml.Document, output_dir: Path) -> Path:
