@@ -224,8 +224,9 @@ def _summary_section(ds: odml.Section) -> str:
 
 
 def _version_section(ds: odml.Section) -> str:
-    """Format VERSION SPECIFICATIONS from version innovation + version statement."""
-    text = _with_statement(ds, "version innovation", "version statement")
+    """Format VERSION SPECIFICATIONS from the version innovation; the layout
+    standard is stated once, at the top of Data Records."""
+    text = str(prop(ds, "version innovation") or "").strip()
     if not text:
         return ""
     return f"## Version Specifications\n\n{text}\n"
@@ -633,21 +634,15 @@ def _data_records(doc: odml.Document, output_dir: Path) -> str:
     tree = "```\n" + "\n".join(_build_tree(output_dir, _repository_name(doc["Dataset"]), files)) + "\n```"
 
     table = "\n".join([
-        f"{_TABLE} The file types of the dataset: format, content, the specification the files follow "
-        "and the software that wrote them.", "",
-        "| File | Format | Content | Specification |", "|------|--------|---------|---------------|",
-        *(f"| `{row['pattern']}` | {row['format']} | {row['content']} | {row['specification']} |"
-          for row in files.values())]) if files else ""
+        f"{_TABLE} The file types of the dataset: format and content.", "",
+        "| File | Format | Content |", "|------|--------|---------|",
+        *(f"| `{row['pattern']}` | {row['format']} | {row['content']} |" for row in files.values())]) if files else ""
 
-    # How the data were converted and validated; the software versions only after
-    # a records statement (a dataset the pipeline did not convert has none); the
-    # layout standard unless the version statement (Version Specifications) names
-    # the BIDS extension through its {bids extension} token
+    # The layout standard first, then how the data were converted and validated
+    # (the software versions only after a records statement: a dataset the
+    # pipeline did not convert has none), the tree and the file table
     statement = _records_statement(doc["Dataset"])
-    project = subsection(doc["Dataset"], "Project")
-    version = str((project and prop(project, "version statement")) or "")
-    layout = "" if "{bids extension}" in version else _layout_standard(output_dir)
-    parts = [statement, statement and _curation_software(doc), layout, tree, table]
+    parts = [_layout_standard(output_dir), statement, statement and _curation_software(doc), tree, table]
     return "## Data Records\n\n" + "\n\n".join(p for p in parts if p) + "\n"
 
 
@@ -697,10 +692,19 @@ def _layout_standard(output_dir: Path) -> str:
     """Name the layout standard (BEP032 when there are ecephys files)."""
     spec = spec_tokens()
     if any(output_dir.rglob("*_ecephys.*")):
-        return ("The data are organised following the BIDS extension proposal "
+        text = ("The data are organised following the BIDS extension proposal "
                 f"{spec['bids extension']}, which builds on BIDS "
                 f"{spec['bids version']} and is not yet part of the BIDS specification.")
-    return f"The data are organised following BIDS {spec['bids version']}."
+    else:
+        text = f"The data are organised following BIDS {spec['bids version']}."
+    beyond = [name for name, present in (
+        ("the NWB recordings", any(output_dir.rglob("*.nwb"))),
+        ("the probe geometry files in probes/", (output_dir / "probes").is_dir()),
+        ("the metadata folder with the odML record and the openMINDS metadata", (output_dir / "metadata").is_dir()),
+    ) if present]
+    if beyond:
+        text += f" Beyond BIDS, the layout holds {_prose_list(beyond)}; the file table below names every file type."
+    return text
 
 
 def _repository_name(ds: odml.Section) -> str:
@@ -823,7 +827,7 @@ def _devices_of_type(doc: odml.Document, device_type: str) -> dict[str, str]:
 
 def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
     """The file types present under output_dir, in registry order, as
-    {key: {pattern, tree, format, content, specification}} (see readme.yaml files).
+    {key: {pattern, tree, format, content}} (see readme.yaml files).
 
     The content of a TSV with a header row lists the columns all its files
     have, then those only some have (header rows only; an empty file has
@@ -831,13 +835,9 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
     entries counted, the empty content when none has any), the BIDS suffixes
     and an entity's labels are those of the file names, a stale file (older than
     the odML record beside it, --all without a KG token) takes the stale
-    content; the specification names the software with the version the odML
-    Curation Software section records.
+    content.
     """
     spec = spec_tokens()
-    tools = subsection(doc, CURATION_SOFTWARE)
-    versions = {str(prop(t, "name")): str(prop(t, "version"))
-                for t in (tools.sections if tools else []) if _nonempty(prop(t, "version"))}
     registry = load_registry("readme.yaml")["files"]
     found: dict[str, tuple[dict, list[Path]]] = {}
     for path in sorted(output_dir.rglob("*")):
@@ -872,12 +872,8 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
             built = datetime.fromtimestamp(paths[0].stat().st_mtime)
             if any(built < datetime.fromtimestamp(o.stat().st_mtime) for o in paths[0].parent.glob("*.odml.xml")):
                 content, values["built"] = entry["stale content"], f"{built:%Y-%m-%d}"
-        software = _prose_list(f"{name} {versions[name]}" if name in versions else name
-                               for name in entry.get("software", []))
-        specification = fill_template(entry["specification"], values.get) or ""
         types[key] = {"pattern": key, "tree": entry["tree"], "format": fill_template(entry["format"], values.get),
-                      "content": fill_template(content.strip(), values.get),
-                      "specification": f"{specification}, written with {software}" if software else specification}
+                      "content": fill_template(content.strip(), values.get)}
     return types
 
 
