@@ -335,14 +335,35 @@ def check_placements(metadata: dict) -> None:
         raise ValueError("Electrode placements:\n  " + "\n  ".join(errors))
 
 
+def _connected_electrodes(metadata: dict) -> dict:
+    """The metadata with the 'number of contacts' of each Hardware.Probes
+    entry that names 'unconnected contacts' less those contacts: a probe is
+    described by its connected electrodes in the odML and every output; the
+    probe builder adds them back to build the sites as built."""
+    probes = (metadata.get("Hardware") or {}).get("Probes")
+    if not isinstance(probes, list):
+        return metadata
+    counted = []
+    for probe in probes:
+        if isinstance(probe, dict) and (unconnected := probe.get("unconnected contacts")):
+            if not isinstance(unconnected, list) or not isinstance(probe.get("number of contacts"), int):
+                raise ValueError(f"Hardware.Probes {probe.get('name')!r}: 'unconnected contacts' are a list of "
+                                 "contact ids of a probe with an integer 'number of contacts'")
+            probe = {**probe, "number of contacts": probe["number of contacts"] - len(unconnected)}
+        counted.append(probe)
+    return {**metadata, "Hardware": {**metadata["Hardware"], "Probes": counted}}
+
+
 def compile_to_odml(metadata: dict, omit_empty: bool = False, author: str = None) -> odml.Document:
     """Convert metadata dict to odML Document.
 
     The document author is the one given, else the Dataset's Custodian,
-    else DEFAULT_AUTHOR (logged).
+    else DEFAULT_AUTHOR (logged). A probe with 'unconnected contacts' is
+    counted by its connected electrodes (_connected_electrodes).
     """
     check_placements(metadata)
     origins = metadata.pop("_valueOrigins", {})
+    metadata = _connected_electrodes(metadata)
 
     if author is None:
         custodian = metadata.get("Dataset", {}).get("Custodian", {})

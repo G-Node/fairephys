@@ -33,11 +33,16 @@ def validate_semantic(data: dict, schema_ref: str) -> list[str]:
         for i, probe in enumerate(data.get("Hardware", {}).get("Probes", []), 1):
             ids = probe.get("electrode identifiers")
             n = probe.get("number of contacts")
+            # one per connected contact: the sites as built less the unconnected ones
+            unconnected = probe.get("unconnected contacts") or []
+            counted = "number of contacts"
+            if isinstance(n, int) and isinstance(unconnected, list) and unconnected:
+                n, counted = n - len(unconnected), "number of contacts less unconnected contacts"
             # the empty default leaves the ids to ProbeInterface
             if ids and isinstance(ids, list) and isinstance(n, int) and len(ids) != n:
                 errors.append(
                     f"Hardware.Probes.{i}: electrode identifiers count "
-                    f"({len(ids)}) != number of contacts ({n})"
+                    f"({len(ids)}) != {counted} ({n})"
                 )
 
     return errors

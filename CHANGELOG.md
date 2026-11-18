@@ -7,6 +7,8 @@
 - The message after a compile and the comment on the BIDS age are corrected.
 - README: where the KG token goes; the figure is linked by its full URL.
 - `docs/pipeline.md`: how to run a release conversion so that each NWB file records a clean repository state.
+- A generated probe can name its `unconnected contacts`; they are left out of its geometry and counts (hardware schema 1.1).
+- An empty `total span` takes the larger extent of the contacts.
 
 ## 0.1.0 (2026-11-16)
 

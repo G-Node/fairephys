@@ -171,7 +171,16 @@ Hardware:
       laterality: ""
 
       # Physical specifications
+      # number of contacts: the contact sites of the device as built, connected
+      # to a channel or not (rows x columns for a matrix)
       number of contacts: 1
+      # unconnected contacts: for a generated probe (not in the ProbeInterface
+      # library, no 'contact positions'), the sites wired to no channel, by
+      # their numbers in contact order ("01", "02", ...). They are left out
+      # of the probe's geometry, and every output describes the probe by its
+      # connected electrodes: number of contacts less these. Filled
+      # 'electrode identifiers' then name the connected contacts only
+      # unconnected contacts: ["01", "10"]
       # number of columns: for matrix probes, grid columns (e.g., 4 for 4×8 FMA)
       # number of columns: 0
       contact pitch: ""           # e.g., "100 micrometer" (millimeter | micrometer)

@@ -30,6 +30,10 @@ A template without `_schema` is validated against `<file name>.v1`; a template w
 - **MAJOR** (v1 to v2): Breaking changes (field removal, type change)
 - **MINOR** (v1 to v1.1): New optional fields
 
+A minor version is raised inside the schema file (`version`); its file name and the `_schema` reference of a filled template name the major version.
+
+- 2026-11-18, hardware 1.1: `unconnected contacts` on a probe entry.
+
 ## Validation
 
 Compiling validates strictly: a schema error stops the pipeline.

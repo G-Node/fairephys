@@ -26,7 +26,7 @@ PROBE_ATTRS = {"name", "manufacturer", "serial number"}
 GEOMETRY_FIELDS = {
     "number of contacts", "contact pitch", "channel mapping",
     "contact arrangement", "number of columns", "number of rows",
-    "row spacing", "column spacing", "contact positions",
+    "row spacing", "column spacing", "contact positions", "unconnected contacts",
 }
 # Value origin of the geometry of a probe placed at its YAML 'contact positions'
 YAML_POSITIONS = "the YAML's contact positions"
@@ -116,6 +116,9 @@ def _library_probe(cfg: dict, label: str):
     probe = get_from_library(key, str(cfg["model"]))
     if probe is None:
         return None
+    if _as_list(cfg.get("unconnected contacts")):
+        raise ValueError(f"{label}: a library probe names its recorded contacts in 'electrode identifiers'; "
+                         "'unconnected contacts' are for a generated probe")
     n_contacts = cfg.get("number of contacts")
     ids = [str(i) for i in _as_list(cfg.get("electrode identifiers"))]
     if n_contacts and n_contacts < probe.get_contact_count():
@@ -205,10 +208,21 @@ def _create_probe(cfg: dict, units: dict | None = None):
     through them), else numbered in contact order; the ids of a probe at its
     'contact positions' are the positions' and filled identifiers must equal
     them. `units` are the units of the entry's values (an odML section's),
-    micrometer when absent."""
+    micrometer when absent.
+
+    A parametric entry with 'unconnected contacts' is counted by its
+    connected electrodes ('number of contacts' in the odML, see
+    compile_to_odml): the grid is generated with its sites as built (that
+    count plus the unconnected ones, numbered), the unconnected contacts are
+    removed (_connected), and filled 'electrode identifiers' name the
+    connected contacts in contact order."""
     label = f"Probe {cfg.get('name')!r}"
     ids = [str(i) for i in _as_list(cfg.get("electrode identifiers"))]
+    unconnected = [str(i) for i in _as_list(cfg.get("unconnected contacts"))]
     shape, source = _contact_shape(cfg, units or {}, label)
+    if unconnected and cfg.get("contact positions"):
+        raise ValueError(f"{label}: 'unconnected contacts' are for a generated probe; "
+                         "leave them out of 'contact positions'")
     if (probe := _positioned_probe(cfg, label, shape)) is not None:
         if ids and ids != list(probe.contact_ids):
             raise ValueError(f"{label}: 'electrode identifiers' differ from the contact ids of 'contact positions'")
@@ -218,13 +232,32 @@ def _create_probe(cfg: dict, units: dict | None = None):
                              "'first contact' is for generated probes")
         return probe
     else:
-        probe = _parametric_probe(cfg, label, units or {}, shape)
+        built = cfg["number of contacts"] + len(unconnected)
+        probe = _parametric_probe({**cfg, "number of contacts": built}, label, units or {}, shape)
+        probe.set_contact_ids(contact_ids(built))
+        if unconnected:
+            probe = _connected(probe, unconnected, label)
         if ids and len(ids) != probe.get_contact_count():
             raise ValueError(f"{label}: {len(ids)} electrode identifiers for {probe.get_contact_count()} contacts")
-        probe.set_contact_ids(ids or contact_ids(probe.get_contact_count()))
+        if ids:
+            probe.set_contact_ids(ids)
     if source:
         probe.annotate(contact_shape_source=source)
     return probe
+
+
+def _connected(probe, unconnected: list[str], label: str):
+    """The probe without its unconnected contacts (contact ids of the probe
+    as built, each once), the other contacts in their order; an id that is
+    no contact, or no contact left, is an error."""
+    ids = [str(c) for c in probe.contact_ids]
+    if missing := [i for i in unconnected if i not in ids]:
+        raise ValueError(f"{label}: unconnected contacts not among the probe's contacts: {', '.join(missing[:10])}")
+    if len(set(unconnected)) != len(unconnected):
+        raise ValueError(f"{label}: an unconnected contact is listed twice")
+    if not (keep := [i for i, c in enumerate(ids) if c not in unconnected]):
+        raise ValueError(f"{label}: every contact is unconnected")
+    return probe.get_slice(np.array(keep))
 
 
 def _config(entry) -> tuple[dict, dict]:
@@ -308,7 +341,8 @@ def build_session_probe_group(doc, session, x_spacing: int = 800) -> ProbeGroup:
 
     A placement's 'electrode identifiers' select the contacts of the device
     recorded that session (a Neuropixels bank: the electrodes of the IMRO
-    table), in the order listed, which is the recording's channel order.
+    table), in the order listed, which is the recording's channel order; one
+    of the device's 'unconnected contacts' among them is an error.
     device_channel_indices come from the placement's 'channels' (1-based
     positions in the curated stream), else the device's 'channel mapping',
     else the block after the previous placement. The placement's brain region
@@ -323,6 +357,10 @@ def build_session_probe_group(doc, session, x_spacing: int = 800) -> ProbeGroup:
         label = f"Placement {number} ({cfg.get('name')})"
         probe = _device_probe(cfg, ids[str(cfg.get("name", ""))], number, units)
         if recorded := _as_list(placement.get("electrode identifiers")):
+            unconnected = {str(i) for i in _as_list(cfg.get("unconnected contacts"))}
+            if named := [str(i) for i in recorded if str(i) in unconnected]:
+                raise ValueError(f"{label}: electrode identifiers {', '.join(named)} are unconnected contacts "
+                                 "of the probe ('unconnected contacts'), wired to no channel")
             probe = select_contacts(probe, recorded, label)
         n = probe.get_contact_count()
         if spec := placement.get("channels"):
@@ -430,10 +468,10 @@ def _enrich_probe_geometry(probe_sec, probe, positions, origin="probeinterface")
             if width:
                 _set_if_empty("contact size", f"{width} um")
 
-    # Total span from y range
-    y_span = float(positions[:, 1].max() - positions[:, 1].min())
-    if y_span > 0:
-        _set_if_empty("total span", f"{y_span:.0f} um")
+    # Total span: the larger of the x and y extents
+    span = float((positions[:, :2].max(axis=0) - positions[:, :2].min(axis=0)).max())
+    if span > 0:
+        _set_if_empty("total span", f"{span:.0f} um")
 
 
 def save_probe_group(group: ProbeGroup, output_dir: Path, title: str = "Probe Group"):
