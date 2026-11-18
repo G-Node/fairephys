@@ -68,7 +68,7 @@ def ethics_approvals(dataset_data: dict) -> list[str]:
 def references_and_links(dataset: odml.Section) -> list[str]:
     """Every Related Publications entry (its citation, followed by its link
     unless the citation holds the identifier), then the repository url of
-    the dataset and the source dataset URLs."""
+    the dataset and the URLs of its Related Projects."""
     refs = [p.reference for p in related_publications(dataset)]
     if repository := str(prop(dataset, "repository url") or "").strip():
         refs.append(repository)
@@ -156,7 +156,7 @@ def generated_by(doc: odml.Document) -> list[dict]:
 
 
 def source_datasets(dataset: odml.Section) -> list[dict]:
-    """Extract source dataset URLs from Dataset/Related Projects."""
+    """Extract the URLs (with names) of Dataset/Related Projects."""
     try:
         result = []
         for proj in dataset["Related Projects"].sections:

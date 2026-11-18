@@ -415,8 +415,10 @@ schemas:
       # version gets its own description, the Dataset's text with the
       # dataset's usage statement (collection Project 'usage statement', a
       # dataset's own under its Dataset/Project) appended as a paragraph, only
-      # when that statement is filled (an empty required token skips the field)
-      description: { type: template, value: "{description}\n\n{?Dataset/Project/dataset statement}\n\n{Dataset/Project/usage statement}" }
+      # when that statement is filled (an empty required token skips the field);
+      # first_use: the terms of the readme registry 'first use' written out at
+      # their first mention, as in the descriptor
+      description: { type: template, first_use: true, value: "{description}\n\n{?Dataset/Project/dataset statement}\n\n{Dataset/Project/usage statement}" }
       version_identifier: { odml: "version identifier", default: "1.0" }
       # the real release date (dataset.yaml 'release date', the GIN publication
       # or a first publication elsewhere); none while it is empty, so the
@@ -552,8 +554,9 @@ schemas:
     fields:
       full_name: { odml: "full name" }
       short_name: { odml: "short name" }
-      # dataset description + the shared dataset statement (if any)
-      description: { type: template, value: "{description}\n\n{?Dataset/Project/dataset statement}" }
+      # dataset description + the shared dataset statement (if any), terms
+      # written out at their first mention (first_use)
+      description: { type: template, first_use: true, value: "{description}\n\n{?Dataset/Project/dataset statement}" }
       authors: { type: link, target: Person, list: true }
       custodians: { type: link, target: Custodian, list: true }
       has_versions: { type: link, target: DatasetVersion, list: true }

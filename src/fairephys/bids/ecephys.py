@@ -61,6 +61,8 @@ def generate_probes_json(probes: list[dict], output_path: Path, probes_dir: str 
     # Add column definitions from registry for additional columns
     registry = load_registry()
     for col, spec in registry.get("probes_tsv", {}).get("columns", {}).items():
+        if spec.get("sidecar_if_filled") and all(p.get(col, "n/a") in (None, "", "n/a") for p in probes):
+            continue
         if (definition := _column_definition(spec)) and col not in sidecar:
             sidecar[col] = definition  # don't overwrite existing definitions
 

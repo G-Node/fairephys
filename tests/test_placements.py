@@ -141,7 +141,7 @@ def test_session_probe_group_wires_each_placement(placed):
     assert {k: first.annotations[k] for k in ("probe_id", "brain_region", "hemisphere", "contact_size")} == {
         "probe_id": "S-Probe01", "brain_region": "PUL", "hemisphere": "left", "contact_size": "12 micrometer"}
     assert second.contact_positions[:, 1].tolist() == [0.0, 100.0]  # 0.1 millimeter pitch
-    assert second.annotations["contact_shape_source"] == "ProbeInterface default, contact size not documented"
+    assert second.annotations["contact_shape_source"].startswith("ProbeInterface")
 
     short = placed({"01": [{"probe": "S-Probe A", "brain region": "VPL", "channels": "1-2"}]})
     with pytest.raises(ValueError, match="channels '1-2' give 2 channels for 4 contacts"):

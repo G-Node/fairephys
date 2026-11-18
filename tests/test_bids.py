@@ -68,16 +68,17 @@ def test_session_paths(make_doc, tmp_path):
 
 
 def test_session_run_and_dataset_files(placed, tmp_path):
-    """The session's sidecars at their session_paths names (channels.tsv only from the rows given, no channels.json
-    without a column description), the run's ecephys.json, the dataset files with the description fields and the
-    extra .bidsignore lines after the library's."""
+    """The session's sidecars at their session_paths names (channels.tsv only from the rows given; probes.json without
+    the quality column no placement fills), the run's ecephys.json, the dataset files with the description fields and
+    the extra .bidsignore lines after the library's."""
     doc, session = placed([{"probe": "S-Probe A", "brain region": "M1"}])
     doc["Hardware"]["Probes"].sections[0].append(odml.Property("probe type", values=["silicon-probe"]))
     paths = session_paths(doc, session, tmp_path)
     write_session_probe_group(doc, session, paths["probe_group"].parent)
     write_session_sidecars(doc, session, paths)
-    sidecars = ("probes_tsv", "probes_json", "electrodes_tsv", "electrodes_json")
+    sidecars = ("probes_tsv", "probes_json", "electrodes_tsv", "electrodes_json", "channels_json")
     assert sorted(paths["ses_dir"].iterdir()) == sorted(paths[key] for key in sidecars)
+    assert "quality" not in json.loads(paths["probes_json"].read_text())
     assert json.loads(paths["probes_json"].read_text())["probe_name"]["Levels"]["S-Probe"]["TermURL"] == (
         "bids::probes/sub-MonkeyA_ses-01/S-Probe.json")
     write_session_sidecars(doc, session, paths, extract_channels(session, paths["probe_group"]))
@@ -237,7 +238,7 @@ def test_participants(doc):
 
 def test_dataset_description(make_doc, monkeypatch):
     """Funding, ethics and acknowledgements without doubled brackets; GeneratedBy with the commit; a publication's
-    citation followed by its link, then the repository and source dataset URLs."""
+    citation followed by its link, then the repository and related project URLs (no SourceDatasets)."""
     monkeypatch.setattr(provenance, "source_checkout", lambda *a: {"commit": "abc1234", "uncommitted changes": True})
     doc = make_doc(Dataset={"ethics authority": "EC 1 (Ethics Committee)", "ethics approval id": "123.4",
                             "doi": "10.1234/abc", "repository url": "https://gin.example/curated",
@@ -256,7 +257,7 @@ def test_dataset_description(make_doc, monkeypatch):
     assert [bracketed(t, d) for t, d in [("EC", "1"), ("DFG (Germany)", "1"), ("a", "b (c)"), ("EC", ""), ("", "1")]] \
         == ["EC (1)", "DFG (Germany), 1", "a, b (c)", "EC", "1"]
     assert (desc["Authors"], desc["DatasetDOI"]) == (["Jane Doe"], "10.1234/abc")
-    assert desc["SourceDatasets"] == [{"URL": "https://gin.example/raw", "Name": "Raw"}]
+    assert "SourceDatasets" not in desc
     assert desc["ReferencesAndLinks"] == ["Doe, J. A paper (2024). https://doi.org/10.1234/paper",
                                           "https://gin.example/curated", "https://gin.example/raw"]
 

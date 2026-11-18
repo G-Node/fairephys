@@ -12,6 +12,9 @@
 - `Filters: none` states that no hardware filter was applied.
 - Electrode group description: probe type and number of electrodes recorded.
 - NWB files carry the registry's electrode column descriptions.
+- Data descriptor: terms written out and linked at first mention, a short file table and a plainer file tree.
+- Statements can name the software versions and the repository address.
+- BIDS sidecars describe positions, names and locations in the words of the specification.
 
 ## 0.1.0 (2026-11-16)
 

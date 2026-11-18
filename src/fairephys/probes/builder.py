@@ -68,7 +68,7 @@ def _contact_shape(cfg: dict, units: dict, label: str) -> tuple[dict, str | None
         raise ValueError(f"{label}: contact size {cfg.get('contact size')!r} is no length: {exc}") from exc
     not_drawn = f'contact shape "{word}" not drawn'
     if not size:
-        return {}, "ProbeInterface default, contact size not documented" + (
+        return {}, "ProbeInterface default" + (
             f"; {not_drawn}" if word and shape != "circle" else "")
     params = {"width": size} if shape == "square" else {"radius": size / 2}
     if shape:

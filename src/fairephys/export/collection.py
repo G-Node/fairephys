@@ -35,6 +35,7 @@ from ..placements import matched_probes
 from ..registry import REGISTRY_DIR, load as load_registry
 from .anatomy import Anatomy, atlas_path, load_atlas
 from .kg_lookup import KGResolver
+from .readme import first_use
 from .templating import fill_statement, fill_template, machine_label, spec_tokens
 
 __all__ = ["SchemaBuilder", "KGResolver", "build_collection", "save_collection", "kg_space",
@@ -450,7 +451,7 @@ class SchemaBuilder:
             if "/" in name:
                 sec_path, name = name.rsplit("/", 1)
                 value = prop(self.get_section(sec_path), name)
-                return fill_statement(value) if isinstance(value, str) else value
+                return fill_statement(value, self.get_section("Dataset")) if isinstance(value, str) else value
             return prop(section, name)
 
         return fill_template(template, lookup)
@@ -671,6 +672,8 @@ class SchemaBuilder:
             return fdef.get("value")
         if ftype == "template":
             text = self.render_template(fdef.get("value", ""), section, self._session_context(section))
+            if text and fdef.get("first_use"):
+                text = first_use(text)
             return machine_label(text) if text and field == "lookup_label" else text
         if ftype == "iri":
             val = fdef.get("value") or prop(section, fdef.get("odml", ""))
