@@ -2,12 +2,11 @@
 
 ## 0.1.1 (unreleased)
 
-- A value with a number glued to letters, such as `1920x1080` or `4a`, stays text at compile; a unit needs whitespace after the number (`24 kg`).
-- A controlled term that the openMINDS vocabulary does not hold is reported as "no <class> term named '<name>'"; the lookup error goes to the debug log.
-- The line printed after a compile no longer says that the odML holds nothing `--build-probes` adds.
-- The registry comment on the subject age says that BIDS gives it as a number of years.
-- The README says where the KG token goes and that `--all` runs without it, and links the figure by its full URL so that it shows on PyPI.
-- `docs/pipeline.md` describes the repository state each NWB file records and how a release conversion records a clean working tree when only the output subdataset has changed.
+- Compile keeps a value such as `1920x1080` as text. A unit follows its number after a space (`24 kg`).
+- A controlled term that openMINDS does not hold is named in the warning.
+- The message after a compile and the comment on the BIDS age are corrected.
+- README: where the KG token goes; the figure is linked by its full URL.
+- `docs/pipeline.md`: how to run a release conversion so that each NWB file records a clean repository state.
 
 ## 0.1.0 (2026-11-16)
 
