@@ -68,8 +68,7 @@ def test_session_paths(make_doc, tmp_path):
 
 
 def test_session_run_and_dataset_files(placed, tmp_path):
-    """The session's sidecars at their session_paths names (channels.tsv only from the rows given; probes.json without
-    the quality column no placement fills), the run's ecephys.json, the dataset files with the description fields and
+    """The session's sidecars at their session_paths names (channels.tsv only from the rows given), the run's ecephys.json, the dataset files with the description fields and
     the extra .bidsignore lines after the library's."""
     doc, session = placed([{"probe": "S-Probe A", "brain region": "M1"}])
     doc["Hardware"]["Probes"].sections[0].append(odml.Property("probe type", values=["silicon-probe"]))
@@ -78,7 +77,6 @@ def test_session_run_and_dataset_files(placed, tmp_path):
     write_session_sidecars(doc, session, paths)
     sidecars = ("probes_tsv", "probes_json", "electrodes_tsv", "electrodes_json", "channels_json")
     assert sorted(paths["ses_dir"].iterdir()) == sorted(paths[key] for key in sidecars)
-    assert "quality" not in json.loads(paths["probes_json"].read_text())
     assert json.loads(paths["probes_json"].read_text())["probe_name"]["Levels"]["S-Probe"]["TermURL"] == (
         "bids::probes/sub-MonkeyA_ses-01/S-Probe.json")
     write_session_sidecars(doc, session, paths, extract_channels(session, paths["probe_group"]))

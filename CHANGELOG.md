@@ -14,7 +14,7 @@
 - NWB files carry the registry's electrode column descriptions.
 - Data descriptor: terms written out and linked at first mention, a short file table and a plainer file tree.
 - Statements can name the software versions and the repository address.
-- BIDS sidecars describe positions, names and locations in the words of the specification.
+- BIDS sidecars describe names and locations in the words of the specification.
 - Probes implanted in a subject have their probe files once, in `probes/sub-<id>/`.
 - Larger probe pictures with one-line labels, a zoomed view for a dense probe; no group picture and none for a single contact.
 - A dataset with several tasks gives one description per task (`task descriptions`, protocol schema 1.1).
