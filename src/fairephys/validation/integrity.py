@@ -105,7 +105,7 @@ def check_data_integrity(
     block_index: int = 0,
     segment_index: int | None = None,
     stream_index: int | None = None,
-    stream_id: str | None = None,
+    stream_id: str | list[str] | None = None,
     raw_recording=None,
 ) -> ValidationReport:
     """Compare raw data samples with NWB.
@@ -115,7 +115,10 @@ def check_data_integrity(
 
     - Stream: the one given (stream_id or stream_index), else the only one,
       else the stream whose channel names hold the series' channel names
-      (electrodes table), told apart by the sample count if several do.
+      (electrodes table), told apart by the sample count if several do;
+      a list of stream ids restricts that match to the listed streams.
+    - Channels: the raw channel of each series channel by name (or id), else
+      by position when the channel counts are equal; otherwise an error.
     - Segment: the one given, for a single series; else the one whose start
       time is the series' starting_time (neuroconv writes one series per
       segment, starting at the segment's start); else the series' position.
@@ -141,6 +144,12 @@ def check_data_integrity(
     if not files_exist(report, *([] if raw_path is None else [raw_path]), nwb_path):
         return report
     raw_io = _raw_reader(recording_format, raw_path, raw_recording)
+    among = None
+    if isinstance(stream_id, list):
+        among = [_resolve_stream_index(raw_io, stream_id=s) for s in stream_id]
+        if None in among:
+            raise ValueError(f"streams {stream_id} not all in the raw file")
+        stream_id = None
     given = stream_id if stream_id is not None else stream_index
     si_given = _resolve_stream_index(raw_io, stream_index=stream_index, stream_id=stream_id)
 
@@ -154,7 +163,7 @@ def check_data_integrity(
             if given is not None:
                 si, skip = si_given, f"SKIPPED (stream {given} not found)"
             else:
-                si, skip = _match_stream(raw_io, ts, block_index)
+                si, skip = _match_stream(raw_io, ts, block_index, among)
             seg = None if si is None else _series_segment(
                 raw_io, ts, position, len(series), block_index, si, segment_index)
             if si is None:
@@ -163,7 +172,7 @@ def check_data_integrity(
                 result = {"result": "SKIPPED (raw segment not identified)"}
             else:
                 result = _compare_series(raw_io, ts, block_index, seg, si)
-                if given is None and len(raw_io.header["signal_streams"]) > 1:
+                if given is None and len(raw_io.header["signal_streams"] if among is None else among) > 1:
                     result["raw_stream"] = f"{raw_io.header['signal_streams'][si]['id']} (matched by channel names)"
             results.append({"series": ts.name, **({"segment": seg} if seg is not None else {}), **result})
     _report_integrity(report, results)
@@ -210,9 +219,10 @@ def _compare_series(raw_io, ts, block_index: int, seg: int, si: int) -> dict:
 
     # Volts per stored unit: the NWB's own scale (compared on) and
     # the raw reader's gain and units label (reported only)
-    min_ch = min(ch_raw, ch_nwb)
-    nwb_scale = _nwb_volts_per_unit(ts, ch_nwb)[:min_ch]
-    result.update(_scales(raw_io.header["signal_channels"][ch_mask][:min_ch], nwb_scale))
+    raw_channels = raw_io.header["signal_channels"][ch_mask]
+    columns = _raw_columns(raw_channels, ts, ch_nwb)
+    nwb_scale = _nwb_volts_per_unit(ts, ch_nwb)
+    result.update(_scales(raw_channels[columns], nwb_scale))
 
     if n_nwb < n_raw:
         result["nwb_is_stub"] = True
@@ -234,8 +244,8 @@ def _compare_series(raw_io, ts, block_index: int, seg: int, si: int) -> dict:
             stream_index=si,
         )
         nwb_chunk = ts.data[int(pos):int(pos + chunk), :]
-        raw_volts = raw_chunk[:, :min_ch].astype(np.float64) * nwb_scale
-        nwb_volts = np.asarray(nwb_chunk)[:, :min_ch].astype(np.float64) * nwb_scale
+        raw_volts = raw_chunk[:, columns].astype(np.float64) * nwb_scale
+        nwb_volts = np.asarray(nwb_chunk).astype(np.float64) * nwb_scale
 
         diff = float(np.max(np.abs(raw_volts - nwb_volts)))
         max_diff = max(max_diff, diff)
@@ -254,15 +264,15 @@ def check_channel_distinctness(
     block_index: int = 0,
     segment_index: int = 0,
     stream_index: int | None = None,
-    stream_id: str | None = None,
+    stream_id: str | list[str] | None = None,
     n_samples: int = 1000,
     raw_recording=None,
 ) -> ValidationReport:
     """Verify channels within a stream contain distinct data.
 
-    Reads a small chunk of the given stream (stream_id or stream_index; every
-    signal stream when none is given) and checks that its channels are not
-    all identical. Identical channels suggest a reader bug (e.g. wrong file
+    Reads a small chunk of the given streams (stream_id, one or a list, or
+    stream_index; every signal stream when none is given) and checks that
+    their channels are not all identical. Identical channels suggest a reader bug (e.g. wrong file
     path, case-mismatch in per-channel data files).
 
     Run this *before* NWB conversion as a prerequisite sanity check.
@@ -279,11 +289,11 @@ def check_channel_distinctness(
     raw_io = _raw_reader(recording_format, raw_path, raw_recording)
     n_streams = len(raw_io.header["signal_streams"])
     if stream_id is not None or stream_index is not None:
-        given = _resolve_stream_index(raw_io, stream_index=stream_index, stream_id=stream_id)
-        if given is None:
+        stream_indices = [_resolve_stream_index(raw_io, stream_index=stream_index, stream_id=s)
+                          for s in (stream_id if isinstance(stream_id, list) else [stream_id])]
+        if None in stream_indices:
             report.add_error("Sanity", f"Stream {stream_id!r} not in {raw_path.name if raw_path else 'the recording'}")
             return report
-        stream_indices = [given]
     else:
         stream_indices = range(n_streams)
     issues_found = False
@@ -359,28 +369,43 @@ def _acquisition_series(nwb) -> list:
             if hasattr(ts, "data") and getattr(ts, "rate", None)]
 
 
-def _series_channel_names(ts) -> set[str]:
-    """Channel names of a series' electrodes (electrodes table column channel_name)."""
+def _series_channel_names(ts) -> list[str]:
+    """Channel names of a series' electrodes, in column order (electrodes table column channel_name)."""
     electrodes = getattr(ts, "electrodes", None)
     if electrodes is None or "channel_name" not in electrodes.table.colnames:
-        return set()
+        return []
     names = electrodes.table["channel_name"].data[:]
-    return {n.decode() if isinstance(n, bytes) else str(n) for n in np.asarray(names)[electrodes.data[:]]}
+    return [n.decode() if isinstance(n, bytes) else str(n) for n in np.asarray(names)[electrodes.data[:]]]
 
 
-def _match_stream(raw_io, ts, block_index: int) -> tuple[int | None, str | None]:
-    """Raw stream of a series, by its channel names, then sample count.
+def _raw_columns(raw_channels, ts, n_nwb: int) -> list[int]:
+    """The raw column of each series channel: by name (or id), else by position at equal counts."""
+    names = _series_channel_names(ts)
+    for key in ("name", "id"):
+        columns = {str(v): i for i, v in enumerate(raw_channels[key])}
+        if names and all(n in columns for n in names):
+            return [columns[n] for n in names]
+    if len(raw_channels) != n_nwb:
+        raise ValueError(f"{ts.name}: {n_nwb} channels, not matched by name among the raw stream's "
+                         f"{len(raw_channels)}")
+    return list(range(n_nwb))
+
+
+def _match_stream(raw_io, ts, block_index: int, among: list[int] = None) -> tuple[int | None, str | None]:
+    """Raw stream of a series (among the given stream indices), by its channel
+    names, then sample count.
 
     Returns (stream index, None), or (None, reason the check is skipped).
     """
     streams = raw_io.header["signal_streams"]
-    if len(streams) == 1:
-        return 0, None
-    names = _series_channel_names(ts)
+    among = range(len(streams)) if among is None else among
+    if len(among) == 1:
+        return among[0], None
+    names = set(_series_channel_names(ts))
     channels = raw_io.header["signal_channels"]
     candidates = [
-        i for i, s in enumerate(streams) if names and names <= {
-            str(v) for key in ("name", "id") for v in channels[key][channels["stream_id"] == s["id"]]}
+        i for i in among if names and names <= {
+            str(v) for key in ("name", "id") for v in channels[key][channels["stream_id"] == streams[i]["id"]]}
     ]
     if len(candidates) > 1:
         # Streams with the same channel names (e.g. one per probe): the one

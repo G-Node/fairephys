@@ -83,6 +83,8 @@ class TdtSevConverter(RecordingConverter):
         TDT store name to read (default: the one store of the SEV files).
     probe_group_path : str or Path, optional
         Path to probe_group.json for electrode geometry.
+    keep_unplaced : bool, optional
+        False leaves out the channels on no placed probe (attach_probes).
     """
 
     #: SEV header size in bytes (standard TDT SEV format).
@@ -94,6 +96,7 @@ class TdtSevConverter(RecordingConverter):
         *,
         store: str = "",
         probe_group_path: str | Path = None,
+        keep_unplaced: bool = True,
     ):
         sev_dir = Path(sev_dir)
         if not sev_dir.exists():
@@ -130,4 +133,4 @@ class TdtSevConverter(RecordingConverter):
             "channel_name",
             [f"{self._store_name} {ch}" for ch in self._channels],
         )
-        super().__init__(recording, probe_group_path)
+        super().__init__(recording, probe_group_path, keep_unplaced)

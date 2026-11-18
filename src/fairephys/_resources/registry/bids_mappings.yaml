@@ -359,10 +359,13 @@ ecephys_json:
       path: [Sessions/*.task, Behavioral Protocol.bids task label]
       conflict_types: [coverage]  # BIDS entity; NWB has no task concept
     TaskDescription:
-      # The session's own 'task description' when it recorded a task of its
-      # own (sessions.yaml, one entry per task), else the same text as the
-      # openMINDS BehavioralProtocol description, else the session description.
-      path: [Sessions/*.task description, Behavioral Protocol.description, Sessions/*.description]
+      # The text of the sidecar's task in the protocol's 'task descriptions'
+      # (extract_sidecar_fields task), else the session's own 'task
+      # description' when it recorded a task of its own (sessions.yaml, one
+      # entry per task), else the same text as the openMINDS
+      # BehavioralProtocol description, else the session description.
+      path: [Behavioral Protocol/task descriptions/*.description, Sessions/*.task description,
+             Behavioral Protocol.description, Sessions/*.description]
       conflict_types: [coverage]
     BodyPart:
       default: brain

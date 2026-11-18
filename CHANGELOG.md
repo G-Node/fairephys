@@ -17,6 +17,9 @@
 - BIDS sidecars describe positions, names and locations in the words of the specification.
 - Probes implanted in a subject have their probe files once, in `probes/sub-<id>/`.
 - Larger probe pictures with one-line labels, a zoomed view for a dense probe; no group picture and none for a single contact.
+- A dataset with several tasks gives one description per task (`task descriptions`, protocol schema 1.1).
+- `keep_unplaced=False` keeps only the channels of placed probes; the raw check matches channels by name.
+- The raw check can compare a file with several streams.
 
 ## 0.1.0 (2026-11-16)
 

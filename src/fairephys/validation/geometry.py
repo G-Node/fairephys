@@ -11,17 +11,9 @@ from pynwb import NWBHDF5IO
 
 from .bids import default_schema_path
 from .report import ValidationReport, files_exist, guarded
+from ..bids.builder import BIDS_NEURAL_TYPES
 from ..converters.metadata import location_placeholder
 from ..placements import UNPLACED_GROUP
-
-# The channels.tsv types of extracellular signals (channels expected as NWB
-# electrodes): the BEP032 schema's `type__channels` enums described as an
-# extracellular voltage signal or as spike events (BB unfiltered, HP high-pass
-# filtered, LFP low-pass filtered, MUA rectified or thresholded, SPIKES
-# discrete spike events) and the electrode channel types of the ECoG and sEEG
-# arrays curated here (ECOG, SEEG). Every entry is a schema enum
-# (bids_channel_types); no SUA in the schema.
-BIDS_NEURAL_TYPES = {"BB", "HP", "LFP", "MUA", "SPIKES", "ECOG", "SEEG"}
 
 # Positions closer than this are the same (micrometer)
 POSITION_TOLERANCE = 0.1

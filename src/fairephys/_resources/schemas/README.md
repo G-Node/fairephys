@@ -34,6 +34,7 @@ A minor version is raised inside the schema file (`version`); its file name and 
 
 - 2026-11-18, hardware 1.1: the word `none` for `Filters` (no hardware filter applied).
 - 2026-11-18, hardware 1.1: `unconnected contacts` on a probe entry.
+- 2026-11-18, protocol 1.1: `task descriptions`, one text per task label.
 
 ## Validation
 

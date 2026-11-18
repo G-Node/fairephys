@@ -20,7 +20,8 @@ class TdtConverter(EphysConverter):
 
     data_interface_classes = {"Recording": TdtRecordingInterface}
 
-    def __init__(self, source_data: dict, probe_group_path: str | Path = None, block_index: int = None):
+    def __init__(self, source_data: dict, probe_group_path: str | Path = None, block_index: int = None,
+                 keep_unplaced: bool = True):
         # Order matters: fix names on the full multi-segment recording first,
         # then slice to a single block, then attach probes.
         NWBConverter.__init__(self, source_data=source_data)
@@ -28,7 +29,7 @@ class TdtConverter(EphysConverter):
         if block_index is not None:
             self._select_block(block_index)
         if probe_group_path:
-            self._attach_probes(probe_group_path)
+            self._attach_probes(probe_group_path, keep_unplaced)
 
     def _fix_channel_names(self):
         """The channel names of the TDT header, as Neo reads them.

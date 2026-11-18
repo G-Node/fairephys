@@ -207,6 +207,16 @@ def test_sidecar_fields_from_their_registry_paths(make_doc):
     assert extract_events_metadata(bare, sessions(bare)[0]) == {}
 
 
+def test_task_description_of_the_sidecars_task(make_doc):
+    """A task's own text from 'task descriptions'; the protocol's label keeps its description; an unknown task fails."""
+    doc = make_doc({"Behavioral Protocol": {"description": "Rest text",
+                                            "task descriptions": {"reward": "Reward text"}}})
+    text = lambda task: extract_sidecar_fields(doc, sessions(doc)[0], "ecephys_json", task=task)["TaskDescription"]
+    assert (text("reward"), text("rest")) == ("Reward text", "Rest text")
+    with pytest.raises(ValueError, match="no 'task descriptions' entry 'video'"):
+        text("video")
+
+
 def test_aux_device_fields(make_doc):
     """Aux device hardware filters: its own, else the recording system's, else n/a; its enums checked."""
     own = {"Hardware Filters": {"Filters": [{"name": "Amp highpass", "type": "highpass", "cutoff": "1 hertz"}]}}

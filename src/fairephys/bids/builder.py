@@ -19,11 +19,20 @@ from . import extractors
 from .resolver import resolve, section_to_dict
 from ..metadata.sessions import run_entry
 from ..metadata.subjects import session_subject, subject_sections
-from ..odml import props, section_at, subsection
+from ..odml import prop, props, section_at, subsection
 from ..placements import matched_probes, probe_ids, session_probe_ids
 from ..registry import load
 
 logger = logging.getLogger(__name__)
+
+# The channels.tsv types of extracellular signals (channels expected as NWB
+# electrodes): the BEP032 schema's `type__channels` enums described as an
+# extracellular voltage signal or as spike events (BB unfiltered, HP high-pass
+# filtered, LFP low-pass filtered, MUA rectified or thresholded, SPIKES
+# discrete spike events) and the electrode channel types of the ECoG and sEEG
+# arrays curated here (ECOG, SEEG). Every entry is a schema enum
+# (validation.geometry.bids_channel_types); no SUA in the schema.
+BIDS_NEURAL_TYPES = {"BB", "HP", "LFP", "MUA", "SPIKES", "ECOG", "SEEG"}
 
 
 def load_registry() -> dict:
@@ -245,7 +254,7 @@ def channel_electrode_map(group: ProbeGroup | Path | str, channel_names: list[st
 
 def extract_channels(session: odml.Section, group: ProbeGroup | Path | str = None, *,
                      reference_map: dict = None, channel_types: dict = None,
-                     bad_channels: dict[str, str] = None) -> list[dict]:
+                     bad_channels: dict[str, str] = None, keep_unplaced: bool = True) -> list[dict]:
     """channels.tsv rows: one per signal channel of the session's Neo Metadata
     (a session without it is an error).
 
@@ -259,6 +268,8 @@ def extract_channels(session: odml.Section, group: ProbeGroup | Path | str = Non
         channel_types: {'prefixes', 'names', 'default'} for the BIDS type.
         bad_channels: {channel name: description} of the channels the dataset
             declares bad; every other channel's status stays n/a.
+        keep_unplaced: False leaves out the channels of a neural type
+            (BIDS_NEURAL_TYPES) on no probe of the group.
     """
     registry = load_registry()["channels_tsv"]
     columns, required = registry["columns"], registry.get("required", [])
@@ -278,6 +289,8 @@ def extract_channels(session: odml.Section, group: ProbeGroup | Path | str = Non
                    "type": get_channel_type(name, channel_types),
                    "status": "bad" if name in bad_channels else None,
                    "status_description": bad_channels.get(name)}
+        if not keep_unplaced and electrode is None and derived["type"] in BIDS_NEURAL_TYPES:
+            continue
         row = {}
         for col, spec in columns.items():
             if spec.get("derived"):
@@ -393,7 +406,7 @@ def _aux_sources(doc: odml.Document, device: odml.Section, rec_sys: dict) -> tup
 
 def extract_sidecar_fields(doc: odml.Document, session: odml.Section,
                            registry_key: str, device_name: str = None,
-                           run: int = None, stream: str = None) -> dict:
+                           run: int = None, stream: str = None, task: str = None) -> dict:
     """Extract BIDS sidecar fields from odML using registry mappings.
 
     Generic extractor that works for any modality (ecephys, motion, emg,
@@ -414,6 +427,9 @@ def extract_sidecar_fields(doc: odml.Document, session: odml.Section,
             session writes one file per stream (e.g. one per Neuropixels
             probe): loads its Neo Metadata stream section as the 'stream'
             source (its own sampling rate and duration).
+        task: BIDS task label of the sidecar's run: its text in the Behavioral
+            Protocol 'task descriptions' (an error without one, unless it is
+            the protocol's own bids task label).
     """
     registry = load_registry()
     fields = registry.get(registry_key, {}).get("fields")
@@ -431,6 +447,10 @@ def extract_sidecar_fields(doc: odml.Document, session: odml.Section,
         "stream": _stream_entry(neo, stream) if stream is not None else {},
     }
     sources["run"] = run_entry(session, run, sources["stream"].get("id")) if run is not None else {}
+    text = prop(section_at(doc, "Behavioral Protocol/task descriptions"), task) if task else None
+    if task and not text and task != prop(section_at(doc, "Behavioral Protocol"), "bids task label"):
+        raise ValueError(f"no 'task descriptions' entry {task!r} in the Behavioral Protocol")
+    sources["task"] = {"description": text}
     filters_root = doc["Hardware"]
     if device_name:
         sources["aux_device"], filters_root = _aux_sources(doc, _aux_device(doc, device_name), sources["rec_sys"])
@@ -480,9 +500,9 @@ def _stream_entry(neo: odml.Section | None, stream: str) -> dict:
 
 
 def extract_ecephys_metadata(doc: odml.Document, session: odml.Section,
-                             run: int = None, stream: str = None) -> dict:
+                             run: int = None, stream: str = None, task: str = None) -> dict:
     """Extract ecephys.json fields (of one run when a session has several)."""
-    return extract_sidecar_fields(doc, session, "ecephys_json", run=run, stream=stream)
+    return extract_sidecar_fields(doc, session, "ecephys_json", run=run, stream=stream, task=task)
 
 
 def extract_events_metadata(doc: odml.Document, session: odml.Section) -> dict:

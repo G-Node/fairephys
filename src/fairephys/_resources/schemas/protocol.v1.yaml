@@ -1,7 +1,7 @@
 # Behavioral Protocol Template Schema v1
 $schema: https://json-schema.org/draft-07/schema#
 title: Behavioral Protocol Template
-version: 1
+version: 1.1
 
 type: object
 required: [Behavioral Protocol]
@@ -107,3 +107,6 @@ properties:
       training history: {type: string}
       other tasks performed: {type: boolean}
       other tasks description: {type: string}
+      # several tasks: what each task was, by its BIDS task label (the
+      # TaskDescription of its runs); the bids task label keeps 'description'
+      task descriptions: {type: object, additionalProperties: {type: string}}

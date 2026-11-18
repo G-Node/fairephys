@@ -200,6 +200,17 @@ def test_attach_probes_groups_channels_by_probe():
         attach_probes(_recording(4), group)
 
 
+def test_attach_probes_leaves_out_unplaced_channels():
+    """keep_unplaced=False keeps the placed channels with their names, groups, contacts and positions."""
+    group = probe_group(linear_probe("A", ["01", "02"], [4, 1]), linear_probe("B", ["01"], [3], x_offset=800))
+    recording = _recording(5)
+    recording.set_property("channel_name", [f"ch{i}" for i in range(5)])
+    kept = attach_probes(recording, group, keep_unplaced=False)
+    assert [list(kept.get_property(p)) for p in ("channel_name", "group_name", "electrode_name")] == [
+        ["ch1", "ch3", "ch4"], ["A", "B", "A"], ["02", "01", "01"]]
+    np.testing.assert_allclose(kept.get_property("location"), [[0, 100], [0, 0], [0, 0]])
+
+
 def test_neo_channel_names_are_the_own_streams_in_channel_order():
     """Two streams with the same channel ids: the names of the recording's stream, in the recording's order."""
     header = {"signal_channels": np.array(

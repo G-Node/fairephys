@@ -269,7 +269,9 @@ Channel mapping connects probe contacts to recording device channels:
 2. **Manual**: `channel mapping` in hardware.yaml when the pinout is fixed
 3. **Pattern extraction** in curate.py when channel names encode contact numbers (e.g. `Pr1_24`: probe 1, contact 24)
 
-Channels no placed probe is wired to stay in the NWB, in the electrode group `unplaced` (no electrode in the brain for them that session) without probe geometry; BIDS channels.tsv gives them no `electrode_name`.
+Channels no placed probe is wired to stay in the NWB, in the electrode group `unplaced` (no electrode in the brain for them that session) without probe geometry; BIDS channels.tsv gives them no `electrode_name`. With `keep_unplaced=False` (the converters, `attach_probes` and `extract_channels`) they are left out: SpikeInterface's `set_probegroup` keeps the wired channels in ascending order, and channels.tsv leaves out the neural rows without an electrode.
+
+The device channel indices of a session's `probe_group.json` are positions among all the channels of the raw stream, also when channels are left out of the NWB; the raw check matches the NWB channels to the raw channels by name.
 
 ## ProbeInterface Integration
 

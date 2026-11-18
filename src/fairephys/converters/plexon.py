@@ -22,6 +22,6 @@ class PlexonConverter(EphysConverter):
 
     data_interface_classes = {"Recording": Plexon2RecordingInterface}
 
-    def __init__(self, source_data: dict, probe_group_path=None):
+    def __init__(self, source_data: dict, probe_group_path=None, keep_unplaced: bool = True):
         configure_plexon_env()
-        super().__init__(source_data=source_data, probe_group_path=probe_group_path)
+        super().__init__(source_data=source_data, probe_group_path=probe_group_path, keep_unplaced=keep_unplaced)
