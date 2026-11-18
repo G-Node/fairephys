@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 (unreleased)
+## 0.1.1 (2026-11-18)
 
 - Compile keeps a value such as `1920x1080` as text. A unit follows its number after a space (`24 kg`).
 - A controlled term that openMINDS does not hold is named in the warning.
