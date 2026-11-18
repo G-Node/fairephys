@@ -26,7 +26,7 @@ PROBE_ATTRS = {"name", "manufacturer", "serial number"}
 GEOMETRY_FIELDS = {
     "number of contacts", "contact pitch", "channel mapping",
     "contact arrangement", "number of columns", "number of rows",
-    "row spacing", "column spacing", "contact positions",
+    "row spacing", "column spacing", "contact positions", "unconnected contacts",
 }
 # Value origin of the geometry of a probe placed at its YAML 'contact positions'
 YAML_POSITIONS = "the YAML's contact positions"
@@ -162,7 +162,7 @@ def _parametric_probe(cfg: dict, label: str, units: dict, shape: dict):
     ypitch = parse_pitch(cfg["row spacing"], units.get("row spacing")) if cfg.get("row spacing") else pitch
     probe = generate_multi_columns_probe(num_columns=n_cols, num_contact_per_column=n_rows,
                                          xpitch=xpitch, ypitch=ypitch)
-    return _contacts_only(probe, slice(n_contacts), shape)
+    return _contacts_only(probe, slice(None if _as_list(cfg.get("unconnected contacts")) else n_contacts), shape)
 
 
 def _contacts_only(generated: Probe, order: slice, shape: dict) -> Probe:
@@ -205,7 +205,7 @@ def _create_probe(cfg: dict, units: dict | None = None):
     through them), else numbered in contact order; the ids of a probe at its
     'contact positions' are the positions' and filled identifiers must equal
     them. `units` are the units of the entry's values (an odML section's),
-    micrometer when absent."""
+    micrometer when absent. A grid's 'unconnected contacts' are left out."""
     label = f"Probe {cfg.get('name')!r}"
     ids = [str(i) for i in _as_list(cfg.get("electrode identifiers"))]
     shape, source = _contact_shape(cfg, units or {}, label)
@@ -219,9 +219,15 @@ def _create_probe(cfg: dict, units: dict | None = None):
         return probe
     else:
         probe = _parametric_probe(cfg, label, units or {}, shape)
+        probe.set_contact_ids(contact_ids(probe.get_contact_count()))
+        if unconnected := [str(i) for i in _as_list(cfg.get("unconnected contacts"))]:
+            probe = probe.get_slice(np.array([c not in unconnected for c in probe.contact_ids]))
+        if probe.get_contact_count() != cfg["number of contacts"]:
+            raise ValueError(f"{label}: the 'number of rows' by 'number of columns' grid less 'unconnected contacts' "
+                             f"leaves {probe.get_contact_count()} contacts, not 'number of contacts'")
         if ids and len(ids) != probe.get_contact_count():
             raise ValueError(f"{label}: {len(ids)} electrode identifiers for {probe.get_contact_count()} contacts")
-        probe.set_contact_ids(ids or contact_ids(probe.get_contact_count()))
+        probe.set_contact_ids(ids or probe.contact_ids)
     if source:
         probe.annotate(contact_shape_source=source)
     return probe
@@ -430,10 +436,10 @@ def _enrich_probe_geometry(probe_sec, probe, positions, origin="probeinterface")
             if width:
                 _set_if_empty("contact size", f"{width} um")
 
-    # Total span from y range
-    y_span = float(positions[:, 1].max() - positions[:, 1].min())
-    if y_span > 0:
-        _set_if_empty("total span", f"{y_span:.0f} um")
+    # Total span: the larger of the x and y extents
+    span = float((positions[:, :2].max(axis=0) - positions[:, :2].min(axis=0)).max())
+    if span > 0:
+        _set_if_empty("total span", f"{span:.0f} um")
 
 
 def save_probe_group(group: ProbeGroup, output_dir: Path, title: str = "Probe Group"):

@@ -172,6 +172,9 @@ Hardware:
 
       # Physical specifications
       number of contacts: 1
+      # unconnected contacts: the sites of a grid wired to no channel, left out of the probe,
+      # e.g. a 5 x 10 grid with two: number of contacts: 48, number of rows: 10,
+      # number of columns: 5, unconnected contacts: ["01", "10"]
       # number of columns: for matrix probes, grid columns (e.g., 4 for 4×8 FMA)
       # number of columns: 0
       contact pitch: ""           # e.g., "100 micrometer" (millimeter | micrometer)

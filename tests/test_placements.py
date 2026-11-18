@@ -199,6 +199,19 @@ def test_generated_probe_takes_the_electrode_identifiers_as_contact_ids(placed):
         _create_probe(positioned)
 
 
+def test_unconnected_contacts_left_out_of_a_generated_grid(placed):
+    """The other sites keep the ids, positions and size of the full grid and are wired to the channels in order."""
+    grid = {"name": "G", "probe type": "Utah array", "number of contacts": 48, "contact pitch": 400,
+            "contact arrangement": "matrix", "number of rows": 10, "number of columns": 5}
+    full = _create_probe({**grid, "number of contacts": 50}).get_slice(np.r_[1:9, 10:50])
+    doc = placed({"01": [{"probe": "G", "channels": "1-48"}]}, [{**grid, "unconnected contacts": ["01", "10"]}])
+    probe, = build_session_probe_group(doc, sessions(doc)[0]).probes
+    assert list(probe.contact_ids) == list(full.contact_ids)
+    assert probe.contact_positions.tolist() == full.contact_positions.tolist()
+    assert list(probe.contact_shape_params) == list(full.contact_shape_params)
+    assert list(probe.device_channel_indices) == list(range(48))
+
+
 def test_parametric_probe_errors():
     """Geometry the builder cannot honour is an error, never a guess."""
     for cfg, error in [
@@ -229,7 +242,7 @@ def test_explicit_positions_and_spacings(placed):
     geometry = {n: (section.properties[n].values, section.properties[n].value_origin)
                 for n in ("contact pitch", "contact arrangement", "total span")}
     assert geometry == {"contact pitch": ([], None), "contact arrangement": ([], None),  # not stated, not derived
-                        "total span": (["26 um"], "the YAML's contact positions")}
+                        "total span": (["30 um"], "the YAML's contact positions")}  # x extent 30 > y extent 26
     grid = _create_probe({"name": "G", "number of contacts": 4, "contact arrangement": "matrix", "number of columns": 2,
                           "row spacing": "20 micrometer", "column spacing": "0.03 millimeter"})
     assert sorted(set(grid.contact_positions[:, 0])) == [0, 30] and sorted(set(grid.contact_positions[:, 1])) == [0, 20]
