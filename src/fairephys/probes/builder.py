@@ -11,7 +11,7 @@ from probeinterface import (
     Probe, ProbeGroup, generate_linear_probe, generate_multi_columns_probe,
     write_probeinterface,
 )
-from probeinterface.plotting import plot_probe, plot_probegroup
+from probeinterface.plotting import plot_probe
 
 from .library import get_from_library, library_key
 from ..metadata.compiler import parse_value
@@ -442,8 +442,9 @@ def _enrich_probe_geometry(probe_sec, probe, positions, origin="probeinterface")
         _set_if_empty("total span", f"{span:.0f} um")
 
 
-def save_probe_group(group: ProbeGroup, output_dir: Path, title: str = "Probe Group"):
-    """Save probe group and individual probes as JSON + PNG."""
+def save_probe_group(group: ProbeGroup, output_dir: Path, **figure):
+    """Save the probe group and each probe as JSON, and each probe of more
+    than one contact as PNG (_plot_probe, with the figure keywords)."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -452,10 +453,10 @@ def save_probe_group(group: ProbeGroup, output_dir: Path, title: str = "Probe Gr
         probe_id = probe.annotations.get("probe_id", probe.name.replace(" ", "_"))
         device = _own_frame(probe)
         write_probeinterface(output_dir / f"{probe_id}.json", device)
-        _plot_probe(device, output_dir / f"{probe_id}.png")
+        if device.get_contact_count() > 1:
+            _plot_probe(device, output_dir / f"{probe_id}.png", **figure)
 
     write_probeinterface(output_dir / "probe_group.json", group)
-    _plot_group(group, output_dir / "probe_group.png", title)
 
 
 def _own_frame(probe):
@@ -468,51 +469,41 @@ def _own_frame(probe):
     return device
 
 
-def write_session_probe_group(doc, session, output_dir: Path, title: str = "Probe Group") -> Path:
+def write_session_probe_group(doc, session, output_dir: Path, **figure) -> Path:
     """The session's ProbeInterface group (build_session_probe_group) saved
-    under output_dir (save_probe_group), the folder emptied first so that
-    files of earlier device ids do not stay. Returns its probe_group.json."""
+    under output_dir (save_probe_group, with the figure keywords), the folder
+    emptied first so that files of earlier device ids do not stay, and a
+    session folder beside a subject's folder removed. Returns its
+    probe_group.json."""
     group = build_session_probe_group(doc, session)
     output_dir = Path(output_dir)
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
-    save_probe_group(group, output_dir, title=title)
+    stale = output_dir.with_name(f"{output_dir.name}_ses-{props(session)['session id']}")
+    for folder in (output_dir, stale):
+        if folder.exists():
+            shutil.rmtree(folder)
+    save_probe_group(group, output_dir, **figure)
     path = output_dir / "probe_group.json"
     logger.info(f"Saved: {path}")
     return path
 
 
-def _plot_probe(probe, path: Path):
-    """Plot single probe showing contact_id:device_channel on each contact."""
-    fig, ax = plt.subplots(figsize=(8, 14))
-
-    if probe.device_channel_indices is not None:
-        labels = [f"{c}:{d}" for c, d in zip(probe.contact_ids, probe.device_channel_indices)]
-    else:
-        labels = [str(c) for c in probe.contact_ids]
-
-    plot_probe(probe, ax=ax, text_on_contact=labels, title=False)
-    ax.set_title(f"{probe.name} ({probe.manufacturer})\ncontact_id:device_ch", fontsize=11)
-    ax.set_xlabel("x (um)")
-    ax.set_ylabel("y (um)")
-    fig.tight_layout()
-    fig.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-
-
-def _plot_group(group: ProbeGroup, path: Path, title: str):
-    """Plot probe group with contact IDs and device indices."""
-    fig, ax = plt.subplots(figsize=(12, 12))
-    plot_probegroup(group, ax=ax, with_contact_id=True, with_device_index=True, title=False)
-    ax.set_title(f"{title}\n(id above, device_ch below)", fontsize=12, fontweight="bold")
-    ax.set_xlabel("x (um)")
-    ax.set_ylabel("y (um)")
-
-    for probe in group.probes:
-        pos = probe.contact_positions
-        ax.text(pos[:, 0].mean(), pos[:, 1].max() + 400, probe.name,
-                ha="center", fontsize=10, fontweight="bold")
-
-    fig.tight_layout()
-    fig.savefig(path, dpi=150, bbox_inches="tight")
+def _plot_probe(probe, path: Path, zoom: float = None, figsize=(8, 10), fontsize: float = 9, **plot_probe_kwargs):
+    """Draw a probe with ProbeInterface's plot_probe at true scale, each contact labelled contact id:device
+    channel; with zoom (um) the whole probe beside the labelled lowest zoom um of its contacts."""
+    fig, axes = plt.subplots(1, 1 + bool(zoom), figsize=figsize, layout="constrained", squeeze=False)
+    if zoom:
+        plot_probe(probe, ax=axes[0, 0], title=False, **plot_probe_kwargs)
+    ax, wiring = axes[0, -1], probe.device_channel_indices
+    labels = probe.contact_ids if wiring is None else [f"{c}:{d}" for c, d in zip(probe.contact_ids, wiring)]
+    plot_probe(probe, ax=ax, title=False, text_on_contact=labels, **plot_probe_kwargs)
+    for text in ax.texts:  # plot_probe has no keyword for the size of its labels
+        text.set_fontsize(fontsize)
+    ax.margins(0.1)  # room for the labels of the outer contacts (plot_probe leaves 40 um)
+    ax.autoscale()
+    if zoom:
+        bottom = probe.contact_positions[:, 1].min()
+        ax.set_ylim(bottom - zoom / 10, bottom + zoom)
+    ax.set_aspect("equal", adjustable="box" if zoom else "datalim")  # datalim: the limits widened to the figure
+    fig.suptitle(f"{probe.name} ({probe.manufacturer})\ncontact id" + ":device channel" * (wiring is not None))
+    fig.savefig(path, dpi=200)
     plt.close(fig)

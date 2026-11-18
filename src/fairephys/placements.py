@@ -65,6 +65,14 @@ def _placement_dict(section: odml.Section) -> dict:
     return data
 
 
+def implanted_probes(doc: odml.Document, session: odml.Section) -> odml.Section | None:
+    """The subject's Implanted Probes when the session lists no Electrode Placements, else None."""
+    if section_at(session, "Electrode Placements") is None:
+        implants = section_at(session_subject(doc, session) or session, "Surgical Preparation/Implanted Probes")
+        return implants if implants is not None and implants.sections else None
+    return None
+
+
 def matched_probes(doc: odml.Document, session: odml.Section) -> list[tuple[int, odml.Section, dict]]:
     """(number, device section, placement data) per Electrode Placement of the
     session (else per Implanted Probe of its subject), in placement order;
@@ -77,9 +85,7 @@ def matched_probes(doc: odml.Document, session: odml.Section) -> list[tuple[int,
     devices = {str(props(s).get("name", "")): s for s in probes.sections} if probes is not None else {}
     if not devices:  # no electrode devices (e.g. an imaging dataset)
         return []
-    placements = section_at(session, "Electrode Placements")
-    if placements is None:  # chronic: placements fixed at surgery, not per session
-        placements = section_at(session_subject(doc, session) or session, "Surgical Preparation/Implanted Probes")
+    placements = implanted_probes(doc, session) or section_at(session, "Electrode Placements")
     if placements is None or not placements.sections:
         return [(i, sec, {}) for i, sec in enumerate(devices.values(), 1)]
 

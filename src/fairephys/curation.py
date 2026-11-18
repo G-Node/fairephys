@@ -26,6 +26,7 @@ from .export import (
     write_datacite, write_readme,
 )
 from .odml import prop, section_at
+from .placements import implanted_probes
 from .validation import run_validation
 from .validation.sanity import run_sanity_checks  # noqa: F401  (the dataset scripts import it from here)
 
@@ -86,8 +87,10 @@ def session_paths(doc: odml.Document, session: odml.Section, curated_dir: Path, 
     NWB) sub-<sub>_ses-<ses>_task-<task>[_acq-<acq>][_run-<nn>]. The subject
     is the session's; the task the one given (runs of one entry with
     different tasks), else the entry's own when it names one, else the
-    Behavioral Protocol's bids task label. Every key is always present, with
-    the task, acq and run that named the files."""
+    Behavioral Protocol's bids task label. The probe files are the subject's
+    (probes/sub-<sub>) for a session of its implanted probes, else the
+    session's. Every key is always present, with the task, acq and run that
+    named the files."""
     sub = get_subject_id(doc, session)
     ses = str(prop(session, "session id") or "")
     if not ses:
@@ -97,12 +100,13 @@ def session_paths(doc: odml.Document, session: odml.Section, curated_dir: Path, 
     prefix = bids.bids_filename(sub, "", "", ses=ses).rstrip("_.")
     run_prefix = bids.bids_filename(sub, "", "", ses=ses, task=task, acq=acq, run=run).rstrip("_.")
     channels_prefix = bids.bids_filename(sub, "", "", ses=ses, acq=acq).rstrip("_.")
+    probes_folder = f"sub-{sub}" if implanted_probes(doc, session) else prefix
     return {
         "ses_dir": ses_dir,
         "prefix": prefix,
         "run_prefix": run_prefix,
-        "probes_dir": f"probes/{prefix}",
-        "probe_group": Path(curated_dir) / "probes" / prefix / "probe_group.json",
+        "probes_dir": f"probes/{probes_folder}",
+        "probe_group": Path(curated_dir) / "probes" / probes_folder / "probe_group.json",
         "probes_tsv": ses_dir / f"{prefix}_probes.tsv",
         "probes_json": ses_dir / f"{prefix}_probes.json",
         "electrodes_tsv": ses_dir / f"{prefix}_electrodes.tsv",
