@@ -189,9 +189,12 @@ Ecephys:
       description:
         default: "Raw acquisition traces"
       # the Recording System's analog filters (Hardware Filters), in the
-      # sentence of the data descriptor; left out without filters
+      # sentence of the data descriptor; the text of `none` when the template
+      # states that no hardware filter was applied (Filters: none); left out
+      # without filters
       filtering:
         extract: hardware_filters
+        none: "No hardware filter applied"
 
   Electrodes:
     mode: from_registry

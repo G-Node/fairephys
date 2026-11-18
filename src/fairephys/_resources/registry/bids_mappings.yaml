@@ -379,29 +379,17 @@ ecephys_json:
     CogPOID:
       conflict_types: [coverage]
 
-# NWB electrode table column descriptions
-# Injected into meta["Ecephys"]["Electrodes"] so neuroconv sets proper
-# VectorData.description on each column. Only standard columns that appear
-# across multiple datasets are listed here; dataset-specific columns should
-# be described in the dataset's curate.py.
+# NWB electrode table column descriptions, in meta["Ecephys"]["Electrodes"]
+# (build_nwb_metadata; the converters add them for the columns the metadata
+# does not describe). neuroconv writes them for the recording's property
+# columns; for group_name, location (the brain_area property), channel_name,
+# electrode_name and rel_x/rel_y it writes its own text, so they are not
+# listed. Only columns that appear across datasets are listed here; a
+# dataset describes its own columns in its curate.py. A column without a
+# description is an error at conversion.
 # neuroconv silently ignores entries for columns that do not exist in the recording.
 # Future: derive descriptions from odML schema properties instead of hardcoding here.
 nwb_electrode_columns:
-  group_name:
-    description: Name of the electrode group (probe) this channel belongs to
-    conflict_types: [structural]  # BIDS: probe_name; NWB: group_name
-  brain_area:
-    description: Brain region of the recording site
-    conflict_types: [vocabulary]  # free text vs controlled ontology
-  hemisphere:
-    description: Hemisphere of the recording site (left or right)
-    conflict_types: [vocabulary]
-  channel_name:
-    description: Channel name as reported by the acquisition system
-    conflict_types: []
-  electrode_name:
-    description: "Contact id of the electrode on its probe (BIDS electrodes.tsv name: <group_name>_<electrode_name>)"
-    conflict_types: [structural]  # BIDS: name is <probe_name>_<contact id>; NWB: group_name and electrode_name columns
   inter_sample_shift:
     description: Delay of the channel's sample within one sampling period, as a fraction of the period (multiplexed analog-to-digital conversion, e.g. Neuropixels)
     conflict_types: [coverage]  # NWB column from SpikeInterface; no BIDS equivalent

@@ -115,6 +115,14 @@ def parse_channels(spec: str) -> list[int]:
     return indices
 
 
+def recorded_electrode_count(placement: dict) -> int | None:
+    """The number of electrodes a placement records: its 'electrode
+    identifiers', else its 'channels'; None without either."""
+    if ids := placement.get("electrode identifiers"):
+        return len(ids) if isinstance(ids, list) else 1
+    return len(parse_channels(spec)) if (spec := placement.get("channels")) else None
+
+
 def placement_position_mm(placement: dict, run: int = None) -> list[float] | None:
     """[ML, AP, DV] of a placement in mm, DV of the run when the device was
     moved during the session ('DV by run'); None unless all three are given."""

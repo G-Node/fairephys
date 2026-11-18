@@ -29,9 +29,10 @@ from ..metadata.identifiers import related_publications
 from ..metadata.sessions import start_datetime
 from ..metadata.subjects import session_subject
 from ..bids.builder import load_registry
+from ..bids.extractors import no_hardware_filters
 from ..export.readme import hardware_filters_text
 from ..odml import prop, props, section_at
-from ..placements import matched_probes, placement_position_mm, session_probe_ids
+from ..placements import matched_probes, placement_position_mm, recorded_electrode_count, session_probe_ids
 
 logger = logging.getLogger(__name__)
 
@@ -261,16 +262,15 @@ def _extract_canonical_probe_id(data: dict, ctx: dict = None, idx: int = 0, **_)
 
 
 def _extract_electrode_group_description(data: dict, ctx: dict = None, placement: dict = None, **_) -> str | None:
-    """'N channel type' (what the probe section gives), and the frame of the
-    position when there is one; None without contacts or type."""
-    n, kind = data.get("number of contacts"), data.get("probe type")
-    if n and kind:
-        text = f"{n} channel {kind}"
-    elif n or kind:
-        text = f"{n} channels" if n else str(kind)
-    else:
+    """'<Probe type>, <n> electrodes recorded', and the frame of the position
+    when there is one; None without a count or type."""
+    placement = placement or {}
+    kind = str(data.get("probe type") or "")
+    n = recorded_electrode_count(placement) or data.get("number of contacts")
+    recorded = f"{n} electrode{'' if n == 1 else 's'} recorded" if n else ""
+    if not (text := ", ".join(filter(None, [kind[:1].upper() + kind[1:], recorded]))):
         return None
-    if placement and placement_position_mm(placement, (ctx or {}).get("run")) is not None:
+    if placement_position_mm(placement, (ctx or {}).get("run")) is not None:
         reference = placement.get("anatomical reference") or "the placement's reference"
         text += f"; position (x, y, z) = (ML, AP, DV) in mm from {reference}"
     return text
@@ -312,9 +312,12 @@ def _extract_placement_position(data: dict, ctx: dict = None, placement: dict = 
     return placement_position_mm(placement, (ctx or {}).get("run")) if placement else None
 
 
-def _extract_hardware_filters(data: dict, section: odml.Section = None, **_) -> str | None:
-    """The analog filters of the source section, as the data descriptor states them."""
-    return hardware_filters_text(section) if section is not None else None
+def _extract_hardware_filters(data: dict, section: odml.Section = None, spec: dict = None, **_) -> str | None:
+    """The analog filters of the source section, as the data descriptor states
+    them; the field's registry `none` text when it states that there is none."""
+    if section is None:
+        return None
+    return (spec or {}).get("none") if no_hardware_filters(section) else hardware_filters_text(section)
 
 
 _ECEPHYS_EXTRACTORS = {
@@ -384,6 +387,12 @@ def _build_ecephys_from_registry(spec: dict) -> list[dict]:
         {"name": col, "description": s["description"]}
         for col, s in load_registry().get(key, {}).items()
     ]
+
+
+def electrode_columns() -> list[dict]:
+    """The registry's electrode column descriptions, as build_nwb_metadata
+    gives them in Ecephys Electrodes."""
+    return _build_ecephys_from_registry(load_nwb_registry()["Ecephys"]["Electrodes"])
 
 
 def _build_ecephys(doc: odml.Document, session: odml.Section, registry: dict,

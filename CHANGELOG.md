@@ -9,6 +9,9 @@
 - `docs/pipeline.md`: how to run a release conversion so that each NWB file records a clean repository state.
 - A generated probe can name its `unconnected contacts`; they are left out of its geometry and counts (hardware schema 1.1).
 - An empty `total span` takes the larger extent of the contacts.
+- `Filters: none` states that no hardware filter was applied.
+- Electrode group description: probe type and number of electrodes recorded.
+- NWB files carry the registry's electrode column descriptions.
 
 ## 0.1.0 (2026-11-16)
 
