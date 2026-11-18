@@ -37,7 +37,8 @@ class KGResolver:
         try:
             entity = fg_class.by_name(name)
         except (KeyError, ValueError, TypeError) as e:  # fairgraph: unknown name
-            logger.warning("  Instance: Lookup failed for %s '%s': %s", fg_class.__name__, name, e)
+            logger.warning("  Instance: no %s term named '%s'", fg_class.__name__, name)
+            logger.debug("  Instance: %s.by_name('%s'): %s", fg_class.__name__, name, e)
             entity = None
         self._cache[key] = entity
         if entity:

@@ -12,7 +12,7 @@ For extracellular electrophysiology, that context is hard to assemble. Acquisiti
 
 A dataset that others can find, understand and reuse has to meet several requirements. The figure shows them in the order fairephys works through them: each step draws on what the steps before it produced, and version control accompanies all of them.
 
-<p align="center"><img src="docs/workflow-ladder.png" alt="The requirements of reusable data, in the order fairephys addresses them, from the bottom: metadata standardization (structured and machine-actionable metadata), data format standardization (self-describing and open), data organization standardization (consistently organized), data annotation (discoverable and comparable) and data sharing (published, citable and findable), with version control and workflow management alongside all of them (reproducible and traceable)." width="420"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/G-Node/fairephys/main/docs/workflow-ladder.png" alt="The requirements of reusable data, in the order fairephys addresses them, from the bottom: metadata standardization (structured and machine-actionable metadata), data format standardization (self-describing and open), data organization standardization (consistently organized), data annotation (discoverable and comparable) and data sharing (published, citable and findable), with version control and workflow management alongside all of them (reproducible and traceable)." width="420"></p>
 
 1. **Metadata standardization: structured and machine-actionable metadata.** What was recorded, from whom, with which equipment and under which conditions is captured in a structured form that people can review and software can read. The later steps draw on it.
 2. **Data format standardization: self-describing and open files.** The recordings can be read without the vendor's software and carry their own context: what was measured, at what rate, on which channels, with what gain and filtering. fairephys writes NWB files for this.
@@ -90,6 +90,8 @@ uv run python my-dataset/curate.py --full --convert --session <session id>
 ```
 
 NWB files are short test files (stubs) by default, so the whole pipeline reruns in seconds while the metadata change; `--full` converts the complete recordings once everything is final.
+
+Building the openMINDS collection needs a token for the EBRAINS Knowledge Graph. Set it in the environment variable `EBRAINS_KG_TOKEN` or save it in the file `~/.config/fairephys/kg_token`. Without a token, `--all` skips the collection and runs all other steps.
 
 ## Documentation
 

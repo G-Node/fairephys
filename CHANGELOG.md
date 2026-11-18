@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.1 (unreleased)
+
+- Compile keeps a value such as `1920x1080` as text. A unit follows its number after a space (`24 kg`).
+- A controlled term that openMINDS does not hold is named in the warning.
+- The message after a compile and the comment on the BIDS age are corrected.
+- README: where the KG token goes; the figure is linked by its full URL.
+- `docs/pipeline.md`: how to run a release conversion so that each NWB file records a clean repository state.
+
+## 0.1.0 (2026-11-16)
 
 First release as a package of its own (pre-alpha), split from the NHP-EBRAINS curation repository, where it curated 12 electrophysiology and 2 MRI datasets.
 
