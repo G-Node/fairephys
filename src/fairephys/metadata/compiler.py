@@ -445,7 +445,7 @@ def _set_dataset_citation(doc: odml.Document) -> None:
     doi = re.sub(r"^(https?://doi\.org/|doi:)", "", value(ds, "doi"))
     link = f"https://doi.org/{doi}" if doi else value(ds, "repository url")
     text = (authors if authors.endswith(".") else f"{authors}.") + " " if authors else ""
-    text += f"{value(ds, 'full name')}{version}." + (f" {link}" if link else "") + f" ({date.today().year})."
+    text += f"{value(ds, 'full name')}{version}" + (f". {link}" if link else "") + f" ({date.today().year})."
     origin = "generated: Contributors, full name, version identifier, doi else repository url, build year"
     if "how to cite" in ds.properties:
         prop = ds.properties["how to cite"]

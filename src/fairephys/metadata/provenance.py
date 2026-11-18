@@ -45,18 +45,18 @@ PYTHON_PACKAGES = [
     (PIPELINE, PIPELINE, "conversion"),
     ("NeuroConv", "neuroconv", "conversion"),
     ("PyNWB", "pynwb", "conversion"),
-    ("fairgraph", "fairgraph", "conversion"),
+    ("fairgraph", "fairgraph", "metadata upload"),
 ]
 
 
 def curation_software() -> list[dict]:
     """One entry per tool with a resolvable version, the BIDS validator first.
 
-    Each entry holds name, version and purpose ("validation" or "conversion"),
-    the BIDS validator also its schema (and the schema commit), the pipeline
-    also its commit and uncommitted changes (from a git checkout), description
-    and code url (when known), and the origin of the values (the odML value
-    origin).
+    Each entry holds name, version and purpose ("validation", "conversion" or
+    "metadata upload"), the BIDS validator also its schema (and the schema
+    commit), the pipeline also its commit and uncommitted changes (from a git
+    checkout), description and code url (when known), and the origin of the
+    values (the odML value origin).
     """
     from ..validation.bids import validator_versions
 

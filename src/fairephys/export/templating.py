@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlparse
 
+from ..odml import prop
 from ..registry import load as load_registry
 
 # A template token "{name}", or an optional group "{?words {name} words}"
@@ -16,20 +18,24 @@ _EMPTY_OPTIONAL_RE = re.compile(r"\s*(?:\(\x00\)|\x00)")
 
 def spec_tokens() -> dict[str, str]:
     """The template tokens of the target BIDS specification, from the BIDS
-    registry spec (bids_mappings.yaml): {bids version} (bids_version) and
-    {bids extension} (ecephys_extension). A missing value raises."""
+    registry spec (bids_mappings.yaml): {bids version} (bids_version),
+    {bids extension} (ecephys_extension) and {bids extension specification}
+    (ecephys_extension_specification). A missing value raises."""
     spec = load_registry("bids_mappings.yaml").get("spec") or {}
-    tokens = {"bids version": spec.get("bids_version"), "bids extension": spec.get("ecephys_extension")}
+    tokens = {"bids version": spec.get("bids_version"), "bids extension": spec.get("ecephys_extension"),
+              "bids extension specification": spec.get("ecephys_extension_specification")}
     if missing := [name for name, value in tokens.items() if not value]:
         raise ValueError(f"bids_mappings.yaml spec gives no value for the template token(s) "
                          f"{', '.join('{' + m + '}' for m in missing)}")
     return {name: str(value) for name, value in tokens.items()}
 
 
-def fill_statement(text: str) -> str:
+def fill_statement(text: str, dataset=None) -> str:
     """A shared statement (collection metadata) with its specification tokens
-    (spec_tokens) filled; any other token raises."""
-    tokens = spec_tokens()
+    (spec_tokens) and the dataset's {repository url} and {repository path}
+    ("organisation/repository"; both empty without a url) filled; any other token raises."""
+    url = str(prop(dataset, "repository url") or "").strip()
+    tokens = {**spec_tokens(), "repository url": url, "repository path": urlparse(url).path.strip("/")}
 
     def lookup(name: str) -> str:
         if name not in tokens:

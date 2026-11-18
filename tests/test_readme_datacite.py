@@ -103,6 +103,7 @@ def curated(tmp_path):
         ecephys.mkdir(parents=True)
         for suffix in ("ecephys.nwb", "channels.tsv", "electrodes.tsv", "probes.tsv", "recording-eye_physio.tsv.gz"):
             (ecephys / f"sub-MonkeyA_{ses}_task-rest_{suffix}").touch()
+        (ecephys / f"sub-MonkeyA_{ses}_task-rest_recording-eye_physio.json").write_text('{"PhysioType": "eyetrack"}')
     (root / "sub-MonkeyA" / "ses-01" / "beh").mkdir()
     (root / "sub-MonkeyA" / "ses-01" / "beh" / "sub-MonkeyA_ses-01_task-rest_video.MTS").touch()
     (root / "probes" / "sub-MonkeyA_ses-01").mkdir(parents=True)
@@ -191,7 +192,7 @@ def test_how_to_cite_generated_unless_given(make_doc):
     """The citation is built from contributors, title, version, the DOI link (else the repository url) and year
     unless given."""
     for dataset, expected in [
-        ({}, "Doe, J. Test dataset. (YEAR)."),
+        ({}, "Doe, J. Test dataset (YEAR)."),
         ({"Contributors": [{"given name": "Jean-Pierre", "family name": "Roux"},
                            {"given name": "Bo Ya", "family name": "Lee"}, {"given name": "A", "family name": "Zed"}],
           "version identifier": "1.0.0", "repository url": "https://gin.example/R"},
@@ -223,8 +224,8 @@ def test_author_contributions(make_doc, tmp_path):
         ({"roles": ["coordination", "data management"],
           "contribution description": "Project coordination and supervision of data curation"},
          "**A B:** Project coordination and supervision of data curation, data management"),
-        ({"roles": ["data management"], "contribution description": "Curation (NWB and BIDS)"},
-         "**A B:** Curation (NWB and BIDS), data management"),
+        ({"roles": ["data management"], "contribution description": "Curation (conversion and layout)"},
+         "**A B:** Curation (conversion and layout), data management"),
         ({"roles": ["data management"], "contribution description": "Data Management of the recordings."},
          "**A B:** Data Management of the recordings"),
         ({"roles": ["data collection", "coordination"]}, "**A B:** Data collection, coordination"),

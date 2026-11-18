@@ -2,21 +2,26 @@
 # Maps odML properties to BIDS sidecar fields and TSV columns.
 # Path notation: Section/Subsection.property
 # Only custom fields (not directly mappable to BIDS) should have sidecar_description,
-# except columns whose values come from an ontology: sidecar_term_url documents
-# the source (written as TermURL, with the description, into the column sidecar)
+# except columns whose values come from an ontology (sidecar_term_url documents
+# the source, written as TermURL, with the description, into the column sidecar)
+# and the contact positions and channel names, in the words of the BIDS
+# specification. sidecar_if_filled: the column is described only in a sidecar
+# whose table holds a value in it
 #
 # Conflict types reference the six-type typology:
 #   unit, type, vocabulary, structural, cardinality, coverage
 # Empty list [] means direct passthrough with no interoperability conflict.
 
-# Target BIDS specification. Update both values together when following a
+# Target BIDS specification. Update the values together when following a
 # newer spec state (the microelectrode extension is not yet in a release).
 spec:
   bids_version: &bids_version "1.11.2"
-  # Named as in a paper: the proposal, its pull request and the rendered preview; the
-  # commit the layout and the validator follow is the schema file below, which the
-  # descriptor names in its validation sentence
-  ecephys_extension: "BEP032 Microelectrode Electrophysiology ([bids-specification pull request #2307](https://github.com/bids-standard/bids-specification/pull/2307), [preview](https://bids-specification--2307.org.readthedocs.build/en/2307/))"
+  # Named as in a paper: the proposal and its pull request; the commit the layout and
+  # the validator follow is the schema file below, which the descriptor names in its
+  # validation sentence
+  ecephys_extension: "BEP032 Microelectrode Electrophysiology ([bids-specification pull request #2307](https://github.com/bids-standard/bids-specification/pull/2307))"
+  # The rendered preview of the proposal, the one link of the descriptor to its text
+  ecephys_extension_specification: "https://bids-specification--2307.org.readthedocs.build/en/2307/"
   # Used by --validate: the schema file lives in _resources/bids/ and was
   # generated with `bst export` from the same spec commit; override with the
   # BIDS_SCHEMA environment variable. Named schema-<extension>-<commit>.json:
@@ -92,7 +97,7 @@ probes_tsv:
       conflict_types: [vocabulary]  # left/right → L/R
     anatomical_location:
       path: Sessions/*/Electrode Placements/*.brain region
-      sidecar_description: Brain region in which the probe is placed (UBERON term name)
+      sidecar_description: The anatomical structure in which the probe is placed
       sidecar_term_url: "http://purl.obolibrary.org/obo/uberon.owl"
       conflict_types: [vocabulary]  # free text vs UBERON controlled terms (openMINDS)
     manufacturer:
@@ -114,6 +119,7 @@ probes_tsv:
     quality:
       path: Sessions/*/Electrode Placements/*.quality
       sidecar_description: Signal quality label of the placement (a scale specific to this dataset, see the dataset documentation)
+      sidecar_if_filled: true
       conflict_types: [coverage]  # not in any standard
 
 # electrodes.tsv: one row per contact of the session's ProbeInterface group
@@ -122,19 +128,22 @@ electrodes_tsv:
   columns:
     name:
       generated: true  # {probe_id}_{contact id}, the NWB electrode name
-      sidecar_description: Electrode name <probe id>_<contact id>, equal to the NWB electrode table's group_name, an underscore and electrode_name
+      sidecar_description: Name of the electrode contact point
       conflict_types: [structural]
     probe_name:
       generated: true
       conflict_types: [structural]  # NWB: group_name column; BIDS: probe_name column
     x:
       generated: true  # contact position in the probe plane (um), from ProbeInterface
+      sidecar_description: "Recorded position along the x-axis: the position along the local width-axis relative to the probe origin in micrometers (um)"
       conflict_types: [structural]  # BIDS: relative to probe; NWB: brain coordinates
     y:
       generated: true
+      sidecar_description: "Recorded position along the y-axis: the position along the local height-axis relative to the probe origin in micrometers (um)"
       conflict_types: [structural]
     z:
       generated: true  # n/a for a planar probe (BIDS: 2D localizations)
+      sidecar_description: "Recorded position along the z-axis: the position along the local depth-axis relative to the probe origin in micrometers (um). For 2D electrode localizations, a column of n/a values"
       conflict_types: [structural]
     hemisphere:
       path: Electrode Placements/*.hemisphere
@@ -148,7 +157,7 @@ electrodes_tsv:
     anatomical_location:
       path: Electrode Placements/*.brain region
       default: "n/a"
-      sidecar_description: Brain region in which the electrode is located (UBERON term name)
+      sidecar_description: The anatomical structure in which the electrode is located
       sidecar_term_url: "http://purl.obolibrary.org/obo/uberon.owl"
       conflict_types: [structural]  # NWB: on ElectrodeGroup; BIDS: per electrode row
     # custom
@@ -164,10 +173,12 @@ channels_tsv:
   columns:
     name:
       path: signal_channels/*.name
+      sidecar_description: Label of the channel
       conflict_types: []
     electrode_name:
       derived: true  # channel_electrode_map of the session's probe group; n/a on no probe
       default: "n/a"
+      sidecar_description: Name of the electrode contact point
       conflict_types: [structural]  # BIDS: explicit string link; NWB: electrode column reference
     type:
       derived: true  # the dataset's channel types (prefixes, names, default)
@@ -257,9 +268,6 @@ dataset_description_json:
       # (with the commit, "0.1.0+abc1234"), Description, CodeURL (when recorded)
       extract: generated_by
       conflict_types: [coverage]  # BIDS-only provenance
-    SourceDatasets:
-      extract: source_datasets
-      conflict_types: [coverage]
     Keywords:
       path: Dataset.keywords
       conflict_types: [type]  # scalar-to-array coercion

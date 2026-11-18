@@ -10,7 +10,6 @@ statement).
 
 from __future__ import annotations
 
-import json
 import re
 from datetime import datetime
 from pathlib import Path, PurePosixPath
@@ -47,8 +46,8 @@ _MINUTES_PER_UNIT = {"millisecond": 1 / 60000, "second": 1 / 60, "minute": 1, "h
 _POSITIONING_FLAGS = [("head fixation", "head fixation method"), ("primate chair", None)]
 # What each column of the Recording Sessions table holds (its caption)
 _SESSION_COLUMNS = {"Session": "session id", "Subject": "subject id", "Task": "task", "Date": "date",
-                    "Duration": "duration", "Probes": "the probes placed (brain region and hemisphere)",
-                    "Description": "a short description"}
+                    "Duration": "duration of the recordings",
+                    "Probes": "the probes placed (brain region and hemisphere)", "Description": "a short description"}
 
 # Table captions start with this mark; odml_to_readme numbers the tables in order of appearance ("**Table 1.**")
 _TABLE = "\x00TABLE\x00"
@@ -211,7 +210,7 @@ def _with_statement(ds: odml.Section, field: str, statement: str) -> str:
     specification tokens filled (as in openMINDS)."""
     project = subsection(ds, "Project")
     shared = project and prop(project, statement)
-    parts = [prop(ds, field), fill_statement(shared) if isinstance(shared, str) else shared]
+    parts = [prop(ds, field), fill_statement(shared, ds) if isinstance(shared, str) else shared]
     return "\n\n".join(str(p).strip() for p in parts if _nonempty(p))
 
 
@@ -272,10 +271,12 @@ def _methods_one_subject(subj: odml.Section, several: bool) -> str:
 def _nested_bullets(sec: odml.Section) -> list[str]:
     """One bullet per filled property of a nested section, labelled with the
     section and the property ("- **Head post material:** titanium"); a
-    description is the section's own text ("- **Head post:** ...")."""
+    description is the section's own text ("- **Head post:** ..."); the readme
+    registry's subject labels name a pair whose words repeat ("- **Dura:** intact")."""
     label = _sentence_case(sec.name)
-    return [f"- **{label if p.name == 'description' else f'{label} {p.name}'}:** {_prop_str(sec, p.name)}"
-            for p in sec.properties if p.values and _prop_str(sec, p.name)]
+    labels = load_registry("readme.yaml")["subject labels"]
+    return [f"- **{labels.get(f'{sec.name}/{p.name}', label if p.name == 'description' else f'{label} {p.name}')}:** "
+            f"{_prop_str(sec, p.name)}" for p in sec.properties if p.values and _prop_str(sec, p.name)]
 
 
 def hardware_filters_text(section: odml.Section) -> str | None:
@@ -344,9 +345,11 @@ def _methods_hardware(doc: odml.Document) -> str:
             ptype = prop(probe, "probe type")
             mfr = prop(probe, "manufacturer")
             model = prop(probe, "model")
-            # the class with the product and its maker: "linear multi-contact probe (V-Probe, Plexon)"
+            # the class with the product and its maker: "linear multi-contact probe (V-Probe, Plexon)";
+            # a model that is the class is left out ("Utah array (Blackrock Neurotech)")
             if _nonempty(model):
-                product = f"{model}, {mfr}" if _nonempty(mfr) else str(model)
+                same = str(model).lower() == str(ptype).lower()
+                product = ", ".join(str(v) for v in ([] if same else [model]) + [mfr] if _nonempty(v))
                 details.append(bracketed(str(ptype), product) if _nonempty(ptype) else product)
             else:
                 details += [str(v) for v in (ptype, mfr) if _nonempty(v)]
@@ -386,7 +389,7 @@ def _methods_protocol(doc: odml.Document) -> str:
         lines.append(f"- **Task during the recordings:** {task}")
     other = prop(proto, "other tasks description")
     if prop(proto, "other tasks performed") and _nonempty(other):
-        lines.append(f"- **Other tasks on the recording days:** {' '.join(str(other).split())}")
+        lines.append(f"- **Other tasks:** {' '.join(str(other).split())}")
     paradigm = prop(proto, "task paradigm")
     if _nonempty(paradigm):
         lines.append(f"- **Paradigm:** {paradigm}")
@@ -462,8 +465,9 @@ def _states_table(states: list[dict], events_files: bool = False) -> str:
     with a caption: the code is the lab's raw code, the label the trial_type value of the
     events files (named when the dataset has events files)."""
     columns = (["Code"] if any(_nonempty(s.get("code")) for s in states) else []) + ["Label", "Description"]
-    held = {"Code": "the code used in the raw files",
-            "Label": "the label used in the events files (column trial_type)" if events_files else "the label",
+    held = {"Code": "the code of the original annotation",
+            "Label": ("the label in the events tables (`*_events.tsv`, column `trial_type`)" if events_files
+                      else "the label"),
             "Description": "a short description"}
     caption = f"{_TABLE} Behavioural states of this annotation: {_prose_list(held[c] for c in columns)}."
     rows = [caption, "", "| " + " | ".join(columns) + " |", "|" + "|".join("-" * (len(c) + 2) for c in columns) + "|"]
@@ -567,7 +571,7 @@ def _methods_sessions(doc: odml.Document) -> str:
         "Description": prop(s, "description") or "",
     } for s in session_list]
     columns = [c for c in rows[0] if c == "Session" or any(_nonempty(r[c]) for r in rows)]
-    lines += [f"{_TABLE} The recordings: {_prose_list(_SESSION_COLUMNS[c] for c in columns)}.", ""]
+    lines += [f"{_TABLE} The recording sessions: {_prose_list(_SESSION_COLUMNS[c] for c in columns)}.", ""]
     lines.append("| " + " | ".join(columns) + " |")
     lines.append("|" + "|".join("-" * (len(c) + 2) for c in columns) + "|")
     lines += ["| " + " | ".join(str(r[c]) for c in columns) + " |" for r in rows]
@@ -640,10 +644,27 @@ def _data_records(doc: odml.Document, output_dir: Path) -> str:
 
     # The layout standard first, then how the data were converted and validated
     # (the software versions only after a records statement: a dataset the
-    # pipeline did not convert has none), the tree and the file table
-    statement = _records_statement(doc["Dataset"])
-    parts = [_layout_standard(output_dir), statement, statement and _curation_software(doc), tree, table]
+    # pipeline did not convert has none; not again when the statement names
+    # them), the parts of the file names, the tree and the file table
+    statement, names_versions = _records_statement(doc)
+    parts = [_layout_standard(output_dir), statement, statement and not names_versions and _curation_software(doc),
+             _file_name_parts(output_dir), tree, table]
     return "## Data Records\n\n" + "\n\n".join(p for p in parts if p) + "\n"
+
+
+def _file_name_parts(output_dir: Path) -> str:
+    """The keys of the file names and the data type folders the dataset has,
+    each with its meaning (readme registry: file name keys, data type folders)."""
+    registry = load_registry("readme.yaml")
+    paths = list(output_dir.glob("sub-*/**/*"))
+    keys = {part.split("-", 1)[0] for f in paths if f.is_file()
+            for part in f.name.split(".")[0].split("_") if "-" in part}
+    folders = {d.name for d in paths if d.is_dir() and d.name in registry["data type folders"]}
+    sentences = [(registry["file name keys sentence"], "keys", [k for k in registry["file name keys"] if k in keys],
+                  registry["file name keys"]),
+                 (registry["data type folders sentence"], "folders", sorted(folders), registry["data type folders"])]
+    return " ".join(fill_template(text, {token: _prose_list(f"`{n}` ({words[n]})" for n in names)}.get)
+                    for text, token, names, words in sentences if names)
 
 
 def _prose_list(values) -> str:
@@ -652,16 +673,23 @@ def _prose_list(values) -> str:
     return " and ".join(filter(None, [", ".join(items[:-1]), items[-1]])) if items else ""
 
 
-def _records_statement(ds: odml.Section) -> str:
+def _records_statement(doc: odml.Document) -> tuple[str, bool]:
     """Shared Project records statement, its {tokens} filled: the
-    specification tokens (spec_tokens), else from the dataset (lists as prose)."""
-    project = subsection(ds, "Project")
-    statement = project and prop(project, "records statement")
+    specification tokens (spec_tokens), the curation software values
+    ("{NeuroConv version}", "{BIDS validator schema commit}"), else from the
+    dataset (lists as prose); and whether it names a software value. A token
+    without a value raises."""
+    ds = doc["Dataset"]
+    statement = prop(subsection(ds, "Project"), "records statement")
     if not _nonempty(statement):
-        return ""
-    tokens = spec_tokens()
-    return fill_template(str(statement).strip(),
-                         lambda name: tokens.get(name) or _prose_list(_values(ds, name))) or ""
+        return "", False
+    tools = subsection(doc, CURATION_SOFTWARE)
+    software = {f"{t.name} {p.name}": str(p.values[0]) for t in (tools.sections if tools else []) for p in t.properties if p.values}
+    tokens = {**spec_tokens(), **software}
+    text = fill_template(str(statement).strip(), lambda name: tokens.get(name) or _prose_list(_values(ds, name)))
+    if text is None:
+        raise ValueError(f"The records statement names a value the metadata do not give: {statement}")
+    return text, any(f"{{{name}}}" in statement for name in software)
 
 
 def _curation_software(doc: odml.Document) -> str:
@@ -687,20 +715,17 @@ def _curation_software(doc: odml.Document) -> str:
 
 
 def _layout_standard(output_dir: Path) -> str:
-    """Name the layout standard (BEP032 when there are ecephys files)."""
-    spec = spec_tokens()
-    if any(output_dir.rglob("*_ecephys.*")):
-        text = ("The data are organised following the BIDS extension proposal "
-                f"{spec['bids extension']}, which builds on BIDS "
-                f"{spec['bids version']} and is not yet part of the BIDS specification.")
-    else:
-        text = f"The data are organised following BIDS {spec['bids version']}."
+    """Name the layout standard (BEP032, with where it defines the files, when
+    there are ecephys files), worded by the readme registry."""
+    registry = load_registry("readme.yaml")
+    tokens = {**spec_tokens(), "metadata dir": METADATA_DIRNAME}
+    ecephys = any(output_dir.rglob("*_ecephys.*"))
+    keys = ["layout standard", "layout definitions"] if ecephys else ["layout standard without ecephys"]
     # NWB files and the probes/ directory with ProbeInterface files are part of BEP032;
     # the metadata folder (odML record, openMINDS metadata) is this project's addition
-    if (output_dir / "metadata").is_dir():
-        text += (" Beyond BIDS, the layout holds the metadata folder with the odML record and the "
-                 "openMINDS metadata; the file table below names every file type.")
-    return text
+    if (output_dir / METADATA_DIRNAME).is_dir():
+        keys.append("layout metadata folder")
+    return " ".join(fill_template(registry[key], tokens.get) for key in keys)
 
 
 def _repository_name(ds: odml.Section) -> str:
@@ -739,12 +764,12 @@ def _build_tree(root: Path, root_name: str, files: dict[str, dict], max_depth: i
     of a subject, sub-*_ses-* of probes/) only the example session's is
     shown, the others counted; every file is followed by the one-sentence
     description of its file type in square brackets (registry readme.yaml,
-    tree)."""
+    tree, or tree by stem for the files of that name)."""
     def describe(path: Path) -> str:
         match = _file_type(path.relative_to(root))
         if match is None or match[0] not in files:
             return ""
-        return f" [{files[match[0]]['tree']}]"
+        return f" [{match[1].get('tree by stem', {}).get(path.name.split('.')[0], files[match[0]]['tree'])}]"
 
     lines = [root_name]
     _walk_tree(root, lines, "    ", 0, max_depth, _example_session(root), describe)
@@ -754,7 +779,8 @@ def _build_tree(root: Path, root_name: str, files: dict[str, dict], max_depth: i
 def _walk_tree(directory: Path, lines: list[str], indent: str, depth: int, max_depth: int,
                example: tuple[str, str] | None, describe) -> None:
     """Append the tree lines of a directory: its other folders, the example
-    session's folder and the count of the other session folders, its files."""
+    session's folder and the count of the other session folders, its files
+    (in the probes and metadata folders those with one description on one line)."""
     if depth >= max_depth:
         return
     entries = sorted(directory.iterdir(), key=lambda p: (not p.is_dir(), p.name))
@@ -772,8 +798,11 @@ def _walk_tree(directory: Path, lines: list[str], indent: str, depth: int, max_d
         _walk_tree(d, lines, indent + "    ", depth + 1, max_depth, example, describe)
     if remaining := len(session_dirs) - len(shown):
         lines.append(f"{indent}... ({_count(remaining, 'more session')})")
+    merge = METADATA_DIRNAME in directory.parts or "probes" in directory.parts
+    shared: dict[str, list[str]] = {}
     for f in files:
-        lines.append(f"{indent}{f.name}{describe(f)}")
+        shared.setdefault(merge and describe(f) or f.name, []).append(f.name)
+    lines += [f"{indent}{', '.join(names)}{describe(directory / names[0])}" for names in shared.values()]
 
 
 def _file_type(relative: Path) -> tuple[str, dict] | None:
@@ -786,28 +815,6 @@ def _file_type(relative: Path) -> tuple[str, dict] | None:
         if path.match(pattern):
             return (pattern.removesuffix(".*") + path.suffix if entry.get("per suffix") else pattern), entry
     return None
-
-
-def _tsv_columns(path: Path) -> list[str]:
-    """Column names of a TSV's header row (none for an empty file)."""
-    with path.open(encoding="utf-8") as f:
-        return [c for c in f.readline().rstrip("\r\n").split("\t") if c]
-
-
-def _json_keys(path: Path) -> list[str]:
-    """Top-level keys of a JSON sidecar (none for an empty object); a file that
-    is not a JSON object raises."""
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise ValueError(f"{path}: a JSON sidecar holds an object, not a {type(data).__name__}")
-    return list(data)
-
-
-def _shared_and_more(names: list[list[str]]) -> tuple[str, str]:
-    """The names all lists hold, then those only some hold, as code-span prose lists."""
-    shared = [n for n in names[0] if all(n in h for h in names[1:])] if names else []
-    more = dict.fromkeys(n for h in names for n in h if n not in shared)
-    return _prose_list(f"`{n}`" for n in shared), _prose_list(f"`{n}`" for n in more)
 
 
 def _devices_of_type(doc: odml.Document, device_type: str) -> dict[str, str]:
@@ -825,13 +832,10 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
     """The file types present under output_dir, in registry order, as
     {key: {pattern, tree, format, content}} (see readme.yaml files).
 
-    The content of a TSV with a header row lists the columns all its files
-    have, then those only some have (header rows only; an empty file has
-    none), that of a JSON sidecar the keys in the same way (files with no
-    entries counted, the empty content when none has any), the BIDS suffixes
-    and an entity's labels are those of the file names, a stale file (older than
-    the odML record beside it, --all without a KG token) takes the stale
-    content.
+    The BIDS suffixes and an entity's labels are those of the file names, a
+    stale file (older than the odML record beside it, --all without a KG token)
+    takes the stale content, physio signals the words for their kind
+    (eyetrack for a recording-eye* label, else generic).
     """
     spec = spec_tokens()
     registry = load_registry("readme.yaml")["files"]
@@ -844,19 +848,12 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
 
     types = {}
     for key, (entry, paths) in sorted(found.items(), key=lambda item: registry.index(item[1][0])):
-        values = {**spec, "suffix": paths[0].suffix.lstrip(".").upper(),
-                  "rows": entry.get("rows", "")}
+        values = {**spec, "suffix": paths[0].suffix.lstrip(".").upper()}
         content = entry["content"]
-        if "rows" in entry:
-            values["columns"], values["more columns"] = _shared_and_more([h for p in paths if (h := _tsv_columns(p))])
-        if "sidecar" in entry:
-            held = [k for p in paths if (k := _json_keys(p))]
-            values["sidecar"] = entry["sidecar"]
-            values["keys"], values["more keys"] = _shared_and_more(held)
-            if not held:
-                content = entry["empty content"]
-            elif len(held) < len(paths):
-                values["no entries"] = f"{len(paths) - len(held)} of {len(paths)} files"
+        if "signals" in entry:
+            kinds = sorted({"eyetrack" if "_recording-eye" in p.name else "generic" for p in paths})
+            values["signals"] = _prose_list(entry["signals"][k] for k in kinds)
+            values["Signals"] = _sentence_start(values["signals"])
         if device_type := entry.get("device type"):
             values.update(_devices_of_type(doc, device_type))
         if entry.get("suffixes"):
@@ -868,7 +865,8 @@ def _file_types(doc: odml.Document, output_dir: Path) -> dict[str, dict]:
             built = datetime.fromtimestamp(paths[0].stat().st_mtime)
             if any(built < datetime.fromtimestamp(o.stat().st_mtime) for o in paths[0].parent.glob("*.odml.xml")):
                 content, values["built"] = entry["stale content"], f"{built:%Y-%m-%d}"
-        types[key] = {"pattern": key, "tree": entry["tree"], "format": fill_template(entry["format"], values.get),
+        types[key] = {"pattern": key, "tree": fill_template(entry["tree"], values.get),
+                      "format": fill_template(entry["format"], values.get),
                       "content": fill_template(content.strip(), values.get)}
     return types
 
@@ -934,28 +932,41 @@ def _references(ds: odml.Section) -> str:
 _PROTECTED_RE = re.compile(r"```.*?```|`[^`\n]*`|\[[^\]\n]*\]\([^)\s]*\)|https?://[^\s)]+", re.DOTALL)
 
 
-def _first_plain_mention(text: str, term: str) -> re.Match | None:
-    """The first mention of a term as a whole word outside protected markdown."""
-    protected = [m.span() for m in _PROTECTED_RE.finditer(text)]
+def _first_plain_mention(text: str, term: str, inside: list[tuple[int, int]] = ()) -> re.Match | None:
+    """The first mention of a term as a whole word outside protected markdown
+    and the spans `inside`."""
+    protected = [m.span() for m in _PROTECTED_RE.finditer(text)] + list(inside)
     for m in re.finditer(rf"(?<![\w-]){re.escape(term)}(?![\w-])", text):
         if not any(start <= m.start() < end for start, end in protected):
             return m
     return None
 
 
-def _first_mentions(doc: odml.Document, text: str) -> str:
+def first_use(text: str, names=()) -> str:
     """The first plain mention of each readme registry 'first use' term
-    written out (unless the written-out form comes first), and of each
-    software the registry 'software links' or the Curation Software section
-    (code url) links, linked (unless the text already links it)."""
+    written out (unless the written-out form comes first), a mention inside
+    one of the names (software such as "NWB Inspector") not counted; shared
+    by the descriptor and the Knowledge Graph descriptions."""
     registry = load_registry("readme.yaml")
+    names = list(names or registry["software links"])
     for term, written_out in registry["first use"].items():
-        m = _first_plain_mention(text, term)
+        inside = [m.span() for n in names if n != term and term in n for m in re.finditer(re.escape(n), text)]
+        m = _first_plain_mention(text, term, inside)
         if m and not (0 <= text.find(written_out) <= m.start()):
             text = text[:m.start()] + written_out + text[m.end():]
+    return text
+
+
+def _first_mentions(doc: odml.Document, text: str) -> str:
+    """The first plain mention of each readme registry 'first use' term
+    written out (first_use), and of each software the registry 'software
+    links' or the Curation Software section (code url) links, linked (unless
+    the text already links it)."""
+    registry = load_registry("readme.yaml")
     tools = subsection(doc, CURATION_SOFTWARE)
     links = {**registry["software links"], **{str(prop(t, "name")): str(prop(t, "code url"))
                                               for t in (tools.sections if tools else []) if prop(t, "code url")}}
+    text = first_use(text, links)
     for name, url in links.items():
         if f"[{name}](" not in text and (m := _first_plain_mention(text, name)):
             text = text[:m.start()] + f"[{name}]({url})" + text[m.end():]
