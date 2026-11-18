@@ -294,6 +294,10 @@ def test_streams_matched_by_channel_names_then_sample_count(integrity_check, tmp
     report = integrity_check(raw, _series_nwb(tmp_path / "stub.nwb", imec0[:300], names=names))
     assert report.info["data_integrity_check"] == (
         "SKIPPED (multi-stream, the channel names match streams imec0.ap, imec1.ap)")
+    report = integrity_check(raw, tmp_path / "stub.nwb", stream_id=["imec0.ap", "imec0.lf"])
+    assert report.info["raw_stream"] == "imec0.ap (matched by channel names)"
+    report = integrity_check(raw, _series_nwb(tmp_path / "r.nwb", imec1[:, ::-1], names=names[::-1]))
+    assert report.info["data_integrity_check"] == "PASSED"  # channels matched by name, not position
 
 
 def test_checks_restricted_to_the_given_stream(monkeypatch, tmp_path):

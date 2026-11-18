@@ -15,6 +15,7 @@ def resolve(doc: odml.Document, path: str, sources: dict = None) -> Any:
         path: Path string or list of fallback paths
         sources: Pre-loaded dicts keyed by 'dataset', 'session', 'neo', 'run', 'rec_sys', 'probe', 'placement';
             'run' is the sidecar's run entry in the session's Neo Metadata 'runs';
+            'task' holds the description of the sidecar's task;
             'subject' is the session's own subject section (see session_subject):
             "Subject/..." paths are navigated from it, so with several subjects
             each session resolves its own subject. Without it they are
@@ -35,6 +36,7 @@ def resolve(doc: odml.Document, path: str, sources: dict = None) -> Any:
     source_map = [
         ("Auxiliary Device", "aux_device"),
         ("Electrode Placements", "placement"),
+        ("Behavioral Protocol/task descriptions/*", "task"),
         ("Neo Metadata/runs/*", "run"),
         ("Neo Metadata/stream", "stream"),
         ("Neo Metadata", "neo"),

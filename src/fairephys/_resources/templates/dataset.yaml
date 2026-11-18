@@ -13,7 +13,7 @@ Dataset:
   # IDENTITY -> Dataset.full_name, DatasetVersion.short_name
   # ---------------------------------------------------------------------------
   full name: "Dataset Full Name"
-  short name: "PROJECT-INST-PI-Paradigm"  # one token per part joined by hyphens, no hyphen inside a part; the KG lookup key and the prefix of every lookup label
+  short name: "PROJECT_Paradigm_INST_PI"  # one token per part joined by underscores, no space; the KG lookup key and the prefix of every lookup label
   alias: ""                          # the dataset's own name as the lab gives it; empty otherwise
   version identifier: ""             # e.g., "1.0.0"
   doi: ""                            # DOI once published (e.g., "10.12751/...")

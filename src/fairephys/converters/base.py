@@ -28,26 +28,29 @@ from .writer import channel_positions, write_nwbfile
 logger = logging.getLogger(__name__)
 
 
-def attach_probes(recording, probe_group: ProbeGroup):
+def attach_probes(recording, probe_group: ProbeGroup, keep_unplaced: bool = True):
     """The recording with its channels grouped by the session's probes.
 
     group_name is the probe's id (UNPLACED_GROUP for a channel on no probe);
     location is the channel's contact position local to its probe (NaN on no
     probe), so NWB rel_x/rel_y match BIDS electrodes.tsv. When every channel
-    is on a probe the group itself is attached too (set_probegroup drops the
-    channels on no probe); a group that does not fit the channels is an error.
+    is on a probe, or keep_unplaced is False, the group itself is attached too
+    (set_probegroup drops the channels on no probe); a group that does not fit
+    the channels is an error.
     """
-    channel_ids = recording.get_channel_ids()
-    names = channel_group_names(probe_group, len(channel_ids))
-    if UNPLACED_GROUP in names:
+    names = channel_group_names(probe_group, recording.get_num_channels())
+    if UNPLACED_GROUP in names and keep_unplaced:
         logger.warning(f"{names.count(UNPLACED_GROUP)} of {len(names)} channels are on no placed "
                        f"probe: kept in the electrode group '{UNPLACED_GROUP}' without probe geometry")
     else:
         try:
             recording = recording.set_probegroup(probe_group, group_mode="by_probe")
         except (AssertionError, ValueError) as exc:
-            raise ValueError(f"the probe group does not fit the recording's {len(channel_ids)} "
+            raise ValueError(f"the probe group does not fit the recording's {len(names)} "
                              f"channels: {exc}") from exc
+        probe_group = recording.get_probegroup()  # wired to the kept channels, in their order
+        names = channel_group_names(probe_group, recording.get_num_channels())
+    channel_ids = recording.get_channel_ids()
     contacts = [""] * len(channel_ids)  # NWB electrode_name: the contact id ("" on no probe)
     for probe in probe_group.probes:
         for contact, index in zip(probe.contact_ids, probe.device_channel_indices):
@@ -150,10 +153,10 @@ class RecordingConverter:
     recording in volts sets gain_to_uV=1e6, offset_to_uV=0.
     """
 
-    def __init__(self, recording, probe_group_path: str | Path = None):
+    def __init__(self, recording, probe_group_path: str | Path = None, keep_unplaced: bool = True):
         self.recording = recording
         if probe_group_path:
-            self.recording = attach_probes(self.recording, read_probeinterface(str(probe_group_path)))
+            self.recording = attach_probes(self.recording, read_probeinterface(str(probe_group_path)), keep_unplaced)
 
     def run_conversion(self, nwbfile_path: str | Path, metadata: dict, stub_test: bool = False,
                        add_to_nwbfile=None):
@@ -182,10 +185,10 @@ class EphysConverter(NWBConverter):
     streams of the same channels (SpikeGLXConverter's LF), written as their
     own ElectricalSeries with the recording's electrode groups."""
 
-    def __init__(self, source_data: dict, probe_group_path: str | Path = None):
+    def __init__(self, source_data: dict, probe_group_path: str | Path = None, keep_unplaced: bool = True):
         super().__init__(source_data=source_data)
         if probe_group_path:
-            self._attach_probes(probe_group_path)
+            self._attach_probes(probe_group_path, keep_unplaced)
 
     @property
     def recording(self):
@@ -202,8 +205,8 @@ class EphysConverter(NWBConverter):
                   if name != "Recording" and isinstance(i, BaseRecordingExtractorInterface)]
         return [self.data_interface_objects["Recording"], *others]
 
-    def _attach_probes(self, probe_group_path: str | Path):
-        self.recording = attach_probes(self.recording, read_probeinterface(str(probe_group_path)))
+    def _attach_probes(self, probe_group_path: str | Path, keep_unplaced: bool = True):
+        self.recording = attach_probes(self.recording, read_probeinterface(str(probe_group_path)), keep_unplaced)
 
     def add_to_nwbfile(self, nwbfile, metadata: dict = None, conversion_options: dict = None):
         if metadata:
