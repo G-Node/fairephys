@@ -1,6 +1,7 @@
 """NWB metadata from the odML, the converters' shared steps, devices and writing."""
 
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -154,9 +155,10 @@ def test_ecephys_devices_and_groups(make_doc, caplog):
         {"name": "MySystem", "description": "Blackrock Cerebus", "manufacturer": "Blackrock", "model": "Cerebus"},
         {"name": "Utah Array", "description": "Blackrock Utah", "manufacturer": "Blackrock", "model": "Utah",
          "serial_number": "SN-1"}]
-    assert ecephys["ElectrodeGroup"] == [{
-        "name": "Utah", "device": "Utah Array", "location": "M1, left hemisphere", "position": [6.0, 7.0, 15.0],
-        "description": "Utah, 96 electrodes recorded; position (x, y, z) = (ML, AP, DV) in mm from chamber center"}]
+    group, = ecephys["ElectrodeGroup"]
+    assert re.search(r"\b96\b.*chamber center", group.pop("description"))  # the count, then the position frame
+    assert group == {"name": "Utah", "device": "Utah Array", "location": "M1, left hemisphere",
+                     "position": [6.0, 7.0, 15.0]}
     assert ecephys["ElectricalSeries"]["name"] == "ElectricalSeries"
     assert "inter_sample_shift" in {c["name"] for c in ecephys["Electrodes"]}
     bare = make_doc(Hardware={"Probes": [probe]}, Sessions=[

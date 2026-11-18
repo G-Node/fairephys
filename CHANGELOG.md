@@ -20,6 +20,8 @@
 - A dataset with several tasks gives one description per task (`task descriptions`, protocol schema 1.1).
 - `keep_unplaced=False` keeps only the channels of placed probes; the raw check matches channels by name.
 - The raw check can compare a file with several streams.
+- `probes.json` describes `probe_name` in the words of the BIDS specification and `quality` also where it is empty.
+- Data descriptor: the sessions table caption and micrometre symbols corrected.
 
 ## 0.1.0 (2026-11-16)
 
