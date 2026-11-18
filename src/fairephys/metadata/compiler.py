@@ -50,7 +50,7 @@ UNSPECIFIED_TYPE = "n.s."
 _VIEWER_DIR = Path(__file__).resolve().parent.parent / "_resources" / "viewer"
 SKIP_KEYS = {"_valueOrigin", "_valueOrigins", "_source", "_schema", "_neo_fields",
              "_subjects_list"}
-UNIT_PATTERN = re.compile(r'^(-?[\d.]+)\s*([a-zA-Z]\w*)$')
+UNIT_PATTERN = re.compile(r'^(-?[\d.]+)\s+([a-zA-Z]\w*)$')
 
 
 def load_section_types() -> dict[str, str]:

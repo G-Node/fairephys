@@ -344,6 +344,19 @@ datalad save -d . -m "<what changed>"                         # records the new 
 datalad push -d datasets/my-dataset/curated-data --to gin     # publish the outputs
 ```
 
+### The repository state in each NWB file
+
+Each NWB file records the state of the repository its conversion ran from: NeuroConv writes into the file's `general/source_script` the commit of the repository that holds `curate.py`, whether a remote holds that commit (`commit_published`) and whether the working tree had uncommitted changes (`working_tree`: `clean` or `modified`). In the layout above, `curated-data` is a subdataset of that repository, so the outputs a run writes make the working tree read as `modified` even when the code and the metadata are committed. A release conversion therefore commits and pushes the code and the metadata first, then runs with git told, through its environment, to ignore uncommitted changes inside subdatasets:
+
+```bash
+datalad save -d . -m "<what changed>"
+datalad push -d . --to <sibling>
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=diff.ignoreSubmodules GIT_CONFIG_VALUE_0=dirty \
+    uv run python datasets/my-dataset/curate.py --full --convert
+```
+
+The setting changes no configuration file and ignores only uncommitted changes inside a subdataset: a change to the code or the metadata, or a subdataset commit the repository has not recorded, still reads as `modified`.
+
 ## Validation
 
 - **Sanity checks** (`--sanity`, per session, `validation/<session>.md`) compare the outputs with each other: raw samples against the NWB, ProbeInterface against the BIDS electrodes and the NWB electrode table, channel counts and names across raw, BIDS and NWB. No single-format validator can make these checks.

@@ -200,7 +200,7 @@ def finalize_compilation(doc: odml.Document, output_dir: Path,
     probes_dir = probes_dir or output_dir.parent / "probes"
     if groups := sorted(probes_dir.glob("*/probe_group.json")):
         print(f"{len(groups)} session probe groups exist under {probes_dir}: --build-probes (and the steps after it) "
-              "rebuild them from this odML, which holds nothing --build-probes adds until then")
+              "rebuild them from this odML")
     return xml_path
 
 

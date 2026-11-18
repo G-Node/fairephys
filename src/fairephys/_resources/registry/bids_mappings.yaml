@@ -212,7 +212,7 @@ participants_tsv:
       conflict_types: [vocabulary]  # male/female vs M/F
     age:
       path: Subject.age
-      conflict_types: [type, unit]  # NWB: ISO 8601 duration; BIDS: free text
+      conflict_types: [type, unit]  # NWB: ISO 8601 duration; BIDS: a number of years
     handedness:
       path: Subject.handedness
       conflict_types: [coverage]

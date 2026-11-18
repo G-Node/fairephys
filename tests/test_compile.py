@@ -142,6 +142,11 @@ def test_values_split_into_value_and_unit(tmp_path):
     assert odml.load(str(xml_path))["Dataset"].properties["original data format"].values == formats
 
 
+def test_number_glued_to_letters_stays_text():
+    """A unit needs whitespace after the number: '1920x1080' and '4a' are text."""
+    assert [parse_value(v) for v in ("1920x1080", "4a", "24 kg")] == [("1920x1080", None), ("4a", None), (24, "kg")]
+
+
 def test_template_schemas():
     """Each template validates against its schema; a template without one is an error."""
     subject = {"subject id": "A", "species": "Macaca mulatta", "biological sex": "male"}
