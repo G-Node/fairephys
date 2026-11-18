@@ -136,15 +136,6 @@ def prepare_recording(recording, metadata: dict) -> dict:
     return _anchor_first_sample(metadata, recording.get_start_time(segment_index=0))
 
 
-def check_electrode_descriptions(nwbfile):
-    """An electrode column without a description (neuroconv's "no
-    description") is an error, before the file is written."""
-    for column in nwbfile.electrodes.columns if nwbfile.electrodes is not None else []:
-        if column.description == "no description":
-            raise ValueError(f"electrode column {column.name!r} has no description: describe it in the metadata's "
-                             f"Ecephys Electrodes ({{'name': {column.name!r}, 'description': ...}})")
-
-
 class RecordingConverter:
     """Converter of a SpikeInterface recording read without neuroconv: the
     recording as given, its channels grouped by the session's probes when a
@@ -182,7 +173,6 @@ class RecordingConverter:
         add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=without_device_models(metadata))
         if add_to_nwbfile is not None:
             add_to_nwbfile(nwbfile)
-        check_electrode_descriptions(nwbfile)
         write_nwbfile(nwbfile, nwbfile_path)
 
 
@@ -247,5 +237,4 @@ class EphysConverter(NWBConverter):
         nwbfile = self.create_nwbfile(metadata=metadata)
         if add_to_nwbfile is not None:
             add_to_nwbfile(nwbfile)
-        check_electrode_descriptions(nwbfile)
         write_nwbfile(nwbfile, nwbfile_path)

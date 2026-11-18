@@ -262,18 +262,14 @@ def _extract_canonical_probe_id(data: dict, ctx: dict = None, idx: int = 0, **_)
 
 
 def _extract_electrode_group_description(data: dict, ctx: dict = None, placement: dict = None, **_) -> str | None:
-    """'<Probe type>, <n> electrodes recorded' ('<n> of <N>' when the device
-    has more contacts), the placement's anatomical targets, and the frame of
-    the position when there is one; None without a count or type."""
+    """'<Probe type>, <n> electrodes recorded', and the frame of the position
+    when there is one; None without a count or type."""
     placement = placement or {}
-    total, kind = data.get("number of contacts"), str(data.get("probe type") or "")
-    n = recorded_electrode_count(placement) or total
-    count = f"{n} of {total}" if n and total and n < int(total) else n
-    recorded = f"{count} electrode{'' if count == 1 else 's'} recorded" if n else ""
+    kind = str(data.get("probe type") or "")
+    n = recorded_electrode_count(placement) or data.get("number of contacts")
+    recorded = f"{n} electrode{'' if n == 1 else 's'} recorded" if n else ""
     if not (text := ", ".join(filter(None, [kind[:1].upper() + kind[1:], recorded]))):
         return None
-    if targets := placement.get("anatomical targets"):
-        text += f"; anatomical targets: {', '.join(targets)}"
     if placement_position_mm(placement, (ctx or {}).get("run")) is not None:
         reference = placement.get("anatomical reference") or "the placement's reference"
         text += f"; position (x, y, z) = (ML, AP, DV) in mm from {reference}"

@@ -10,8 +10,8 @@
 - A generated probe can name its `unconnected contacts`; they are left out of its geometry and counts (hardware schema 1.1).
 - An empty `total span` takes the larger extent of the contacts.
 - `Filters: none` states that no hardware filter was applied; an empty list still means not documented.
-- The electrode group description gives the probe type, the number of electrodes recorded and the anatomical targets.
-- Every electrode column of an NWB file has a description; a conversion stops when one is missing.
+- The electrode group description gives the probe type and the number of electrodes recorded.
+- Every NWB file carries the registry's electrode column descriptions.
 
 ## 0.1.0 (2026-11-16)
 
