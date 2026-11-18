@@ -291,17 +291,28 @@ files:
       wiring to the recording channels
   - pattern: "probes/sub-*_ses-*/*.json"
     tree: &probe_tree "contact geometry of each probe, as data and as a drawing"
-    tree by stem: &probe_group_tree
-      probe_group: "contact geometry of all probes of the session, as data and as a drawing"
+    tree by stem:
+      probe_group: "contact geometry of all probes of the session"
     format: JSON (ProbeInterface)
     content: >-
       Contact geometry of each probe: contact positions and shapes and the
       wiring to the recording channels
   - pattern: "probes/sub-*_ses-*/*.png"
     tree: *probe_tree
-    tree by stem: *probe_group_tree
     format: PNG
-    content: Drawing of each probe, each contact labelled with its contact id and recording channel
+    content: &probe_drawing Drawing of each probe with more than one contact
+  - pattern: "probes/sub-*/*.json"
+    tree: *probe_tree
+    tree by stem:
+      probe_group: "contact geometry of all probes implanted in the subject"
+    format: JSON (ProbeInterface)
+    content: >-
+      Contact geometry of each probe implanted in the subject: contact
+      positions and shapes and the wiring to the recording channels
+  - pattern: "probes/sub-*/*.png"
+    tree: *probe_tree
+    format: PNG
+    content: *probe_drawing
   - pattern: README.md
     tree: "this data descriptor"
     format: Markdown

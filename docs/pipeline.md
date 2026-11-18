@@ -168,8 +168,8 @@ src/fairephys/
 
 | Function | Does |
 |----------|------|
-| `curation.session_paths(doc, session, curated_dir, acq=None, task=None, run=None)` | every output path of a session entry: session-level files `sub-<sub>_ses-<ses>` (`channels.tsv` with `_acq-<acq>` when given), run-level files (`ecephys.json`, the NWB) `sub-<sub>_ses-<ses>_task-<task>[_acq-<acq>][_run-<nn>]`, the probe group `probes/sub-<sub>_ses-<ses>/probe_group.json`, and the `task`, `acq` and `run` that named them (`task` given: a run of the entry with a task of its own) |
-| `probes.write_session_probe_group(doc, session, output_dir, title)` | the session's ProbeInterface group, its folder emptied first |
+| `curation.session_paths(doc, session, curated_dir, acq=None, task=None, run=None)` | every output path of a session entry: session-level files `sub-<sub>_ses-<ses>` (`channels.tsv` with `_acq-<acq>` when given), run-level files (`ecephys.json`, the NWB) `sub-<sub>_ses-<ses>_task-<task>[_acq-<acq>][_run-<nn>]`, the probe group `probes/sub-<sub>_ses-<ses>/probe_group.json` (`probes/sub-<sub>/` for a session of the subject's implanted probes), and the `task`, `acq` and `run` that named them (`task` given: a run of the entry with a task of its own) |
+| `probes.write_session_probe_group(doc, session, output_dir, **figure)` | the session's ProbeInterface group, its folder emptied first; `figure` keywords for the pictures (`zoom`, `figsize`, `fontsize`, `plot_probe` keywords) |
 | `bids.write_session_sidecars(doc, session, paths, channels=None)` | probes, electrodes and channels sidecars; `channels.tsv` from the rows the dataset extracted (`builder.extract_channels` with its channel types, references, bad channels) |
 | `bids.write_run_sidecars(doc, session, paths, stream=None)` | the `ecephys.json` of `paths["run"]` (once per run with `session_paths(..., run=run)`, or per probe with `acq` and its stream) |
 | `bids.write_dataset_files(doc, curated_dir, description=None, bidsignore=())` | `.bidsignore` (the dataset's extra lines after the library's), `dataset_description.json` (with fields such as `HEDVersion`), participants |
@@ -257,7 +257,7 @@ A `Hardware.Probes` entry is one physical device (a probe of a model, or one ele
 Where the placements are written depends on how the probes were used:
 
 - **Acute recordings:** probes are inserted anew in each session, so each session lists its own `Electrode Placements` in `recordings.yaml`. `fairephys init --acute` adds this file to the scaffold.
-- **Chronic recordings:** arrays are implanted once, so their placements are written once, as `Implanted Probes` under the subject's `Surgical Preparation` in `subject.yaml`. They apply to every session of that subject; a session that lists its own `Electrode Placements` uses those instead.
+- **Chronic recordings:** arrays are implanted once, so their placements are written once, as `Implanted Probes` under the subject's `Surgical Preparation` in `subject.yaml`. They apply to every session of that subject, and their probe files are written once in `probes/sub-<sub>/`; a session that lists its own `Electrode Placements` uses those instead and gets its own probe files.
 
 The `recording type` field (`acute` or `chronic`) in `hardware.yaml` records which case applies. It is not the BIDS `RecordingType`, which says whether a recording is continuous or discontinuous and is read from the recording itself.
 
@@ -273,7 +273,7 @@ Channels no placed probe is wired to stay in the NWB, in the electrode group `un
 
 ## ProbeInterface Integration
 
-`probes/builder.py` creates ProbeInterface objects from odML (see `probes/README.md`): identity (name, manufacturer, model_name, serial_number), the other fields as annotations with their units, contact ids `01`, `02`, ... numbered from the tip, or from the top with `first contact: top` (library probes keep theirs), device channel indices from the placement or the channel mapping, and an `x_offset` annotation per probe for the side-by-side group layout. The PNG files show `contact_id:device_channel` per contact.
+`probes/builder.py` creates ProbeInterface objects from odML (see `probes/README.md`): identity (name, manufacturer, model_name, serial_number), the other fields as annotations with their units, contact ids `01`, `02`, ... numbered from the tip, or from the top with `first contact: top` (library probes keep theirs), device channel indices from the placement or the channel mapping, and an `x_offset` annotation per probe for the side-by-side group layout. The PNG files, one per probe of more than one contact, show `contact id:device channel` per contact; `zoom=<um>` draws a dense probe whole beside its lowest `zoom` micrometers, labelled.
 
 ```python
 from fairephys.probes import build_probe_group, build_session_probe_group, save_probe_group
@@ -296,8 +296,11 @@ my-dataset/curated-data/                # the BIDS root
     my-dataset.instances.yaml
     my-dataset.openminds.jsonld
   probes/
+    sub-<sub>/                          # the probes implanted in the subject
+      probe_group.json
+      <probe id>.json, <probe id>.png
     sub-<sub>_ses-<ses>/                # the devices placed in the session
-      probe_group.json, probe_group.png
+      probe_group.json
       <probe id>.json, <probe id>.png
   sub-<sub>/
     ses-<ses>/

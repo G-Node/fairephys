@@ -21,10 +21,10 @@ odML Hardware/Probes sections
 enrich_odml_positions(doc, group)   contact_x, contact_y, geometry, electrode identifiers
    |
    v
-save_probe_group(group, dir)        probe_group.json/png, <probe_id>.json/png
+save_probe_group(group, dir)        probe_group.json, <probe_id>.json/png
 ```
 
-`write_session_probe_group(doc, session, output_dir, title="Probe Group")` is the `--build-probes` step of a session: `build_session_probe_group` saved with `save_probe_group` under `output_dir` (`curation.session_paths(...)["probe_group"].parent`), the folder emptied first so files of earlier device ids do not stay; it returns the path of `probe_group.json`. It empties the folder it is given, so a caller passes the session's own folder, never a base folder such as `curated-data/probes`.
+`write_session_probe_group(doc, session, output_dir, **figure)` is the `--build-probes` step of a session: `build_session_probe_group` saved with `save_probe_group` under `output_dir` (`curation.session_paths(...)["probe_group"].parent`), the folder emptied first so files of earlier device ids do not stay (for a session of the subject's implanted probes the folder is `probes/sub-<sub>/` and the session's own folder is removed); `figure` keywords go to the pictures; it returns the path of `probe_group.json`. It empties the folder it is given, so a caller passes the session's own folder, never a base folder such as `curated-data/probes`.
 
 ## Probe entries
 

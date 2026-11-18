@@ -11,6 +11,7 @@ from conftest import linear_probe, probe_group, sessions
 from fairephys.bids.builder import extract_electrodes, extract_probes
 from fairephys.converters import build_nwb_metadata
 from fairephys.converters.base import attach_probes
+from fairephys.curation import session_paths
 from fairephys.odml import props
 from fairephys.placements import (UNPLACED_GROUP, channel_group_names, matched_probes, parse_channels,
                                   placement_position_mm)
@@ -342,7 +343,19 @@ def test_write_session_probe_group_empties_its_folder(placed, tmp_path):
     folder = tmp_path / "probes" / "sub-A_ses-01"
     folder.mkdir(parents=True)
     (folder / "S-Probe01.json").write_text("{}")
-    path = write_session_probe_group(doc, sessions(doc)[0], folder, title="sub-A ses-01")
+    path = write_session_probe_group(doc, sessions(doc)[0], folder)
     assert path == folder / "probe_group.json"
-    assert sorted(p.name for p in folder.iterdir()) == [
-        "S-Probe02.json", "S-Probe02.png", "probe_group.json", "probe_group.png"]
+    assert sorted(p.name for p in folder.iterdir()) == ["S-Probe02.json", "S-Probe02.png", "probe_group.json"]
+
+
+def test_implanted_probes_are_written_once_for_the_subject(make_doc, tmp_path):
+    """A session of the subject's implanted probes has its probe files in probes/sub-<id>/, its own earlier folder
+    removed; a session with its own placements keeps probes/sub-<id>_ses-<id>/."""
+    doc = make_doc(Hardware={"Probes": PROBES}, Subject={"Surgical Preparation": {
+        "Implanted Probes": [{"probe": "S-Probe A"}]}}, Sessions=[{"session id": "01", "date": "2025-01-30"}, {
+            "session id": "02", "date": "2025-01-30", "Electrode Placements": [{"probe": "V-Probe"}]}])
+    implant, placed = (session_paths(doc, s, tmp_path)["probe_group"].parent for s in sessions(doc))
+    assert (implant.name, placed.name) == ("sub-MonkeyA", "sub-MonkeyA_ses-02")
+    (tmp_path / "probes" / "sub-MonkeyA_ses-01").mkdir(parents=True)
+    write_session_probe_group(doc, sessions(doc)[0], implant)
+    assert [p.name for p in (tmp_path / "probes").iterdir()] == ["sub-MonkeyA"]
