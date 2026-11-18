@@ -448,7 +448,7 @@ def extract_sidecar_fields(doc: odml.Document, session: odml.Section,
     result = {}
     for field, spec in fields.items():
         if extract_type := spec.get("extract"):
-            if val := extractor_map[extract_type]():
+            if (val := extractor_map[extract_type]()) is not None:
                 result[field] = val
             continue
         if "default" in spec:

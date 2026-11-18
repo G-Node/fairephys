@@ -89,10 +89,20 @@ def institution_info(doc: odml.Document) -> dict:
         return {}
 
 
+def no_hardware_filters(section: odml.Section) -> bool:
+    """Whether `section` (Hardware, or an auxiliary device) states that no
+    hardware filter was applied (Filters: none); an empty list is not
+    documented."""
+    return prop(section_at(section, "Hardware Filters"), "Filters") == "none"
+
+
 def hardware_filters(section: odml.Section) -> dict | str:
     """The Hardware Filters listed by `section` (Hardware, or an auxiliary
     device) as BIDS HardwareFilters: ``{"Spike highpass": {"Type": "highpass",
-    "Cutoff": 300}}``, or ``"n/a"`` without filter data."""
+    "Cutoff": 300}}``, ``{}`` when it states that there is none, or ``"n/a"``
+    without filter data."""
+    if no_hardware_filters(section):
+        return {}
     filters = section_at(section, "Hardware Filters/Filters")
     if filters is None:
         return "n/a"
@@ -108,20 +118,20 @@ def hardware_filters(section: odml.Section) -> dict | str:
     return result or "n/a"
 
 
-def stimulus_presentation(doc: odml.Document) -> dict:
+def stimulus_presentation(doc: odml.Document) -> dict | None:
     """Extract BIDS StimulusPresentation from odML Behavioral Protocol.
 
     Returns the dict of OperatingSystem, SoftwareName and SoftwareVersion
-    that have a value (empty without the section or values).
+    that have a value (None without the section or values).
     """
     try:
         sp = doc["Behavioral Protocol"]["Stimulus Presentation"]
     except KeyError:
-        return {}
+        return None
     data = section_to_dict(sp)
     fields = {"OperatingSystem": "operating system", "SoftwareName": "software name",
               "SoftwareVersion": "software version"}
-    return {field: data[key] for field, key in fields.items() if data.get(key)}
+    return {field: data[key] for field, key in fields.items() if data.get(key)} or None
 
 
 def generated_by(doc: odml.Document) -> list[dict]:

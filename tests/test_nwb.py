@@ -19,7 +19,7 @@ from spikeinterface.core import NumpyRecording
 
 from conftest import empty_nwbfile, linear_probe, probe_group, sessions
 from fairephys.bids import generate_channels_tsv, generate_electrodes_tsv, generate_probes_tsv
-from fairephys.bids.builder import extract_channels, extract_electrodes, extract_probes
+from fairephys.bids.builder import extract_channels, extract_electrodes, extract_probes, extract_sidecar_fields
 from fairephys.converters import (EphysConverter, RecordingConverter, SpikeGLXConverter, add_devices, add_time_intervals,
                                   add_timeseries, add_trials, add_units, build_nwb_metadata, channel_positions,
                                   nidq_times_on_imec_clock, read_nidq_channels, recording_scale, recording_span,
@@ -156,9 +156,9 @@ def test_ecephys_devices_and_groups(make_doc, caplog):
          "serial_number": "SN-1"}]
     assert ecephys["ElectrodeGroup"] == [{
         "name": "Utah", "device": "Utah Array", "location": "M1, left hemisphere", "position": [6.0, 7.0, 15.0],
-        "description": "96 channel utah; position (x, y, z) = (ML, AP, DV) in mm from chamber center"}]
+        "description": "Utah, 96 electrodes recorded; position (x, y, z) = (ML, AP, DV) in mm from chamber center"}]
     assert ecephys["ElectricalSeries"]["name"] == "ElectricalSeries"
-    assert {"group_name", "brain_area"} <= {c["name"] for c in ecephys["Electrodes"]}
+    assert "inter_sample_shift" in {c["name"] for c in ecephys["Electrodes"]}
     bare = make_doc(Hardware={"Probes": [probe]}, Sessions=[
         {"session id": "01", "date": "2024-03-15", "start time": "10:00:00",
          "Electrode Placements": [{"probe": "Utah Array", "brain region": "", "hemisphere": "left"}]}])
@@ -166,6 +166,17 @@ def test_ecephys_devices_and_groups(make_doc, caplog):
         group, = build_nwb_metadata(bare, sessions(bare)[0])["Ecephys"]["ElectrodeGroup"]
     assert group["location"] == "unknown, left hemisphere"  # neuroconv's placeholder, the hemisphere kept
     assert "Placement of probe 'Utah Array': no brain region" in caplog.text
+
+
+@pytest.mark.parametrize("filters, stated", [("none", True), ([], False), ([{"name": "", "cutoff": ""}], False)])
+def test_no_hardware_filter_only_when_stated(make_doc, filters, stated):
+    """Filters: none gives the NWB filtering text and an empty BIDS HardwareFilters; an empty list or a blank
+    entry is not documented and gives neither."""
+    doc = make_doc(Hardware={"Hardware Filters": {"Filters": filters}})
+    text = load_nwb_registry()["Ecephys"]["ElectricalSeries"]["fields"]["filtering"]["none"]
+    series = build_nwb_metadata(doc, sessions(doc)[0])["Ecephys"]["ElectricalSeries"]
+    assert series.get("filtering") == (text if stated else None)
+    assert extract_sidecar_fields(doc, sessions(doc)[0], "ecephys_json")["HardwareFilters"] == ({} if stated else "n/a")
 
 
 def _recording(n_channels, n_samples=1000):

@@ -22,6 +22,7 @@ from probeinterface import ProbeGroup, read_probeinterface
 
 from ..placements import UNPLACED_GROUP, channel_group_names
 from .devices import add_devices, without_device_models
+from .metadata import electrode_columns
 from .writer import channel_positions, write_nwbfile
 
 logger = logging.getLogger(__name__)
@@ -120,14 +121,28 @@ def _anchor_first_sample(metadata: dict, t_start: float) -> dict:
 
 
 def prepare_recording(recording, metadata: dict) -> dict:
-    """The recording's electrode groups and locations set from the metadata;
-    the metadata anchored on the recording's first sample. The metadata's
-    session_start_time is the time of the first sample (build_nwb_metadata:
-    the run's start_time); neuroconv writes the series at the recording's
-    own t_start, so the file's reference time is moved back by it."""
+    """The recording's electrode groups and locations set from the metadata,
+    and the registry's electrode column descriptions added for the columns
+    it does not describe; the metadata anchored on the recording's first
+    sample. The metadata's session_start_time is the time of the first sample
+    (build_nwb_metadata: the run's start_time); neuroconv writes the series
+    at the recording's own t_start, so the file's reference time is moved
+    back by it."""
     add_unplaced_group(recording, metadata)
     set_electrode_locations(recording, metadata)
+    columns = metadata["Ecephys"].setdefault("Electrodes", [])
+    described = {c["name"] for c in columns}
+    columns.extend(c for c in electrode_columns() if c["name"] not in described)
     return _anchor_first_sample(metadata, recording.get_start_time(segment_index=0))
+
+
+def check_electrode_descriptions(nwbfile):
+    """An electrode column without a description (neuroconv's "no
+    description") is an error, before the file is written."""
+    for column in nwbfile.electrodes.columns if nwbfile.electrodes is not None else []:
+        if column.description == "no description":
+            raise ValueError(f"electrode column {column.name!r} has no description: describe it in the metadata's "
+                             f"Ecephys Electrodes ({{'name': {column.name!r}, 'description': ...}})")
 
 
 class RecordingConverter:
@@ -167,6 +182,7 @@ class RecordingConverter:
         add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=without_device_models(metadata))
         if add_to_nwbfile is not None:
             add_to_nwbfile(nwbfile)
+        check_electrode_descriptions(nwbfile)
         write_nwbfile(nwbfile, nwbfile_path)
 
 
@@ -231,4 +247,5 @@ class EphysConverter(NWBConverter):
         nwbfile = self.create_nwbfile(metadata=metadata)
         if add_to_nwbfile is not None:
             add_to_nwbfile(nwbfile)
+        check_electrode_descriptions(nwbfile)
         write_nwbfile(nwbfile, nwbfile_path)

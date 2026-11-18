@@ -61,12 +61,15 @@ properties:
           curated streams: {type: array, items: {type: string}}
 
       # Analog filters before digitization; the same list describes an
-      # auxiliary device's own filters (BIDS HardwareFilters of its sidecar)
+      # auxiliary device's own filters (BIDS HardwareFilters of its sidecar).
+      # The word none states that no hardware filter was applied; an empty
+      # list means not documented
       Hardware Filters: &hardware_filters
         type: object
         properties:
           Filters:
-            type: array
+            type: [array, string]
+            pattern: "^none$"
             items:
               type: object
               properties:

@@ -125,6 +125,7 @@ class TdtSevConverter(RecordingConverter):
             per_channel.append(rec)
 
         recording = aggregate_channels(per_channel)
+        recording.delete_property("aggregation_key")  # the channel number is in channel_name
         recording.set_property(
             "channel_name",
             [f"{self._store_name} {ch}" for ch in self._channels],

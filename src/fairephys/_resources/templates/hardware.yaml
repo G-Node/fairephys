@@ -72,6 +72,8 @@ Hardware:
   # ---------------------------------------------------------------------------
   # Physical filters in amplifier/headstage hardware
   # These are applied to the analog signal before digitization
+  # Filters: none states that no hardware filter was applied; an empty list
+  # means not documented
   Hardware Filters:
     Filters:
       - name: ""                  # e.g., "Highpass", "Anti-aliasing lowpass", "Notch"
