@@ -30,7 +30,7 @@ from .templating import fill_statement, fill_template, spec_tokens
 # Units are stored with their openMINDS names; the README shows the symbols
 UNIT_SYMBOLS = {
     "hertz": "Hz", "kilohertz": "kHz", "second": "s", "millisecond": "ms",
-    "millimeter": "mm", "micrometer": "µm", "centimeter": "cm",
+    "millimeter": "mm", "micrometer": "µm", "um": "µm", "centimeter": "cm",
     "kilogram": "kg", "gram": "g", "ohm": "Ω", "kiloohm": "kΩ", "megaohm": "MΩ",
     "volt": "V", "millivolt": "mV", "microvolt": "µV",
 }
@@ -47,7 +47,8 @@ _POSITIONING_FLAGS = [("head fixation", "head fixation method"), ("primate chair
 # What each column of the Recording Sessions table holds (its caption)
 _SESSION_COLUMNS = {"Session": "session id", "Subject": "subject id", "Task": "task", "Date": "date",
                     "Duration": "duration of the recordings",
-                    "Probes": "the probes placed (brain region and hemisphere)", "Description": "a short description"}
+                    "Probes": "the probes placed (with brain region and hemisphere where given)",
+                    "Description": "a short description"}
 
 # Table captions start with this mark; odml_to_readme numbers the tables in order of appearance ("**Table 1.**")
 _TABLE = "\x00TABLE\x00"

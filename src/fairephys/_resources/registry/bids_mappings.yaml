@@ -64,6 +64,7 @@ probes_tsv:
   columns:
     probe_name:
       generated: true
+      sidecar_description: A unique identifier of the probe  # BIDS schema, objects.columns.probe_name
       conflict_types: [structural]  # NWB: ElectrodeGroup.name; BIDS: probe_name column
     type:
       path: Hardware/Probes/*.probe type
@@ -116,7 +117,7 @@ probes_tsv:
     # custom
     quality:
       path: Sessions/*/Electrode Placements/*.quality
-      sidecar_description: Signal quality label of the placement (a scale specific to this dataset, see the dataset documentation)
+      sidecar_description: Signal quality label of the probe placement, if available
       conflict_types: [coverage]  # not in any standard
 
 # electrodes.tsv: one row per contact of the session's ProbeInterface group
@@ -391,7 +392,8 @@ ecephys_json:
 # electrode_name and rel_x/rel_y it writes its own text, so they are not
 # listed. Only columns that appear across datasets are listed here; a
 # dataset describes its own columns in its curate.py. A column without a
-# description is an error at conversion.
+# description keeps neuroconv's placeholder "no description", which NWB
+# Inspector reports as a placeholder description.
 # neuroconv silently ignores entries for columns that do not exist in the recording.
 # Future: derive descriptions from odML schema properties instead of hardcoding here.
 nwb_electrode_columns:

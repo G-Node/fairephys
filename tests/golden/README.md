@@ -82,7 +82,7 @@ Resting state in the dark.
 
 2 recording sessions from 2024-03-15 to 2024-03-18.
 
-**Table 2.** The recording sessions: session id, date, duration of the recordings, the probes placed (brain region and hemisphere) and a short description.
+**Table 2.** The recording sessions: session id, date, duration of the recordings, the probes placed (with brain region and hemisphere where given) and a short description.
 
 | Session | Date | Duration | Probes | Description |
 |---------|------|----------|--------|-------------|
