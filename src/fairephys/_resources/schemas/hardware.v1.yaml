@@ -203,8 +203,6 @@ properties:
                      floating microelectrode array, ECoG array, ""]
             laterality: {enum: [left, right, bilateral, ""]}
             number of contacts: {type: integer, minimum: 1}
-            # contact ids of sites wired to no channel: left out of the geometry,
-            # the outputs count the connected electrodes
             unconnected contacts: {type: array, items: {type: string}}
             number of rows: {type: integer, minimum: 1}
             number of columns: {type: integer, minimum: 1}

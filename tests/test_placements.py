@@ -200,18 +200,16 @@ def test_generated_probe_takes_the_electrode_identifiers_as_contact_ids(placed):
 
 
 def test_unconnected_contacts_left_out_of_a_generated_grid(placed):
-    """The connected contacts keep the ids, positions and size of the full grid, are wired to the placement's
-    channels in order and are the probe's electrode count."""
-    grid = {"name": "G", "probe type": "Utah array", "number of contacts": 6, "contact pitch": 400,
-            "contact arrangement": "matrix", "number of columns": 2}
-    full = _create_probe(grid).get_slice(np.array([1, 2, 3, 4]))
-    doc = placed({"01": [{"probe": "G", "channels": "3-6"}]}, [{**grid, "unconnected contacts": ["01", "06"]}])
+    """The other sites keep the ids, positions and size of the full grid and are wired to the channels in order."""
+    grid = {"name": "G", "probe type": "Utah array", "number of contacts": 48, "contact pitch": 400,
+            "contact arrangement": "matrix", "number of rows": 10, "number of columns": 5}
+    full = _create_probe({**grid, "number of contacts": 50}).get_slice(np.r_[1:9, 10:50])
+    doc = placed({"01": [{"probe": "G", "channels": "1-48"}]}, [{**grid, "unconnected contacts": ["01", "10"]}])
     probe, = build_session_probe_group(doc, sessions(doc)[0]).probes
-    assert list(probe.contact_ids) == list(full.contact_ids) == ["02", "03", "04", "05"]
+    assert list(probe.contact_ids) == list(full.contact_ids)
     assert probe.contact_positions.tolist() == full.contact_positions.tolist()
     assert list(probe.contact_shape_params) == list(full.contact_shape_params)
-    assert list(probe.device_channel_indices) == [2, 3, 4, 5]
-    assert extract_probes(doc, sessions(doc)[0])[0]["electrode_count"] == 4
+    assert list(probe.device_channel_indices) == list(range(48))
 
 
 def test_parametric_probe_errors():

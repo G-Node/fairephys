@@ -116,9 +116,6 @@ def _library_probe(cfg: dict, label: str):
     probe = get_from_library(key, str(cfg["model"]))
     if probe is None:
         return None
-    if _as_list(cfg.get("unconnected contacts")):
-        raise ValueError(f"{label}: a library probe names its recorded contacts in 'electrode identifiers'; "
-                         "'unconnected contacts' are for a generated probe")
     n_contacts = cfg.get("number of contacts")
     ids = [str(i) for i in _as_list(cfg.get("electrode identifiers"))]
     if n_contacts and n_contacts < probe.get_contact_count():
@@ -165,7 +162,7 @@ def _parametric_probe(cfg: dict, label: str, units: dict, shape: dict):
     ypitch = parse_pitch(cfg["row spacing"], units.get("row spacing")) if cfg.get("row spacing") else pitch
     probe = generate_multi_columns_probe(num_columns=n_cols, num_contact_per_column=n_rows,
                                          xpitch=xpitch, ypitch=ypitch)
-    return _contacts_only(probe, slice(n_contacts), shape)
+    return _contacts_only(probe, slice(None if _as_list(cfg.get("unconnected contacts")) else n_contacts), shape)
 
 
 def _contacts_only(generated: Probe, order: slice, shape: dict) -> Probe:
@@ -208,21 +205,10 @@ def _create_probe(cfg: dict, units: dict | None = None):
     through them), else numbered in contact order; the ids of a probe at its
     'contact positions' are the positions' and filled identifiers must equal
     them. `units` are the units of the entry's values (an odML section's),
-    micrometer when absent.
-
-    A parametric entry with 'unconnected contacts' is counted by its
-    connected electrodes ('number of contacts' in the odML, see
-    compile_to_odml): the grid is generated with its sites as built (that
-    count plus the unconnected ones, numbered), the unconnected contacts are
-    removed (_connected), and filled 'electrode identifiers' name the
-    connected contacts in contact order."""
+    micrometer when absent. A grid's 'unconnected contacts' are left out."""
     label = f"Probe {cfg.get('name')!r}"
     ids = [str(i) for i in _as_list(cfg.get("electrode identifiers"))]
-    unconnected = [str(i) for i in _as_list(cfg.get("unconnected contacts"))]
     shape, source = _contact_shape(cfg, units or {}, label)
-    if unconnected and cfg.get("contact positions"):
-        raise ValueError(f"{label}: 'unconnected contacts' are for a generated probe; "
-                         "leave them out of 'contact positions'")
     if (probe := _positioned_probe(cfg, label, shape)) is not None:
         if ids and ids != list(probe.contact_ids):
             raise ValueError(f"{label}: 'electrode identifiers' differ from the contact ids of 'contact positions'")
@@ -232,32 +218,19 @@ def _create_probe(cfg: dict, units: dict | None = None):
                              "'first contact' is for generated probes")
         return probe
     else:
-        built = cfg["number of contacts"] + len(unconnected)
-        probe = _parametric_probe({**cfg, "number of contacts": built}, label, units or {}, shape)
-        probe.set_contact_ids(contact_ids(built))
-        if unconnected:
-            probe = _connected(probe, unconnected, label)
+        probe = _parametric_probe(cfg, label, units or {}, shape)
+        probe.set_contact_ids(contact_ids(probe.get_contact_count()))
+        if unconnected := [str(i) for i in _as_list(cfg.get("unconnected contacts"))]:
+            probe = probe.get_slice(np.array([c not in unconnected for c in probe.contact_ids]))
+        if probe.get_contact_count() != cfg["number of contacts"]:
+            raise ValueError(f"{label}: the 'number of rows' by 'number of columns' grid less 'unconnected contacts' "
+                             f"leaves {probe.get_contact_count()} contacts, not 'number of contacts'")
         if ids and len(ids) != probe.get_contact_count():
             raise ValueError(f"{label}: {len(ids)} electrode identifiers for {probe.get_contact_count()} contacts")
-        if ids:
-            probe.set_contact_ids(ids)
+        probe.set_contact_ids(ids or probe.contact_ids)
     if source:
         probe.annotate(contact_shape_source=source)
     return probe
-
-
-def _connected(probe, unconnected: list[str], label: str):
-    """The probe without its unconnected contacts (contact ids of the probe
-    as built, each once), the other contacts in their order; an id that is
-    no contact, or no contact left, is an error."""
-    ids = [str(c) for c in probe.contact_ids]
-    if missing := [i for i in unconnected if i not in ids]:
-        raise ValueError(f"{label}: unconnected contacts not among the probe's contacts: {', '.join(missing[:10])}")
-    if len(set(unconnected)) != len(unconnected):
-        raise ValueError(f"{label}: an unconnected contact is listed twice")
-    if not (keep := [i for i, c in enumerate(ids) if c not in unconnected]):
-        raise ValueError(f"{label}: every contact is unconnected")
-    return probe.get_slice(np.array(keep))
 
 
 def _config(entry) -> tuple[dict, dict]:
@@ -341,8 +314,7 @@ def build_session_probe_group(doc, session, x_spacing: int = 800) -> ProbeGroup:
 
     A placement's 'electrode identifiers' select the contacts of the device
     recorded that session (a Neuropixels bank: the electrodes of the IMRO
-    table), in the order listed, which is the recording's channel order; one
-    of the device's 'unconnected contacts' among them is an error.
+    table), in the order listed, which is the recording's channel order.
     device_channel_indices come from the placement's 'channels' (1-based
     positions in the curated stream), else the device's 'channel mapping',
     else the block after the previous placement. The placement's brain region
@@ -357,10 +329,6 @@ def build_session_probe_group(doc, session, x_spacing: int = 800) -> ProbeGroup:
         label = f"Placement {number} ({cfg.get('name')})"
         probe = _device_probe(cfg, ids[str(cfg.get("name", ""))], number, units)
         if recorded := _as_list(placement.get("electrode identifiers")):
-            unconnected = {str(i) for i in _as_list(cfg.get("unconnected contacts"))}
-            if named := [str(i) for i in recorded if str(i) in unconnected]:
-                raise ValueError(f"{label}: electrode identifiers {', '.join(named)} are unconnected contacts "
-                                 "of the probe ('unconnected contacts'), wired to no channel")
             probe = select_contacts(probe, recorded, label)
         n = probe.get_contact_count()
         if spec := placement.get("channels"):
