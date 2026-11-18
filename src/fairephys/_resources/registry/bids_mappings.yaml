@@ -4,9 +4,7 @@
 # Only custom fields (not directly mappable to BIDS) should have sidecar_description,
 # except columns whose values come from an ontology (sidecar_term_url documents
 # the source, written as TermURL, with the description, into the column sidecar)
-# and the contact positions and channel names, in the words of the BIDS
-# specification. sidecar_if_filled: the column is described only in a sidecar
-# whose table holds a value in it
+# and the electrode and channel names, in the words of the BIDS specification
 #
 # Conflict types reference the six-type typology:
 #   unit, type, vocabulary, structural, cardinality, coverage
@@ -119,7 +117,6 @@ probes_tsv:
     quality:
       path: Sessions/*/Electrode Placements/*.quality
       sidecar_description: Signal quality label of the placement (a scale specific to this dataset, see the dataset documentation)
-      sidecar_if_filled: true
       conflict_types: [coverage]  # not in any standard
 
 # electrodes.tsv: one row per contact of the session's ProbeInterface group
@@ -135,15 +132,12 @@ electrodes_tsv:
       conflict_types: [structural]  # NWB: group_name column; BIDS: probe_name column
     x:
       generated: true  # contact position in the probe plane (um), from ProbeInterface
-      sidecar_description: "Recorded position along the x-axis: the position along the local width-axis relative to the probe origin in micrometers (um)"
       conflict_types: [structural]  # BIDS: relative to probe; NWB: brain coordinates
     y:
       generated: true
-      sidecar_description: "Recorded position along the y-axis: the position along the local height-axis relative to the probe origin in micrometers (um)"
       conflict_types: [structural]
     z:
       generated: true  # n/a for a planar probe (BIDS: 2D localizations)
-      sidecar_description: "Recorded position along the z-axis: the position along the local depth-axis relative to the probe origin in micrometers (um). For 2D electrode localizations, a column of n/a values"
       conflict_types: [structural]
     hemisphere:
       path: Electrode Placements/*.hemisphere
