@@ -346,7 +346,11 @@ datalad push -d datasets/my-dataset/curated-data --to gin     # publish the outp
 
 ### The repository state in each NWB file
 
-Each NWB file records the state of the repository its conversion ran from: NeuroConv writes into the file's `general/source_script` the commit of the repository that holds `curate.py`, whether a remote holds that commit (`commit_published`) and whether the working tree had uncommitted changes (`working_tree`: `clean` or `modified`). In the layout above, `curated-data` is a subdataset of that repository, so the outputs a run writes make the working tree read as `modified` even when the code and the metadata are committed. A release conversion therefore commits and pushes the code and the metadata first, then runs with git told, through its environment, to ignore uncommitted changes inside subdatasets:
+NeuroConv records in every NWB file (`general/source_script`) which commit of the repository the conversion ran from, whether a remote holds that commit (`commit_published`), and whether the repository had uncommitted changes (`working_tree`: `clean` or `modified`).
+
+The output folder `curated-data` is a subdataset of the same repository. A conversion writes into it, so git reports uncommitted changes and the files record `modified`, although the code and the metadata are committed.
+
+For a release conversion, commit and push the code and the metadata first. Then tell git, for this one command, to ignore uncommitted changes inside subdatasets:
 
 ```bash
 datalad save -d . -m "<what changed>"
@@ -355,7 +359,7 @@ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=diff.ignoreSubmodules GIT_CONFIG_VALUE_0=dir
     uv run python datasets/my-dataset/curate.py --full --convert
 ```
 
-The setting changes no configuration file and ignores only uncommitted changes inside a subdataset: a change to the code or the metadata, or a subdataset commit the repository has not recorded, still reads as `modified`.
+The three `GIT_CONFIG_*` variables pass the git setting `diff.ignoreSubmodules=dirty` to this command only; no configuration file changes. A change to the code or the metadata is still recorded as `modified`, and so is a subdataset commit that the repository has not recorded.
 
 ## Validation
 

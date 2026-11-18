@@ -91,7 +91,7 @@ uv run python my-dataset/curate.py --full --convert --session <session id>
 
 NWB files are short test files (stubs) by default, so the whole pipeline reruns in seconds while the metadata change; `--full` converts the complete recordings once everything is final.
 
-The openMINDS collection needs a token for the EBRAINS Knowledge Graph, given in the environment variable `EBRAINS_KG_TOKEN` or in the file `~/.config/fairephys/kg_token`. Without a token, `--all` leaves the collection out, says so in one line and runs the other steps.
+Building the openMINDS collection needs a token for the EBRAINS Knowledge Graph. Set it in the environment variable `EBRAINS_KG_TOKEN` or save it in the file `~/.config/fairephys/kg_token`. Without a token, `--all` skips the collection and runs all other steps.
 
 ## Documentation
 
