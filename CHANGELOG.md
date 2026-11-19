@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- A behavioural protocol's `described in` is a DOI and becomes a DOI node (protocol schema 1.2).
+- A person's digital identifier with a type needs its value, an ORCID in its own form; both are empty otherwise (dataset schema 1.1).
+
 ## 0.1.2 (2026-11-19)
 
 - openMINDS Python 0.6 and fairgraph 0.14: contribution roles such as design, supervision and funding are found.

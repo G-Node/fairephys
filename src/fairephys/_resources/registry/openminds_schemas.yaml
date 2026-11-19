@@ -582,7 +582,7 @@ schemas:
       # EBRAINS convention: the BIDS task entity, e.g. task-rest
       internal_identifier: { type: template, value: "task-{bids task label}" }
       description: { odml: "description" }
-      # 'described in', a DOI or URL of a publication or protocol (only when an IRI)
+      # 'described in', the DOI of a publication or protocol
       described_in: { type: nested_list, target: ProtocolRef }
       # stimulations: StimulationApproach + StimulationTechnique merged
       stimulations:
@@ -616,11 +616,11 @@ schemas:
         list: true
     nested:
       ProtocolRef:
-        fairgraph_class: core.WebResource
+        fairgraph_class: core.DOI
         condition: "described in"
         add_to_collection: true
         fields:
-          iri: { type: iri, odml: "described in" }
+          identifier: { odml: "described in", prefix: "https://doi.org/" }
 
   # --- Protocol (recording methodology, distinct from BehavioralProtocol) ---
   # BehavioralProtocol = task/paradigm; Protocol = HOW the recording was done.

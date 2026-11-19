@@ -90,7 +90,7 @@ def test_offline_collection_snapshot(doc, tmp_path):
 
 
 def test_registry_driven_fields(make_doc):
-    """Statements, release date, cited protocol (a bare DOI as its https://doi.org/ IRI, a citation an error), keywords,
+    """Statements, release date, cited protocol (a DOI node), keywords,
     techniques, related publications (DOI, Handle and ISBN nodes, a URL and an entry without identifier in the
     warnings, a data descriptor as the full documentation after the documentation url), consortium and Funding match
     per registry."""
@@ -129,11 +129,10 @@ def test_registry_driven_fields(make_doc):
     assert released.dataset_citation() == "Doe, 2025"  # a first publication elsewhere gives its year
     assert released.build_all() and released.entities["DatasetVersion"].release_date == date(2025, 9, 15)
     assert version.release_date is None  # no release date: none, never the export date
-    assert [str(r.iri.value) for r in protocol.described_in] == ["https://doi.org/10.1234/x"]
-    with pytest.raises(ValueError, match="Not an IRI"):  # a citation in `described in` is not dropped silently
-        _builder(make_doc({"Behavioral Protocol": {"described in": "Author et al., 2026"}})).build_all()
+    assert [r.identifier for r in protocol.described_in] == ["https://doi.org/10.1234/x"]  # a DOI node
     assert sorted(n.identifier for n in collection.nodes.values() if isinstance(n, fgcore.DOI)) == [
-        "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc"]
+        "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc",
+        "https://doi.org/10.1234/x"]  # the last: the protocol's `described in`
     assert [n.identifier for n in version.related_publications] == [
         "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc",
         "http://hdl.handle.net/11858/00-1735", "978-3-161-48410-0"]

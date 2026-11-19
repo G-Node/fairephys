@@ -1,7 +1,7 @@
 # Behavioral Protocol Template Schema v1
 $schema: https://json-schema.org/draft-07/schema#
 title: Behavioral Protocol Template
-version: 1.1
+version: 1.2
 
 type: object
 required: [Behavioral Protocol]
@@ -22,11 +22,10 @@ properties:
       name: {type: string}
       internal identifier: {type: string}
       description: {type: string}
-      # described in: DOI (10.xxxx/...) or http(s) URL of a publication or
-      # protocol that describes the paradigm; becomes
-      # BehavioralProtocol.described_in (a web resource, a DOI as its
-      # https://doi.org/ URL), never part of the name
-      described in: {type: string, pattern: "^(|10\\.\\d{4,9}/\\S+|https?://\\S+)$"}
+      # described in: the DOI (10.xxxx/...) of a publication or protocol that
+      # describes the paradigm; becomes BehavioralProtocol.described_in (a DOI),
+      # never part of the name
+      described in: {type: string, pattern: "^(|10\\.\\d{4,9}/\\S+)$"}
 
       # Task
       task: {type: string}
