@@ -17,14 +17,11 @@
 #                 session or subject instead; attribute: the linked entities'
 #                 values of that attribute, not the entities)
 #   match_link  - link by matching field value (match_field + match_attrs)
-#   content_types - the content type patterns of the file extensions the
-#                 dataset holds (table content_types), KG nodes of
-#                 search_space referenced, others built
-#   kg_node     - an existing KG node of `class` by the lookup label in the
-#                 property `odml` (search_space), referenced, never built
-#   performers  - the persons who performed a session: the names in
-#                 match_field, else the contributors who collected the data
-#                 (metadata.sessions.performers), matched by match_attrs
+#   kg_nodes    - existing KG nodes of `class` by lookup label (`labels`, or
+#                 the property `odml`) in search_space: referenced as they
+#                 are, never built; a label the KG lacks is a warning
+#   performers  - match_link for every name in match_field, else for the
+#                 contributors with the `role`
 #   literal     - hardcoded value
 #   iri         - IRI value (wraps in fairgraph.IRI)
 #   date        - the odML property as a date (ISO), none when empty
@@ -183,28 +180,6 @@ odml_types:
   Project: core.Project
   affiliation: core.Affiliation
   digital identifier: core.DigitalIdentifier
-
-# File extension -> openMINDS content type, for FileRepository.content_type_patterns.
-# A file counts for the longest extension that ends its name; a file of no
-# listed extension gets no pattern.
-content_types:
-  nwb: application/vnd.nwb.nwbn+hdf
-  json: application/json
-  jsonld: application/ld+json
-  tsv: text/tab-separated-values
-  gz: application/gzip
-  nii.gz: application/vnd.nifti.1
-  nii: application/vnd.nifti.1
-  edf: application/vnd.edf
-  md: text/markdown
-  yml: application/yaml
-  yaml: application/yaml
-  odml.xml: application/vnd.g-node.odml
-  xml: application/xml
-  html: text/html
-  png: image/png
-  mp4: video/mp4
-  txt: text/plain
 
 build_order:
   - Consortium         # built first: Custodian affiliations link to it
@@ -852,8 +827,8 @@ schemas:
       # its array usages)
       study_targets: { type: link, target: ElectrodeArrayUsage, list: true, attribute: anatomical_locations_of_arrays }
       # the session's 'performed by', else the contributors who collected the
-      # data: the rule of the NWB experimenter (metadata.sessions.performers)
-      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name] }
+      # data, as the NWB experimenter (nwb_mappings.yaml)
+      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name], role: "data collection" }
       start_time: { type: datetime, odml: "start time" }
       end_time: { type: datetime, odml: "end time" }
       preparation_design:
@@ -909,12 +884,32 @@ schemas:
       hosted_by: { type: nested_ref, target: HostingOrg }
       # the layout fairephys writes is a BIDS dataset
       format: { type: term, value: "application/vnd.bids", term_class: core.ContentType }
-      # one pattern per file extension the dataset holds (content_types below);
-      # EBRAINS' shared patterns of the space `controlled` are referenced
-      content_type_patterns: { type: content_types, search_space: controlled }
-      # an existing structure of the KG by its label ('repository structure',
-      # e.g. in collection.yaml); never built here
-      structure_pattern: { type: kg_node, class: core.FileRepositoryStructure, odml: "repository structure", search_space: files }
+      # EBRAINS' shared patterns (space controlled) of the kinds of file such
+      # a repository holds; a pattern says what content type the files of an
+      # extension have, whether or not the dataset has such files
+      content_type_patterns:
+        type: kg_nodes
+        class: core.ContentTypePattern
+        search_space: controlled
+        list: true
+        labels:
+          - "all *.nwb equal application/vnd.nwb.nwbn+hdf"
+          - "all *.json equal application/json"
+          - "all *.jsonld equal application/ld+json"
+          - "all *.tsv equal text/tab-separated-values"
+          - "all *.gz equal application/gzip"
+          - "all *.nii.gz equal application/vnd.nifti.1"
+          - "all *.edf equal application/vnd.edf"
+          - "all *.md equal text/markdown"
+          - "all *.yml equal application/yaml"
+          - "all *.yaml equal application/yaml"
+          - "all *.xml equal application/xml"
+          - "all *.html equal text/html"
+          - "all *.png equal image/png"
+          - "all *.txt equal text/plain"
+      # an existing structure of the KG, named by its label in the collection
+      # metadata ('repository structure'); empty: none
+      structure_pattern: { type: kg_nodes, class: core.FileRepositoryStructure, odml: "repository structure", search_space: files }
     nested:
       HostingOrg:
         fairgraph_class: core.Organization

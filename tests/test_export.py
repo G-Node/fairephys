@@ -440,23 +440,15 @@ def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monk
 
 
 
-def test_repository_content_types(make_doc, tmp_path, monkeypatch):
-    """One content type pattern per file extension the dataset holds, labelled as EBRAINS labels its shared ones;
-    a pattern the KG holds is referenced, the BIDS format is set, a structure only by a label the KG holds."""
-    for name in ("a_ecephys.nwb", "a_channels.tsv", "ds.odml.xml", "notes.unknown"):
-        (tmp_path / name).touch()
+def test_repository_format_and_shared_kg_nodes(make_doc, monkeypatch):
+    """A repository has the BIDS format and references the content type patterns and the structure the KG holds
+    by their labels; a label the KG lacks is a warning, and nothing is built."""
     doc = make_doc(Dataset={"repository url": "https://example.org/repo", "repository structure": "S"})
-    builder = SchemaBuilder(doc, _load_yaml(SCHEMAS_PATH), data_dir=tmp_path)
-    repository = builder.build_schema("FileRepository")
-    assert [(p.lookup_label, p.regex) for p in repository.content_type_patterns] == [
-        ("all *.nwb equal application/vnd.nwb.nwbn+hdf", ".+\\.nwb$"),
-        ("all *.odml.xml equal application/vnd.g-node.odml", ".+\\.odml.xml$"),
-        ("all *.tsv equal text/tab-separated-values", ".+\\.tsv$")]
-    assert repository.format.name == "application/vnd.bids" and repository.structure_pattern is None
-    assert builder.warnings == ["'repository structure': no core.FileRepositoryStructure with the label 'S' in the "
-                                "Knowledge Graph"]
-
+    builder = SchemaBuilder(doc, _load_yaml(SCHEMAS_PATH))
     shared = fgcore.ContentTypePattern(lookup_label="x", regex="y", id="https://kg.ebrains.eu/api/instances/p-1")
-    builder = SchemaBuilder(doc, _load_yaml(SCHEMAS_PATH), data_dir=tmp_path)
+    builder.kg.client = object()  # a client: lookups are made
     monkeypatch.setattr(builder.kg, "lookup_kg", lambda cls, *a, **k: shared if cls is fgcore.ContentTypePattern else None)
-    assert builder.build_schema("FileRepository").content_type_patterns == [shared] * 3
+    repository = builder.build_schema("FileRepository")
+    assert repository.format.name == "application/vnd.bids" and repository.structure_pattern is None
+    assert set(map(id, repository.content_type_patterns)) == {id(shared)} and len(builder.warnings) == 1
+    assert _builder(doc).build_schema("FileRepository").content_type_patterns is None  # offline: no lookup
