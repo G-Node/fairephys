@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 (unreleased)
+
+- openMINDS Python 0.6 and fairgraph 0.14: contribution roles such as design, supervision and funding are found.
+- The Knowledge Graph description of a dataset version no longer ends with the usage statement, which is for the data descriptor.
+- The roles named in the dataset template are openMINDS contribution types.
+
 ## 0.1.1 (2026-11-18)
 
 - Compile keeps a value such as `1920x1080` as text. A unit follows its number after a space (`24 kg`).

@@ -173,13 +173,12 @@ Dataset:
   # ---------------------------------------------------------------------------
   # CONTRIBUTORS -> DatasetVersion.other_contributions (Contribution)
   # ---------------------------------------------------------------------------
-  # roles: ContributionType controlled terms (list for multiple roles):
-  #   data collection | data management | data processing | coordination |
-  #   laboratory assistance | information technology support |
-  #   project management | project member | funding acquisition |
-  #   software development | visualization | writing initial draft |
-  #   writing review and editing | methodology | formal analysis |
-  #   supervision | validation | conceptualization | investigation | resources
+  # roles: names of openMINDS contributionType terms (list for multiple
+  # roles), for example:
+  #   data collection | data management | data processing | metadata management |
+  #   coordination | design | supervision | funding | curation | standardization
+  # A name openMINDS does not hold is reported at compile and left out of the
+  # Knowledge Graph.
   Contributors:
     - given name: ""
       family name: ""
