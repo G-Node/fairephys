@@ -45,6 +45,9 @@ PYTHON_PACKAGES = [
     (PIPELINE, PIPELINE, "conversion"),
     ("NeuroConv", "neuroconv", "conversion"),
     ("PyNWB", "pynwb", "conversion"),
+    ("ProbeInterface", "probeinterface", "conversion"),
+    ("odML", "odml", "conversion"),
+    ("pyEDFlib", "pyedflib", "conversion"),
     ("fairgraph", "fairgraph", "metadata upload"),
 ]
 
