@@ -7,7 +7,7 @@
 
 $schema: https://json-schema.org/draft-07/schema#
 title: Collection Template
-version: 1
+version: 1.1
 
 type: object
 required: [Dataset]
@@ -65,7 +65,8 @@ $defs:
     type: object
     properties:
       funder: {type: string}
-      funder identifier: {type: string}
+      funder short name: {type: string}
+      funder identifier: {type: string, pattern: "^(|https://ror\\.org/0[0-9a-z]{6}[0-9]{2})$"}  # the funder's ROR address
       award number: {type: string}
       award title: {type: string}
       award url: {type: string}

@@ -4,6 +4,7 @@
 
 - Knowledge Graph: a protocol `described in` a DOI is a DOI node; another URL stays a web resource.
 - Knowledge Graph: an identifier type without a value builds no node.
+- Knowledge Graph: an organization built from the metadata carries its ROR identifier and short name (`funder identifier`; new fields for institutions, funders and manufacturers; dataset and collection schema 1.1, hardware schema 1.2).
 
 ## 0.1.2 (2026-11-19)
 

@@ -545,6 +545,9 @@ class SchemaBuilder:
             if ftype == "nested_ref":
                 if built.get(fdef.get("target")):
                     kwargs[field] = built[fdef["target"]]
+            elif ftype == "nested_list":
+                if vals := [built[t] for t in _as_list(fdef.get("target")) if built.get(t)]:
+                    kwargs[field] = vals
             elif ftype == "literal":
                 if fdef.get("value") is not None:
                     kwargs[field] = fdef["value"]

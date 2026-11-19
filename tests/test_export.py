@@ -423,3 +423,26 @@ def test_identifier_type_without_a_value_builds_no_node(make_doc):
     person = {"given name": "Jane", "family name": "Doe", "digital identifier": {"type": "ORCID", "value": ""}}
     nodes = _builder(make_doc(Dataset={"Contributors": [person]})).build_all().nodes.values()
     assert not [o for o in nodes if isinstance(o, fgcore.ORCID)]
+
+
+def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monkeypatch):
+    """A funder, institution or manufacturer built from the metadata carries its ROR and short name; an
+    organization the KG holds is referenced as it is, without a ROR node of ours."""
+    funding = {"funder": "Foundation", "funder short name": "TF", "funder identifier": "https://ror.org/00k4n6c32"}
+    person = {"given name": "Jane", "family name": "Doe", "affiliation": {
+        "institution": "Uni", "institution short name": "TU", "institution identifier": "https://ror.org/05591te55"}}
+    system = {"name": "Rig", "manufacturer": "Maker", "manufacturer short name": "MK",
+              "manufacturer identifier": "https://ror.org/018mejw64"}
+    doc = make_doc({"Hardware": {"Recording System": system}}, Dataset={"Fundings": [funding], "Contributors": [person]})
+    built = {o.full_name: (o.short_name, o.digital_identifiers[0].identifier)
+             for o in _builder(doc).build_all().nodes.values()
+             if isinstance(o, fgcore.Organization) and o.digital_identifiers}
+    assert built == {"Foundation": ("TF", funding["funder identifier"]), "Uni": ("TU", "https://ror.org/05591te55"),
+                     "Maker": ("MK", "https://ror.org/018mejw64")}
+
+    shared = fgcore.Organization(full_name="Foundation", id="https://kg.ebrains.eu/api/instances/org-1")
+    shared._space = "common"
+    builder = _builder(doc, target_space="X")
+    monkeypatch.setattr(builder.kg, "lookup_kg", lambda cls, *a, **k: shared if cls is fgcore.Organization else None)
+    assert builder.build_schema("Funding")[0].funder is shared
+    assert not [n for n in builder.collection.nodes.values() if isinstance(n, fgcore.RORID)]

@@ -164,6 +164,8 @@ Dataset:
       value: ""                      # e.g., "0000-0002-1234-5678"
     affiliation:
       institution: ""
+      institution short name: ""     # e.g., "INSERM"; empty when there is none
+      institution identifier: ""     # the institution's ROR address, https://ror.org/...
       lab: ""
       department: ""
       address: ""
@@ -187,6 +189,8 @@ Dataset:
         value: ""
       affiliation:
         institution: ""
+        institution short name: ""
+        institution identifier: ""
         lab: ""
         department: ""
         city: ""
@@ -201,7 +205,8 @@ Dataset:
   # listed first, an entry here with the same award number replaces one.
   Fundings:
     - funder: ""                     # organization name (must resolve in KG)
-      funder identifier: ""         # ROR, GRID, etc.
+      funder short name: ""         # e.g., "DFG"; empty when there is none
+      funder identifier: ""         # the funder's ROR address, https://ror.org/...
       award number: ""
       award title: ""
       award url: ""

@@ -18,6 +18,8 @@ Hardware:
   Recording System:
     name: ""                   # e.g., "Blackrock Cerebus" -> openMINDS Setup.name
     manufacturer: ""
+    manufacturer short name: ""  # empty when there is none
+    manufacturer identifier: ""  # the manufacturer's ROR address, https://ror.org/...; empty when it has none
     manufacturer location: ""
     system model: ""
     model version: ""          # Maps to BIDS ManufacturersModelVersion
@@ -154,6 +156,8 @@ Hardware:
       manufacturer: ""
       # library manufacturer: the ProbeInterface library's manufacturer key when it differs from the lab's name (e.g. "sinaps-research-platform")
       # library manufacturer: ""
+      manufacturer short name: ""
+      manufacturer identifier: ""
       manufacturer location: ""
       model: ""
       serial number: ""           # this device's own serial, not the connector or pedestal
