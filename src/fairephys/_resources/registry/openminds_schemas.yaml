@@ -886,28 +886,29 @@ schemas:
       hosted_by: { type: nested_ref, target: HostingOrg }
       # the layout fairephys writes is a BIDS dataset
       format: { type: term, value: "application/vnd.bids", term_class: core.ContentType }
-      # EBRAINS' shared patterns (space controlled): `labels` for the files
-      # fairephys writes for every dataset, `labels_by_extension` only when
-      # the dataset folder holds a file of that extension
+      # EBRAINS' shared patterns (space controlled) for the file extensions
+      # the dataset folder holds (`labels_by_extension`). `labels`: the three
+      # files this export itself writes after the collection is built
+      # (the JSON-LD, README.md, datacite.yml), which every dataset has
       content_type_patterns:
         type: kg_nodes
         class: core.ContentTypePattern
         search_space: controlled
         list: true
         labels:
-          - "all *.json equal application/json"
           - "all *.jsonld equal application/ld+json"
-          - "all *.tsv equal text/tab-separated-values"
           - "all *.md equal text/markdown"
           - "all *.yml equal application/yaml"
-          - "all *.yaml equal application/yaml"
-          - "all *.xml equal application/xml"
-          - "all *.html equal text/html"
         labels_by_extension:
           nwb: "all *.nwb equal application/vnd.nwb.nwbn+hdf"
+          json: "all *.json equal application/json"
+          tsv: "all *.tsv equal text/tab-separated-values"
           edf: "all *.edf equal application/vnd.edf"
           gz: "all *.gz equal application/gzip"
           nii.gz: "all *.nii.gz equal application/vnd.nifti.1"
+          yaml: "all *.yaml equal application/yaml"
+          xml: "all *.xml equal application/xml"
+          html: "all *.html equal text/html"
           png: "all *.png equal image/png"
           txt: "all *.txt equal text/plain"
       # an existing structure of the KG, named by its label in the collection
