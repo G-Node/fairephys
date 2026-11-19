@@ -30,10 +30,11 @@ SNAPSHOT = [
     ("CustomAnatomicalEntity", "name=M1", (("has_annotations", 1),)),
     ("Dataset", "name=Test dataset", (("authors", 1), ("custodians", 1), ("has_versions", 1))),
     ("DatasetVersion", "short_name=test-ds", (("behavioral_protocols", 1), ("funding", 1), ("keywords", 2),
-                                              ("license", 1), ("other_contributions", 1), ("studied_specimens", 1))),
+                                              ("license", 1), ("other_contributions", 1), ("protocols", 1),
+                                              ("studied_specimens", 1))),
     ("ElectrodeArray", "lookup_label=test-ds_Utah-Array", (("manufacturers", 1),)),
     ("ElectrodeArrayUsage", "lookup_label=test-ds_sub-MonkeyA_ses-ses01_Utah-Array",
-     (("anatomical_locations_of_arrays", 1), ("device", 1))),
+     (("anatomical_locations_of_arrays", 1), ("device", 1), ("used_specimen", 1))),
     ("Funding", "award_number=GRANT-001", (("funder", 1),)),
     ("Laterality", "name=left", ()),
     ("License", "name=Creative Commons Attribution 4.0 International", ()),
@@ -43,8 +44,9 @@ SNAPSHOT = [
     ("Person", "full_name=Jane Doe", (("affiliations", 1), ("contact_information", 1))),
     ("Protocol", "name=test-ds", ()),
     ("RecordingActivity", "lookup_label=test-ds_sub-MonkeyA_ses-ses01",
-     (("devices", 1), ("inputs", 1), ("is_part_of", 1), ("protocols", 1))),
-    ("Setup", "name=MySystem", (("has_parts", 1), ("manufacturers", 1))),
+     (("devices", 1), ("inputs", 1), ("is_part_of", 1), ("performed_by", 1), ("protocols", 1), ("study_targets", 1))),
+    ("Setup", "name=MySystem", (("has_parts", 1), ("manufacturers", 1), ("types", 1))),
+    ("SetupType", "name=acquisition system", ()),
     ("Species", "name=Macaca mulatta", ()),
     ("Subject", "lookup_label=test-ds_sub-MonkeyA", (("biological_sex", 1), ("species", 1), ("studied_states", 1))),
     ("SubjectState", "lookup_label=test-ds_sub-MonkeyA_ses-ses01",
@@ -435,3 +437,12 @@ def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monk
     monkeypatch.setattr(builder.kg, "lookup_kg", lambda cls, *a, **k: shared if cls is fgcore.Organization else None)
     assert builder.build_schema("Funding")[0].funder is shared
     assert not [n for n in builder.collection.nodes.values() if isinstance(n, fgcore.RORID)]
+
+
+def test_quantity_from_text_with_a_range():
+    """"<min>-<max> <unit>" is a range, "<value> <unit>" a value (a probe's contact impedance range)."""
+    probe = compile_to_odml({"Hardware": {"Probes": [{"name": "P", "contact impedance range": "1-3 megaohm"},
+                                                     {"name": "Q", "contact impedance range": "0.25 megaohm"}]}})
+    low, single = (SchemaBuilder._quantity(s, "contact impedance range") for s in probe["Hardware"]["Probes"].sections)
+    assert (low.min_value, low.max_value, low.max_value_unit.name) == (1, 3, "megaohm")
+    assert (single.value, single.unit.name) == (0.25, "megaohm")

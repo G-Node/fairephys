@@ -517,6 +517,7 @@ schemas:
       studied_specimens: { type: link, target: Subject, list: true }
       funding: { type: link, target: Funding, list: true }
       behavioral_protocols: { type: link, target: BehavioralProtocol, list: true }
+      protocols: { type: link, target: Protocol, list: true }
       # every Related Publications entry whose identifier openMINDS takes
       # (DatasetVersion.related_publications: DOI, HANDLE, ISBN, ...); a URL,
       # an arXiv id or a PMID has no openMINDS node and is listed in the
@@ -700,6 +701,7 @@ schemas:
         odml_field: "device type"
         term_class: controlled_terms.DeviceType
       number_of_electrodes: { odml: "number of contacts" }
+      intrinsic_resistance: { type: quantity, odml_field: "contact impedance range" }
       electrode_identifiers: { odml: "electrode identifiers", list: true }
       conductor_material:
         type: term
@@ -755,6 +757,7 @@ schemas:
       description: { odml: "system model" }
       manufacturers: { type: nested_list, target: SetupManufacturer }
       has_parts: { type: link, target: ElectrodeArray, list: true }
+      types: { type: term, value: "acquisition system", term_class: controlled_terms.SetupType, list: true }
     nested:
       ManufacturerROR: *manufacturer_ror
       SetupManufacturer: *manufacturer_org
@@ -789,6 +792,8 @@ schemas:
         area_field: "atlas area"        # atlas area name of this placement
         uberon_field: "uberon term"      # UBERONParcellation attribute name
         hemisphere_field: "hemisphere"
+      # the state of the subject in this session
+      used_specimen: { type: link, target: SubjectState, match: session }
 
   # --- RecordingActivity (per-session) ---
   # Neo-derived fields (sampling rate, duration, streams) are populated by
@@ -811,16 +816,12 @@ schemas:
       protocols: { type: link, target: Protocol, list: true }
       devices: { type: link, target: ElectrodeArrayUsage, list: true }
       inputs: { type: link, target: SubjectState, list: true, match: session }
-      study_targets:
-        type: term
-        odml_field: "brain regions"
-        term_class: controlled_terms.UBERONParcellation
-        list: true
-      performed_by:
-        type: match_link
-        target: Person
-        match_field: "performed by"
-        match_attrs: [family_name]
+      # the regions of the session's placements (the anatomical locations of
+      # its array usages)
+      study_targets: { type: link, target: ElectrodeArrayUsage, list: true, attribute: anatomical_locations_of_arrays }
+      # the session's 'performed by', else the contributors who collected the
+      # data: the rule of the NWB experimenter (metadata.sessions.performers)
+      performed_by: { type: performers, target: Person }
       start_time: { type: datetime, odml: "start time" }
       end_time: { type: datetime, odml: "end time" }
       preparation_design:

@@ -26,7 +26,7 @@ import yaml
 
 from ..bids.resolver import section_to_dict
 from ..metadata.identifiers import related_publications
-from ..metadata.sessions import start_datetime
+from ..metadata.sessions import performers, start_datetime
 from ..metadata.subjects import session_subject
 from ..bids.builder import load_registry
 from ..bids.extractors import no_hardware_filters
@@ -109,23 +109,13 @@ def _extract_session_start_time(doc: odml.Document, session, sources, _args) -> 
 
 
 def _extract_experimenters(doc: odml.Document, _session, sources, _args) -> list[str] | None:
-    """Who performed the recording, as 'Family, Given' (DANDI): the session's
-    'performed by' (family names, completed from the Dataset contributors),
-    else the contributors with a 'data collection' role; never the curators.
-    """
-    contributors = section_at(doc, "Dataset/Contributors")
-    people = [props(c) for c in contributors.sections] if contributors is not None else []
-    performed = sources["session"].get("performed by")
-    if performed not in (None, ""):
-        chosen = []
-        for name in (performed if isinstance(performed, list) else [performed]):
-            person = next((p for p in people if p.get("family name") == name), None)
-            if person is None:
-                logger.warning(f"Session {sources['session'].get('session id')}: 'performed by' "
-                               f"{name!r} is no family name of Dataset/Contributors")
-            chosen.append(person or {"family name": name})
-    else:
-        chosen = [p for p in people if "data collection" in _as_list(p.get("roles"))]
+    """Who performed the recording, as 'Family, Given' (DANDI): see
+    metadata.sessions.performers."""
+    chosen = performers(doc, sources["session"].get("performed by"))
+    for person in chosen:
+        if set(person) == {"family name"}:
+            logger.warning(f"Session {sources['session'].get('session id')}: 'performed by' "
+                           f"{person['family name']!r} is no family name of Dataset/Contributors")
     names = [", ".join(filter(None, [p.get("family name"), p.get("given name")])) for p in chosen]
     return [n for n in names if n] or None
 

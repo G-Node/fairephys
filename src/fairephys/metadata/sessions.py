@@ -30,6 +30,23 @@ def session_identity(doc: odml.Document, session: odml.Section) -> dict[str, str
             "task": str(prop(session, "task") or "")}
 
 
+def performers(doc: odml.Document, performed_by) -> list[dict]:
+    """Who performed a recording, as the properties of Dataset/Contributors
+    entries: the session's 'performed by' (family names; a name that is no
+    contributor is kept as a family name alone), else the contributors with
+    a 'data collection' role; never the curators."""
+    contributors = section_at(doc, "Dataset/Contributors")
+    people = [props(c) for c in contributors.sections] if contributors is not None else []
+    if performed_by in (None, "", []):
+        return [p for p in people if "data collection" in _as_list(p.get("roles"))]
+    return [next((p for p in people if p.get("family name") == name), {"family name": name})
+            for name in _as_list(performed_by)]
+
+
+def _as_list(value) -> list:
+    return value if isinstance(value, list) else [] if value in (None, "") else [value]
+
+
 def find_sessions(doc: odml.Document, session_id: str, subject: str = None,
                   task: str = None) -> list[odml.Section]:
     """Session entries with this session id (and subject, when given).

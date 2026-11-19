@@ -28,7 +28,7 @@ import fairgraph.openminds.ephys as fgephys
 import fairgraph.openminds.sands as fgsands
 
 from ..metadata.identifiers import related_publications
-from ..metadata.sessions import session_identity
+from ..metadata.sessions import performers, session_identity
 from ..metadata.subjects import session_subject, subject_sections
 from ..odml import nested, prop, props, section_at, unit
 from ..placements import matched_probes
@@ -47,6 +47,8 @@ _DOI_RE = re.compile(r"^(https?://doi\.org/)?10\.\d{4,}/")
 # A bare DOI (no resolver prefix)
 _BARE_DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$")
 _HTTP_URL_RE = re.compile(r"^https?://\S+$")
+# "<min>-<max> <unit>" or "<value> <unit>" given as text ("1-3 megaohm")
+_RANGE_RE = re.compile(r"^(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s+([A-Za-z]+)$")
 
 SCHEMAS_NAME = "openminds_schemas.yaml"
 SCHEMAS_PATH = REGISTRY_DIR / SCHEMAS_NAME
@@ -60,7 +62,7 @@ _DAYS_PER_UNIT = {"day": 1, "week": 7}
 DATASET_CITATION = "dataset citation"
 # Registry field types by how build_field resolves them
 _TERM_TYPES = ("term", "multi_term")
-_LINK_TYPES = ("link", "match_link", "identifier_list", "custom_anatomy")
+_LINK_TYPES = ("link", "match_link", "performers", "identifier_list", "custom_anatomy")
 
 
 def _iri(val: Any) -> IRI:
@@ -698,11 +700,18 @@ class SchemaBuilder:
         return None
 
     @staticmethod
-    def _quantity(section: odml.Section | None, name: str) -> fgcore.QuantitativeValue | None:
-        """The property's first value with its unit, None when empty."""
+    def _quantity(section: odml.Section | None, name: str) -> Any:
+        """The property's first value with its unit, None when empty; a text
+        "<min>-<max> <unit>" is a range, "<value> <unit>" a value."""
         values = _as_list(prop(section, name))
         if not values or not values[0]:
             return None
+        if m := _RANGE_RE.match(str(values[0])):
+            low, high, unit_term = float(m[1]), float(m[2] or m[1]), fgct.UnitOfMeasurement.by_name(m[3])
+            if not m[2]:
+                return fgcore.QuantitativeValue(value=low, unit=unit_term)
+            return fgcore.QuantitativeValueRange(min_value=low, max_value=high, min_value_unit=unit_term,
+                                                 max_value_unit=unit_term)
         unit_name = unit(section, name)
         return fgcore.QuantitativeValue(
             value=values[0], unit=fgct.UnitOfMeasurement.by_name(unit_name) if unit_name else None)
@@ -730,8 +739,19 @@ class SchemaBuilder:
 
     def _link_field(self, fdef: dict, section: odml.Section | None) -> Any:
         """A field linking other entities: link (built earlier), match_link
-        (by a property's value), identifier_list, custom_anatomy."""
+        (by a property's value), performers (the persons who performed the
+        session, see metadata.sessions.performers), identifier_list,
+        custom_anatomy. `attribute` on a link gives the linked entities'
+        values of that attribute instead (a session's study targets from its
+        array usages)."""
         ftype = fdef["type"]
+        if ftype == "performers":
+            names = [p.get("family name") for p in performers(self.doc, prop(section, "performed by"))]
+            return [e for n in names if (e := self._matched_entity({**fdef, "match_attrs": ["family_name"]}, n))] or None
+        if attribute := fdef.get("attribute"):
+            linked = self._link_field({k: v for k, v in fdef.items() if k != "attribute"}, section) or []
+            values = [v for e in _as_list(linked) for v in _as_list(getattr(e, attribute, None))]
+            return list({id(v): v for v in values}.values()) or None
         if ftype == "identifier_list":
             return self._identifier_list(fdef, section)
         if ftype == "custom_anatomy":
@@ -977,11 +997,15 @@ class SchemaBuilder:
         self._entity_keys[schema_name] = keys
         return entities or None
 
-    def _placement_field(self, field: str, fdef: dict, device: odml.Section, values: dict) -> Any:
+    def _placement_field(self, field: str, fdef: dict, device: odml.Section, values: dict,
+                         session: odml.Section) -> Any:
         """A field of a placement's entity: match_link links the device (by
-        its exact name), custom_anatomy builds the region's entity, other
-        fields read the placement's properties."""
+        its exact name), link an entity of the session (match: session),
+        custom_anatomy builds the region's entity, other fields read the
+        placement's properties."""
         ftype = fdef.get("type", "odml")
+        if ftype == "link":
+            return self._link_field(fdef, session)
         if ftype == "match_link":
             return self._matched_entity(fdef, prop(device, "name"))
         if ftype == "custom_anatomy":
@@ -1015,7 +1039,7 @@ class SchemaBuilder:
                 values = {k: v for k, v in placement.items() if not isinstance(v, dict)}
                 values["probe"] = prop(device, "name")
                 kwargs = {f: v for f, fdef in schema.get("fields", {}).items() if isinstance(fdef, dict)
-                          and (v := self._placement_field(f, fdef, device, values)) is not None}
+                          and (v := self._placement_field(f, fdef, device, values, session)) is not None}
                 if not kwargs:
                     continue
                 if label_tpl and (label := fill_template(label_tpl, {**identity, "dataset": dataset, **values}.get)):

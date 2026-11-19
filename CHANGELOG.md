@@ -5,6 +5,7 @@
 - A behavioural protocol's `described in` is a DOI and becomes a DOI node (protocol schema 1.2).
 - A person's digital identifier with a type needs its value, an ORCID in its own form; both are empty otherwise (dataset schema 1.1).
 - Knowledge Graph: an organization built from the metadata carries its ROR identifier and short name (`funder identifier`; new fields for institutions, funders and manufacturers; collection schema 1.1, hardware schema 1.2).
+- Knowledge Graph: a dataset version links its recording protocol; an array usage links the subject state it was used in; a recording activity names who performed it (as the NWB experimenter) and its study targets (the regions of its placements); a setup is an acquisition system; a probe's contact impedance range is its intrinsic resistance.
 
 ## 0.1.2 (2026-11-19)
 
