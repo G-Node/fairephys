@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -27,6 +28,7 @@ import fairgraph.openminds.controlled_terms as fgct
 import fairgraph.openminds.ephys as fgephys
 import fairgraph.openminds.sands as fgsands
 
+from ..bids.structure import METADATA_DIRNAME
 from ..metadata.identifiers import related_publications
 from ..metadata.sessions import session_identity
 from ..metadata.subjects import session_subject, subject_sections
@@ -72,6 +74,18 @@ def _iri(val: Any) -> IRI:
     if not _HTTP_URL_RE.match(val):  # openminds 0.6 no longer checks the value of an IRI
         raise ValueError(f"Not an IRI (an http(s) URL or a DOI): '{val}'")
     return IRI(val)
+
+
+def _extensions(folder: Path | None) -> set[str]:
+    """The extensions of the files under `folder` ("nii.gz" and "gz" for
+    a.nii.gz); hidden files and folders are left out."""
+    found = set()
+    for _, dirs, names in os.walk(folder) if folder else ():
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for name in names:
+            if not name.startswith("."):
+                found.update(name.split(".", i)[-1] for i in range(1, name.count(".") + 1))
+    return found
 
 
 def _load_yaml(path: Path) -> dict:
@@ -179,8 +193,9 @@ class SchemaBuilder:
     """
 
     def __init__(self, doc: odml.Document, registry: dict, kg_client: KGClient | None = None,
-                 target_space: str | None = None, atlas: dict | None = None):
+                 target_space: str | None = None, atlas: dict | None = None, data_dir: Path | None = None):
         self.doc = doc
+        self.extensions = _extensions(data_dir)
         self.schemas = registry.get("schemas", {})
         self.build_order = registry.get("build_order", [])
         self.entities = {}
@@ -791,11 +806,15 @@ class SchemaBuilder:
         return None
 
     def _kg_nodes(self, fdef: dict, section: odml.Section | None) -> Any:
-        """Existing KG nodes of `class` by lookup label (`labels`, or the
-        property `odml`), referenced as they are and never built; a label
-        the KG does not hold is a warning. Nothing without a client."""
+        """Existing KG nodes of `class` by lookup label (`labels`,
+        `labels_by_extension` for the extensions the dataset folder holds,
+        or the property `odml`), referenced as they are and never built; a
+        label the KG does not hold is a warning. Nothing without a client."""
+        labels = _as_list(prop(section, fdef["odml"])) if "odml" in fdef else [
+            *fdef.get("labels", []),
+            *(label for ext, label in fdef.get("labels_by_extension", {}).items() if ext in self.extensions)]
         nodes = []
-        for label in fdef.get("labels") or _as_list(prop(section, fdef["odml"])):
+        for label in labels:
             node = self.kg.lookup_kg(_resolve_fg_class(fdef["class"]), ["lookup_label"], {"lookup_label": label},
                                      search_space=fdef.get("search_space"))
             if node is not None:
@@ -1149,7 +1168,8 @@ def build_collection(odml_path: Path, kg_client: KGClient | None,
         if not target_space:
             raise ValueError(f"No KG space to look up entities in: {NO_SPACE_HELP}")
     atlas = load_atlas(Path(atlas) if atlas else atlas_path(doc, odml_path))
-    collection = SchemaBuilder(doc, load_registry(SCHEMAS_NAME), kg_client, target_space, atlas).build_all()
+    data_dir = odml_path.parent.parent if odml_path.parent.name == METADATA_DIRNAME else None
+    collection = SchemaBuilder(doc, load_registry(SCHEMAS_NAME), kg_client, target_space, atlas, data_dir).build_all()
     collection.output_dir = odml_path.parent
     return collection
 
