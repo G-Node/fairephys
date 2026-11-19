@@ -17,6 +17,11 @@
 #                 session or subject instead; attribute: the linked entities'
 #                 values of that attribute, not the entities)
 #   match_link  - link by matching field value (match_field + match_attrs)
+#   content_types - the content type patterns of the file extensions the
+#                 dataset holds (table content_types), KG nodes of
+#                 search_space referenced, others built
+#   kg_node     - an existing KG node of `class` by the lookup label in the
+#                 property `odml` (search_space), referenced, never built
 #   performers  - the persons who performed a session: the names in
 #                 match_field, else the contributors who collected the data
 #                 (metadata.sessions.performers), matched by match_attrs
@@ -178,6 +183,28 @@ odml_types:
   Project: core.Project
   affiliation: core.Affiliation
   digital identifier: core.DigitalIdentifier
+
+# File extension -> openMINDS content type, for FileRepository.content_type_patterns.
+# A file counts for the longest extension that ends its name; a file of no
+# listed extension gets no pattern.
+content_types:
+  nwb: application/vnd.nwb.nwbn+hdf
+  json: application/json
+  jsonld: application/ld+json
+  tsv: text/tab-separated-values
+  gz: application/gzip
+  nii.gz: application/vnd.nifti.1
+  nii: application/vnd.nifti.1
+  edf: application/vnd.edf
+  md: text/markdown
+  yml: application/yaml
+  yaml: application/yaml
+  odml.xml: application/vnd.g-node.odml
+  xml: application/xml
+  html: text/html
+  png: image/png
+  mp4: video/mp4
+  txt: text/plain
 
 build_order:
   - Consortium         # built first: Custodian affiliations link to it
@@ -880,6 +907,14 @@ schemas:
         odml_field: "repository type"   # e.g. "git-annex repository" (GIN)
         term_class: controlled_terms.FileRepositoryType
       hosted_by: { type: nested_ref, target: HostingOrg }
+      # the layout fairephys writes is a BIDS dataset
+      format: { type: term, value: "application/vnd.bids", term_class: core.ContentType }
+      # one pattern per file extension the dataset holds (content_types below);
+      # EBRAINS' shared patterns of the space `controlled` are referenced
+      content_type_patterns: { type: content_types, search_space: controlled }
+      # an existing structure of the KG by its label ('repository structure',
+      # e.g. in collection.yaml); never built here
+      structure_pattern: { type: kg_node, class: core.FileRepositoryStructure, odml: "repository structure", search_space: files }
     nested:
       HostingOrg:
         fairgraph_class: core.Organization

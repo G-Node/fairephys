@@ -60,7 +60,7 @@ _DAYS_PER_UNIT = {"day": 1, "week": 7}
 DATASET_CITATION = "dataset citation"
 # Registry field types by how build_field resolves them
 _TERM_TYPES = ("term", "multi_term")
-_LINK_TYPES = ("link", "match_link", "performers", "identifier_list", "custom_anatomy")
+_LINK_TYPES = ("link", "match_link", "performers", "identifier_list", "custom_anatomy", "content_types", "kg_node")
 
 
 def _iri(val: Any) -> IRI:
@@ -179,8 +179,10 @@ class SchemaBuilder:
     """
 
     def __init__(self, doc: odml.Document, registry: dict, kg_client: KGClient | None = None,
-                 target_space: str | None = None, atlas: dict | None = None):
+                 target_space: str | None = None, atlas: dict | None = None, data_dir: Path | None = None):
         self.doc = doc
+        self.data_dir = data_dir  # the dataset's files (content type patterns), none without
+        self.content_types = registry.get("content_types", {})
         self.schemas = registry.get("schemas", {})
         self.build_order = registry.get("build_order", [])
         self.entities = {}
@@ -736,6 +738,10 @@ class SchemaBuilder:
         values of that attribute instead (a session's study targets from its
         array usages)."""
         ftype = fdef["type"]
+        if ftype == "content_types":
+            return self._content_type_patterns(fdef)
+        if ftype == "kg_node":
+            return self._kg_node(fdef, prop(section, fdef["odml"]))
         if ftype == "performers":
             names = [p.get("family name") for p in performers(self.doc, prop(section, fdef["match_field"]))]
             return [e for n in names if (e := self._matched_entity(fdef, n))] or None
@@ -786,6 +792,51 @@ class SchemaBuilder:
                     return entity
         logger.warning("  No %s matching %s='%s'", target_name, fdef.get("match_field"), match_value)
         return None
+
+    def _kg_node(self, fdef: dict, label) -> Any:
+        """The KG node of `class` with this lookup label, referenced as it
+        is; never built here. A label the KG does not hold is a warning."""
+        if not label:
+            return None
+        node = self.kg.lookup_kg(_resolve_fg_class(fdef["class"]), ["lookup_label"], {"lookup_label": str(label)},
+                                 search_space=fdef.get("search_space"))
+        if node is None:
+            self.warnings.append(f"'{fdef['odml']}': no {fdef['class']} with the label '{label}' in the Knowledge Graph")
+            logger.warning("  %s", self.warnings[-1])
+            return None
+        self.collection.add(node)
+        return node
+
+    def _content_type_patterns(self, fdef: dict) -> list | None:
+        """The content type pattern of each file extension the dataset holds
+        (registry `content_types`, the longest extension of a file name),
+        labelled as EBRAINS labels its shared patterns ("all *.json equal
+        application/json"). A pattern the KG holds is referenced as it is; one
+        it does not hold is built with that label and named in the warnings."""
+        if self.data_dir is None:
+            return None
+        extensions = sorted(self.content_types, key=len, reverse=True)
+        names = {p.name for p in self.data_dir.rglob("*")
+                 if ".git" not in p.relative_to(self.data_dir).parts and not p.is_dir()}
+        present = {next((e for e in extensions if name.endswith(f".{e}")), None) for name in names} - {None}
+        nodes = []
+        for ext in sorted(present):
+            name = self.content_types[ext]
+            if (content_type := fgcore.ContentType.by_name(name)) is None:
+                raise ValueError(f"content_types: openMINDS has no content type '{name}' (for *.{ext})")
+            kwargs = {"lookup_label": f"all *.{ext} equal {name}", "regex": rf".+\.{ext}$", "content_type": content_type}
+            node = self.kg.lookup_kg(fgcore.ContentTypePattern, ["lookup_label"], kwargs,
+                                     search_space=fdef.get("search_space"))
+            if node is not None:
+                self.collection.add(node)
+            else:
+                node = self._build_entity(fgcore.ContentTypePattern, kwargs, None, True, "ContentTypePattern")
+                if self.kg.client is not None:
+                    self.warnings.append(f"content type pattern '{kwargs['lookup_label']}' is not in the Knowledge "
+                                         "Graph: built here")
+                    logger.warning("  %s", self.warnings[-1])
+            nodes.append(node)
+        return nodes or None
 
     def _identifier_list(self, fdef: dict, section: odml.Section | None) -> Any:
         """The identifier nodes of the entries of fdef's odml_section (see
@@ -1130,7 +1181,8 @@ def build_collection(odml_path: Path, kg_client: KGClient | None,
         if not target_space:
             raise ValueError(f"No KG space to look up entities in: {NO_SPACE_HELP}")
     atlas = load_atlas(Path(atlas) if atlas else atlas_path(doc, odml_path))
-    collection = SchemaBuilder(doc, load_registry(SCHEMAS_NAME), kg_client, target_space, atlas).build_all()
+    collection = SchemaBuilder(doc, load_registry(SCHEMAS_NAME), kg_client, target_space, atlas,
+                               data_dir=odml_path.parent.parent).build_all()
     collection.output_dir = odml_path.parent
     return collection
 
