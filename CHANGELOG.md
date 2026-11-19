@@ -5,6 +5,8 @@
 - openMINDS Python 0.6 and fairgraph 0.14: contribution roles such as design, supervision and funding are found.
 - The Knowledge Graph description of a dataset version no longer ends with the usage statement, which is for the data descriptor.
 - The roles named in the dataset template are openMINDS contribution types.
+- The probe line of the data descriptor gives row and column spacing where they differ.
+- `probes.json` describes a probe without a known manufacturer by its type alone.
 
 ## 0.1.1 (2026-11-18)
 
