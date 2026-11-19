@@ -6,7 +6,7 @@ authors:
   - family-names: Gupta
     given-names: Reema
     affiliation: "Ludwig-Maximilians-Universität München"
-version: 0.1.1
+version: 0.1.2
 repository-code: "https://github.com/G-Node/fairephys"
 license: MIT
 keywords:
