@@ -47,7 +47,7 @@ def generate_probes_json(probes: list[dict], output_path: Path, probes_dir: str 
         probe_id = p.get("probe_name", "unknown")
         probe_type = p.get("type", "probe")
         manufacturer = p.get("manufacturer", "")
-        description = f"{manufacturer} {probe_type}".strip() if manufacturer else probe_type
+        description = f"{manufacturer} {probe_type}" if manufacturer not in ("", "n/a") else probe_type
 
         levels[probe_id] = {
             "Description": description,

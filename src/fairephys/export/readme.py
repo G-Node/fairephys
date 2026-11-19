@@ -357,8 +357,11 @@ def _methods_hardware(doc: odml.Document) -> str:
             ncontacts = prop(probe, "number of contacts")
             if _nonempty(ncontacts):
                 details.append(_count(ncontacts, "contact"))
+            rows, columns = _prop_str(probe, "row spacing"), _prop_str(probe, "column spacing")
             pitch = _prop_str(probe, "contact pitch")
-            if pitch:
+            if rows and columns and rows != columns:  # a matrix whose two spacings differ
+                details.append(f"rows {rows} and columns {columns} apart")
+            elif pitch:
                 details.append(f"{pitch} pitch")
             lines.append(f"- **{pname}:** {', '.join(details)}" if details else f"- **{pname}**")
             notes = prop(probe, "notes")
