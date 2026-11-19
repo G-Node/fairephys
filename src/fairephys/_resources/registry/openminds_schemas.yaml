@@ -17,9 +17,8 @@
 #                 session or subject instead; attribute: the linked entities'
 #                 values of that attribute, not the entities)
 #   match_link  - link by matching field value (match_field + match_attrs)
-#   performers  - the persons who performed a session: the names in
-#                 match_field, else the contributors who collected the data
-#                 (metadata.sessions.performers), matched by match_attrs
+#   performers  - match_link for every name in match_field, else for the
+#                 contributors with the `role`
 #   literal     - hardcoded value
 #   iri         - IRI value (wraps in fairgraph.IRI)
 #   date        - the odML property as a date (ISO), none when empty
@@ -825,8 +824,8 @@ schemas:
       # its array usages)
       study_targets: { type: link, target: ElectrodeArrayUsage, list: true, attribute: anatomical_locations_of_arrays }
       # the session's 'performed by', else the contributors who collected the
-      # data: the rule of the NWB experimenter (metadata.sessions.performers)
-      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name] }
+      # data, as the NWB experimenter (nwb_mappings.yaml)
+      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name], role: "data collection" }
       start_time: { type: datetime, odml: "start time" }
       end_time: { type: datetime, odml: "end time" }
       preparation_design:

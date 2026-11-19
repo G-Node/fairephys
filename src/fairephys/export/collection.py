@@ -28,7 +28,7 @@ import fairgraph.openminds.ephys as fgephys
 import fairgraph.openminds.sands as fgsands
 
 from ..metadata.identifiers import related_publications
-from ..metadata.sessions import performers, session_identity
+from ..metadata.sessions import session_identity
 from ..metadata.subjects import session_subject, subject_sections
 from ..odml import nested, prop, props, section_at, unit
 from ..placements import matched_probes
@@ -730,14 +730,15 @@ class SchemaBuilder:
 
     def _link_field(self, fdef: dict, section: odml.Section | None) -> Any:
         """A field linking other entities: link (built earlier), match_link
-        (by a property's value), performers (the persons who performed the
-        session, see metadata.sessions.performers), identifier_list,
-        custom_anatomy. `attribute` on a link gives the linked entities'
-        values of that attribute instead (a session's study targets from its
-        array usages)."""
+        (by a property's value), performers (as match_link for every name of
+        the property, else for the contributors with the `role`),
+        identifier_list, custom_anatomy. `attribute` on a link gives the
+        linked entities' values of that attribute instead."""
         ftype = fdef["type"]
         if ftype == "performers":
-            names = [p.get("family name") for p in performers(self.doc, prop(section, fdef["match_field"]))]
+            names = _as_list(prop(section, fdef["match_field"])) or [
+                prop(c, "family name") for c in self.get_section("Dataset/Contributors").sections
+                if fdef["role"] in _as_list(prop(c, "roles"))]
             return [e for n in names if (e := self._matched_entity(fdef, n))] or None
         if attribute := fdef.get("attribute"):
             linked = self._link_field({k: v for k, v in fdef.items() if k != "attribute"}, section) or []
