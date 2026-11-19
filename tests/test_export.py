@@ -438,11 +438,3 @@ def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monk
     assert builder.build_schema("Funding")[0].funder is shared
     assert not [n for n in builder.collection.nodes.values() if isinstance(n, fgcore.RORID)]
 
-
-def test_quantity_from_text_with_a_range():
-    """A text "<min>-<max> <unit>" is a range; a value with its unit stays a value (a probe's contact impedance range)."""
-    probe = compile_to_odml({"Hardware": {"Probes": [{"name": "P", "contact impedance range": "1-3 megaohm"},
-                                                     {"name": "Q", "contact impedance range": "0.25 megaohm"}]}})
-    low, single = (SchemaBuilder._quantity(s, "contact impedance range") for s in probe["Hardware"]["Probes"].sections)
-    assert (low.min_value, low.max_value, low.max_value_unit.name) == (1, 3, "megaohm")
-    assert (single.value, single.unit.name) == (0.25, "megaohm")

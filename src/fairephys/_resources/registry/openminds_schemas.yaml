@@ -34,8 +34,7 @@
 #                 first such node. Entries of a type `classes` does not name
 #                 are listed in the collection warnings (by the list field
 #                 only), never dropped silently
-#   quantity    - odML property with value + unit -> core.QuantitativeValue;
-#                 a text "<min>-<max> <unit>" -> core.QuantitativeValueRange
+#   quantity    - odML property with value + unit -> core.QuantitativeValue
 #   nested_ref  - reference to nested entity built in same schema context
 #   nested_list - list of nested entity references (target: name or [name, ...])
 #   link        - inside nested entities: reference to an already built
@@ -708,7 +707,6 @@ schemas:
         odml_field: "device type"
         term_class: controlled_terms.DeviceType
       number_of_electrodes: { odml: "number of contacts" }
-      intrinsic_resistance: { type: quantity, odml_field: "contact impedance range" }
       electrode_identifiers: { odml: "electrode identifiers", list: true }
       conductor_material:
         type: term

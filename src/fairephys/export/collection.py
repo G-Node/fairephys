@@ -47,8 +47,6 @@ _DOI_RE = re.compile(r"^(https?://doi\.org/)?10\.\d{4,}/")
 # A bare DOI (no resolver prefix)
 _BARE_DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$")
 _HTTP_URL_RE = re.compile(r"^https?://\S+$")
-# "<min>-<max> <unit>" given as text ("1-3 megaohm")
-_RANGE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s+([A-Za-z]+)$")
 
 SCHEMAS_NAME = "openminds_schemas.yaml"
 SCHEMAS_PATH = REGISTRY_DIR / SCHEMAS_NAME
@@ -700,16 +698,11 @@ class SchemaBuilder:
         return None
 
     @staticmethod
-    def _quantity(section: odml.Section | None, name: str) -> Any:
-        """The property's first value with its unit, None when empty; a text
-        "<min>-<max> <unit>" is a range."""
+    def _quantity(section: odml.Section | None, name: str) -> fgcore.QuantitativeValue | None:
+        """The property's first value with its unit, None when empty."""
         values = _as_list(prop(section, name))
         if not values or not values[0]:
             return None
-        if m := _RANGE_RE.match(str(values[0])):
-            unit_term = fgct.UnitOfMeasurement.by_name(m[3])
-            return fgcore.QuantitativeValueRange(min_value=float(m[1]), max_value=float(m[2]),
-                                                 min_value_unit=unit_term, max_value_unit=unit_term)
         unit_name = unit(section, name)
         return fgcore.QuantitativeValue(
             value=values[0], unit=fgct.UnitOfMeasurement.by_name(unit_name) if unit_name else None)
