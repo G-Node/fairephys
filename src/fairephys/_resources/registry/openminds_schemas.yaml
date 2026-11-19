@@ -19,7 +19,6 @@
 #   iri         - IRI value (wraps in fairgraph.IRI)
 #   date        - the odML property as a date (ISO), none when empty
 #   datetime    - ISO datetime string from odML
-#   identifier - the identifier node of one property, its class by the identifier's form
 #   identifier_list - the identifier nodes of the entries of a subsection
 #                 (odml_section, one subsection per entry with its 'identifier'
 #                 and 'relation', see fairephys.metadata.identifiers): each
@@ -604,15 +603,8 @@ schemas:
       # EBRAINS convention: the BIDS task entity, e.g. task-rest
       internal_identifier: { type: template, value: "task-{bids task label}" }
       description: { odml: "description" }
-      # 'described in', a DOI or URL of a publication or protocol: a DOI node
-      # for a DOI, a WebResource for another URL
-      described_in:
-        type: identifier
-        odml: "described in"
-        list: true
-        classes: &protocol_reference
-          DOI: { class: core.DOI, identifier: "https://doi.org/{}" }
-          URL: { class: core.WebResource, iri: "{}" }
+      # 'described in', the DOI of a publication or protocol
+      described_in: { type: nested_list, target: ProtocolRef }
       # stimulations: StimulationApproach + StimulationTechnique merged
       stimulations:
         type: multi_term
@@ -643,6 +635,13 @@ schemas:
           - "optical stimuli type"
           - "electrical stimulation type"
         list: true
+    nested:
+      ProtocolRef:
+        fairgraph_class: core.DOI
+        condition: "described in"
+        add_to_collection: true
+        fields:
+          identifier: { odml: "described in", prefix: "https://doi.org/" }
 
   # --- Protocol (recording methodology, distinct from BehavioralProtocol) ---
   # BehavioralProtocol = task/paradigm; Protocol = HOW the recording was done.
@@ -657,7 +656,7 @@ schemas:
     fields:
       name: { odml: "short name", default: "Recording protocol" }
       description: { odml: "description" }
-      described_in: { type: identifier, odml: "protocol url", classes: *protocol_reference }
+      described_in: { type: nested_list, target: ProtocolRef }
       # techniques: recording techniques and analysis techniques (e.g. spike sorting)
       techniques:
         type: multi_term
@@ -666,6 +665,13 @@ schemas:
           - controlled_terms.Technique
           - controlled_terms.AnalysisTechnique
         list: true
+    nested:
+      ProtocolRef:
+        fairgraph_class: core.WebResource
+        condition: "protocol url"
+        add_to_collection: true
+        fields:
+          iri: { type: iri, odml: "protocol url" }
 
   # --- ElectrodeArray ---
   ElectrodeArray:

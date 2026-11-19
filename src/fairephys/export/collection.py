@@ -27,7 +27,7 @@ import fairgraph.openminds.controlled_terms as fgct
 import fairgraph.openminds.ephys as fgephys
 import fairgraph.openminds.sands as fgsands
 
-from ..metadata.identifiers import parse_identifier, related_publications
+from ..metadata.identifiers import related_publications
 from ..metadata.sessions import session_identity
 from ..metadata.subjects import session_subject, subject_sections
 from ..odml import nested, prop, props, section_at, unit
@@ -60,7 +60,7 @@ _DAYS_PER_UNIT = {"day": 1, "week": 7}
 DATASET_CITATION = "dataset citation"
 # Registry field types by how build_field resolves them
 _TERM_TYPES = ("term", "multi_term")
-_LINK_TYPES = ("link", "match_link", "identifier", "identifier_list", "custom_anatomy")
+_LINK_TYPES = ("link", "match_link", "identifier_list", "custom_anatomy")
 
 
 def _iri(val: Any) -> IRI:
@@ -734,8 +734,6 @@ class SchemaBuilder:
         ftype = fdef["type"]
         if ftype == "identifier_list":
             return self._identifier_list(fdef, section)
-        if ftype == "identifier":
-            return self._identifier_field(fdef, section)
         if ftype == "custom_anatomy":
             return self.anatomy.build(fdef, props(section)) if section is not None else None
         if ftype == "match_link":
@@ -804,35 +802,15 @@ class SchemaBuilder:
                                          f"(only {', '.join(classes)}); not in the collection")
                     logger.warning("  %s", self.warnings[-1])
                 continue
-            node = self._identifier_node(classes[kind], entry.identifier)
+            spec = classes[kind]
+            node = self._build_entity(_resolve_fg_class(spec["class"]),
+                                      {"identifier": spec["identifier"].format(entry.identifier.value)},
+                                      None, True, kind)
             if not any(n is node for n in nodes):
                 nodes.append(node)
         if fdef.get("single"):
             return nodes[0] if nodes else None
         return nodes or None
-
-    def _identifier_node(self, spec: dict, identifier) -> Any:
-        """The node of one identifier by its class spec: `identifier` with the
-        class's pattern, or `iri` for a WebResource (the identifier's link)."""
-        if "iri" in spec:
-            kwargs = {"iri": _iri(spec["iri"].format(identifier.link))}
-        else:
-            kwargs = {"identifier": spec["identifier"].format(identifier.value)}
-        return self._build_entity(_resolve_fg_class(spec["class"]), kwargs, None, True, identifier.type)
-
-    def _identifier_field(self, fdef: dict, section: odml.Section | None) -> Any:
-        """The node of the identifier in one property, of the class `classes`
-        names for its form (a DOI node for a DOI, a WebResource for another
-        URL); a value of no recognised form or without a class is an error."""
-        value = prop(section, fdef["odml"])
-        if not value:
-            return None
-        try:
-            identifier = parse_identifier(value)
-            node = self._identifier_node(fdef["classes"][identifier.type], identifier)
-        except (ValueError, KeyError) as err:
-            raise ValueError(f"'{fdef['odml']}' takes {' or '.join(fdef['classes'])}: '{value}'") from err
-        return [node] if fdef.get("list") else node
 
     def _store_kwargs(self, schema_name: str, kwargs: dict) -> None:
         """Store kwargs used during entity build for match_link resolution."""
