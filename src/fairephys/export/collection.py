@@ -558,7 +558,7 @@ class SchemaBuilder:
                     kwargs[field] = val
             else:
                 val = _get_nested(data, _odml_field_name(fdef, field))
-                if val not in (None, "", []):  # an empty value is absent, as in _check_condition
+                if val is not None:
                     prefix = fdef.get("prefix", "")
                     if prefix and "doi.org" in prefix and not _DOI_RE.match(str(val)):
                         logger.debug("  Skipping invalid DOI value: '%s'", val)

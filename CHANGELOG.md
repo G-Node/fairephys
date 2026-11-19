@@ -3,7 +3,7 @@
 ## 0.1.3 (unreleased)
 
 - Knowledge Graph: a protocol `described in` a DOI is a DOI node; another URL stays a web resource.
-- Knowledge Graph: an identifier type without a value builds no node.
+- A digital identifier with a type needs its value, an ORCID in its own form; type and value are both empty otherwise (dataset schema 1.1, hardware schema 1.2).
 
 ## 0.1.2 (2026-11-19)
 

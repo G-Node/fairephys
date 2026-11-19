@@ -418,8 +418,3 @@ def test_openminds_term_map():
     with pytest.raises(ValueError, match="'controlled_terms.NoSuchTerm' does not resolve"):
         enrichment_openminds._build_term_map(registry)
 
-
-def test_identifier_type_without_a_value_builds_no_node(make_doc):
-    person = {"given name": "Jane", "family name": "Doe", "digital identifier": {"type": "ORCID", "value": ""}}
-    nodes = _builder(make_doc(Dataset={"Contributors": [person]})).build_all().nodes.values()
-    assert not [o for o in nodes if isinstance(o, fgcore.ORCID)]
