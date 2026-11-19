@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 _DOI_RE = re.compile(r"^(https?://doi\.org/)?10\.\d{4,}/")
 # A bare DOI (no resolver prefix)
 _BARE_DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$")
+_HTTP_URL_RE = re.compile(r"^https?://\S+$")
 
 SCHEMAS_NAME = "openminds_schemas.yaml"
 SCHEMAS_PATH = REGISTRY_DIR / SCHEMAS_NAME
@@ -68,10 +69,9 @@ def _iri(val: Any) -> IRI:
     val = str(val).strip()
     if _BARE_DOI_RE.match(val):
         val = f"https://doi.org/{val}"
-    try:
-        return IRI(val)
-    except ValueError as err:
-        raise ValueError(f"Not an IRI (an http(s) URL or a DOI): '{val}'") from err
+    if not _HTTP_URL_RE.match(val):  # openminds 0.6 no longer checks the value of an IRI
+        raise ValueError(f"Not an IRI (an http(s) URL or a DOI): '{val}'")
+    return IRI(val)
 
 
 def _load_yaml(path: Path) -> dict:

@@ -427,7 +427,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "fairgraph", specifier = ">=0.13.2,<0.14" },
+    { name = "fairgraph", specifier = ">=0.14,<0.15" },
     { name = "h5py" },
     { name = "jsonschema" },
     { name = "lxml" },
@@ -437,7 +437,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "nwbinspector", specifier = ">=0.7.2" },
     { name = "odml" },
-    { name = "openminds", specifier = ">=0.4,<0.5" },
+    { name = "openminds", specifier = ">=0.6,<0.7" },
     { name = "pandas" },
     { name = "probeinterface" },
     { name = "pyedflib", specifier = ">=0.1.38" },
@@ -453,7 +453,7 @@ dev = [{ name = "pytest", specifier = ">=9.0.2" }]
 
 [[package]]
 name = "fairgraph"
-version = "0.13.2"
+version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ebrains-kg-core" },
@@ -462,9 +462,9 @@ dependencies = [
     { name = "requests" },
     { name = "tabulate" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/ba/159f79b813d3666a05de3015c3aea3b1ac5eee89d3e902f252ba9662616e/fairgraph-0.13.2.tar.gz", hash = "sha256:ce715e24b73e4fe99bd329f176be05d8e9f919e0c699578be9f6d698802b7b04", size = 126357, upload-time = "2026-01-19T10:37:00.916Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/8c/178c7554221eccd86607aae99873528f346c237ed84ea55b53c48d1259b8/fairgraph-0.14.0.tar.gz", hash = "sha256:0d7af3bfc6cc399de772adca6a91ccad8b2ab28849510f48d47ce066a971a67d", size = 134783, upload-time = "2026-08-21T11:19:14.491Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/7e/6c2a855dc637837b742763bfb47adcbed2fb12ae0b758d15b4d3c19ace50/fairgraph-0.13.2-py3-none-any.whl", hash = "sha256:cc7a7e89d7118b4882c245590ac28ade38ba0b769720bfb51a57f6120822ab1e", size = 298514, upload-time = "2026-01-19T10:36:59.434Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/e6/c5e4526d1345c14abd0ec8b15694dbcb5f20b386e0858025e37ace449531/fairgraph-0.14.0-py3-none-any.whl", hash = "sha256:bbb65db9202f3a85eb1a7af6eef39a0f08c6ab7e3c6a334587d353c82b779862", size = 301018, upload-time = "2026-08-21T11:19:13.274Z" },
 ]
 
 [[package]]
@@ -1336,14 +1336,14 @@ wheels = [
 
 [[package]]
 name = "openminds"
-version = "0.4.0"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "rfc3987" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/81/56/bc66eb2eb610c65991805726471817dfd7668391adbda369d9e36d7ec759/openminds-0.4.0.tar.gz", hash = "sha256:b1b20683495f213af1483dfaa499f1a012660049f913bbed6b376df320d2a69a", size = 3527648, upload-time = "2025-11-19T08:59:35.936Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/23/ff6a7f3e5803dc831c494cfe4d38cb7f62c2982cdbc9a28e1f08b6c8e257/openminds-0.6.1.tar.gz", hash = "sha256:60388817d066568a4500ed503eb12efcecf1cb0e1a8d7e6de7579d3a09326a06", size = 4935302, upload-time = "2026-09-11T09:11:36.199Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/1a/247e8634512df369431fae0892abad13d46703e339fb5653032cbd939c6b/openminds-0.4.0-py3-none-any.whl", hash = "sha256:a543d21c72708d793546dc0b41ca4fe30f41d48242c4744a8387205e7117e805", size = 4588775, upload-time = "2025-11-19T08:59:34.17Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/d4/1c5cd10f4c6510806d0c2a415f93ecb404695b7518d51810b2d2cbfa95d2/openminds-0.6.1-py3-none-any.whl", hash = "sha256:41cfb6ee610b9cf109767ec9acba653fdc5549249c287d1002f7813fc91d85b3", size = 6825389, upload-time = "2026-09-11T09:11:32.989Z" },
 ]
 
 [[package]]

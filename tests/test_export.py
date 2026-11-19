@@ -112,11 +112,11 @@ def test_registry_driven_fields(make_doc):
     entities = builder.entities
     version = entities["DatasetVersion"]
     assert entities["Dataset"].description == "A test experiment\n\nPart of P."
-    assert version.description is None  # no usage statement: the version inherits the Dataset's description
+    assert version.description is None  # the version inherits the Dataset's description
     assert version.version_innovation == "First release.\n\nFormats used."
     used = _builder(make_doc(Dataset={"Project": {"name": "P", "usage statement": "Read with PyNWB."}}))
     used.build_all()
-    assert used.entities["DatasetVersion"].description == "A test experiment\n\nRead with PyNWB."
+    assert used.entities["DatasetVersion"].description is None  # the usage statement is for the descriptor only
     assert entities["Project"].description == "Project text"
     assert [t.name for t in version.techniques] == ["electromyography", "spike sorting"]
     assert {t.name for t in version.keywords} == {"brain"}  # the others are the approach and a technique
