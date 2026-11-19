@@ -53,7 +53,8 @@ Dataset:
   # dataset entry with the same award number replaces the one here.
   Fundings: []
   # - funder: ""
-  #   funder identifier: ""          # ROR of the funder
+  #   funder short name: ""
+  #   funder identifier: ""          # the funder's ROR address, https://ror.org/...
   #   award number: ""
   #   award title: ""
   #   award url: ""

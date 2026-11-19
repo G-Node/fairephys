@@ -222,6 +222,16 @@ schemas:
       # (every dataset would overwrite it). The lab (often a group, faculty or
       # joint unit name that is not unique across institutions) is not exported
       # to openMINDS; README and DataCite keep it in the affiliation.
+      # Identifier (ROR) and short name are those the template states for the
+      # institution. They reach only an Organization built here: one the KG
+      # holds is referenced as it is, and the RORID (not added on its own)
+      # enters the collection with the Organization that links to it.
+      InstitutionROR: &institution_ror
+        fairgraph_class: core.RORID
+        condition: "affiliation.institution identifier"
+        add_to_collection: false
+        fields:
+          identifier: { odml: "affiliation.institution identifier" }
       Organization: &person_org
         fairgraph_class: core.Organization
         condition: "affiliation.institution"
@@ -230,6 +240,8 @@ schemas:
           search_space: common  # shared Organization nodes only, never test spaces
         fields:
           full_name: { odml: "affiliation.institution" }
+          short_name: { odml: "affiliation.institution short name" }
+          digital_identifiers: { type: nested_list, target: InstitutionROR }
       ORCID: &person_orcid
         fairgraph_class: core.ORCID
         condition: "digital identifier.type == ORCID"
@@ -257,6 +269,7 @@ schemas:
       affiliations: { type: nested_list, target: [Affiliation, ConsortiumAffiliation] }
       contact_information: { type: nested_ref, target: ContactInfo }
     nested:
+      InstitutionROR: *institution_ror
       Organization: *person_org
       ORCID: *person_orcid
       Affiliation: *person_affiliation
@@ -295,6 +308,12 @@ schemas:
       award_title: { odml: "award title" }
       acknowledgement: { odml: "acknowledgement" }
     nested:
+      FunderROR:  # as InstitutionROR: only with a funder built here
+        fairgraph_class: core.RORID
+        condition: "funder identifier"
+        add_to_collection: false
+        fields:
+          identifier: { odml: "funder identifier" }
       FunderOrg:
         fairgraph_class: core.Organization
         condition: "funder"
@@ -303,6 +322,8 @@ schemas:
           search_space: common  # shared Organization nodes only, never test spaces
         fields:
           full_name: { odml: "funder" }
+          short_name: { odml: "funder short name" }
+          digital_identifiers: { type: nested_list, target: FunderROR }
 
   # --- SubjectState (per-session) ---
   # One SubjectState per session. Base properties from Subject; per-session
@@ -699,6 +720,12 @@ schemas:
         add_to_collection: true
         fields:
           identifier: { odml: "digital identifier.value" }
+      ManufacturerROR: &manufacturer_ror  # as InstitutionROR: only with a manufacturer built here
+        fairgraph_class: core.RORID
+        condition: "manufacturer identifier"
+        add_to_collection: false
+        fields:
+          identifier: { odml: "manufacturer identifier" }
       ProbeManufacturer: &manufacturer_org
         fairgraph_class: core.Organization
         condition: "manufacturer"
@@ -707,6 +734,8 @@ schemas:
           search_space: common  # shared Organization nodes only, never test spaces
         fields:
           full_name: { odml: "manufacturer" }
+          short_name: { odml: "manufacturer short name" }
+          digital_identifiers: { type: nested_list, target: ManufacturerROR }
 
   # --- Setup (recording system hardware) ---
   # Captures the DAQ/recording system as an openMINDS Setup entity.
@@ -727,6 +756,7 @@ schemas:
       manufacturers: { type: nested_list, target: SetupManufacturer }
       has_parts: { type: link, target: ElectrodeArray, list: true }
     nested:
+      ManufacturerROR: *manufacturer_ror
       SetupManufacturer: *manufacturer_org
 
   # --- ElectrodeArrayUsage (per-session device usage wrapper) ---

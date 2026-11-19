@@ -156,6 +156,9 @@ $defs:
     type: object
     properties:
       institution: {type: string}
+      institution short name: {type: string}
+      # the ROR address of the institution (https://ror.org/ and the nine characters)
+      institution identifier: {type: string, pattern: "^(|https://ror\\.org/0[0-9a-z]{6}[0-9]{2})$"}
       lab: {type: string}
       department: {type: string}
       address: {type: string}
@@ -197,7 +200,8 @@ $defs:
     type: object
     properties:
       funder: {type: string}
-      funder identifier: {type: string}
+      funder short name: {type: string}
+      funder identifier: {type: string, pattern: "^(|https://ror\\.org/0[0-9a-z]{6}[0-9]{2})$"}  # the funder's ROR address
       award number: {type: string}
       award title: {type: string}
       award url: {type: string}

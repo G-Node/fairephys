@@ -191,6 +191,8 @@ def test_template_schemas():
         ("dataset.yaml", {"Dataset": {"Contributors": [{  # a type without its value
             "given name": "J", "family name": "D", "digital identifier": {"type": "ORCID", "value": ""}}]}},
          "digital identifier.value: '' does not match"),
+        ("dataset.yaml", {"Dataset": {"Fundings": [{"funder identifier": "grid.4372.2"}]}},  # a ROR address only
+         "funder identifier: 'grid.4372.2' does not match"),
         ("nothing.yaml", {"_schema": "nothing.v9"}, "no schema 'nothing.v9'"),
     ]
     for template, data, error in table:

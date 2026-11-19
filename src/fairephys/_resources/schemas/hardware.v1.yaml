@@ -1,7 +1,7 @@
 # Hardware Template Schema v1
 $schema: https://json-schema.org/draft-07/schema#
 title: Hardware Template
-version: 1.1
+version: 1.2
 
 type: object
 required: [Hardware]
@@ -25,6 +25,8 @@ properties:
         properties:
           name: {type: string}            # Human-readable setup name -> openMINDS Setup.name, NWB Device
           manufacturer: {type: string}
+          manufacturer short name: {type: string}
+          manufacturer identifier: {type: string, pattern: "^(|https://ror\\.org/0[0-9a-z]{6}[0-9]{2})$"}  # the manufacturer's ROR address
           manufacturer location: {type: string}
           system model: {type: string}
           model version: {type: string}       # Maps to BIDS ManufacturersModelVersion
@@ -194,6 +196,8 @@ properties:
             # the ProbeInterface library's manufacturer key when it differs
             # from the lab's manufacturer name (e.g. "sinaps-research-platform")
             library manufacturer: {type: string}
+            manufacturer short name: {type: string}
+            manufacturer identifier: {type: string, pattern: "^(|https://ror\\.org/0[0-9a-z]{6}[0-9]{2})$"}
             manufacturer location: {type: string}
             model: {type: string}
             serial number: {type: string, description: This device's own serial number}
