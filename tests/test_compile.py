@@ -175,8 +175,7 @@ def test_template_schemas():
         ("protocol.yaml", protocol("5 minute"), None),
         ("protocol.yaml", protocol("5 min"), "block duration"),
         ("protocol.yaml", protocol("5 minute", "10.1234/x"), None),
-        ("protocol.yaml", protocol("5 minute", "https://example.org/p"), None),
-        ("protocol.yaml", protocol("5 minute", "Author et al., 2026"), "Behavioral Protocol.described in"),
+        ("protocol.yaml", protocol("5 minute", "https://example.org/p"), "Behavioral Protocol.described in"),  # a DOI only
         ("protocol.yaml", {"Behavioral Protocol": {**protocol("5 minute")["Behavioral Protocol"], "reference": "R"}},
          "Behavioral Protocol: 'reference' should not"),
         ("hardware.yaml", {"Hardware": {"Probes": [{"number of contacts": 2, "electrode identifiers": ["a"]}]}},

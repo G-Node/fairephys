@@ -2,8 +2,8 @@
 
 ## 0.1.3 (unreleased)
 
-- Knowledge Graph: a protocol `described in` a DOI is a DOI node; another URL stays a web resource.
-- A digital identifier with a type needs its value, an ORCID in its own form; type and value are both empty otherwise (dataset schema 1.1, hardware schema 1.2).
+- A behavioural protocol's `described in` is a DOI and becomes a DOI node (protocol schema 1.2).
+- A person's digital identifier with a type needs its value, an ORCID in its own form; both are empty otherwise (dataset schema 1.1).
 
 ## 0.1.2 (2026-11-19)
 

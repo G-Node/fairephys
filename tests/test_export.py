@@ -90,7 +90,7 @@ def test_offline_collection_snapshot(doc, tmp_path):
 
 
 def test_registry_driven_fields(make_doc):
-    """Statements, release date, cited protocol (a DOI as a DOI node, another URL as a WebResource, a citation an error), keywords,
+    """Statements, release date, cited protocol (a DOI node), keywords,
     techniques, related publications (DOI, Handle and ISBN nodes, a URL and an entry without identifier in the
     warnings, a data descriptor as the full documentation after the documentation url), consortium and Funding match
     per registry."""
@@ -129,12 +129,7 @@ def test_registry_driven_fields(make_doc):
     assert released.dataset_citation() == "Doe, 2025"  # a first publication elsewhere gives its year
     assert released.build_all() and released.entities["DatasetVersion"].release_date == date(2025, 9, 15)
     assert version.release_date is None  # no release date: none, never the export date
-    assert [(type(r).__name__, r.identifier) for r in protocol.described_in] == [("DOI", "https://doi.org/10.1234/x")]
-    page = _builder(make_doc({"Behavioral Protocol": {"described in": "https://example.org/protocol"}}))
-    page.build_all()  # a URL that is no DOI is a WebResource
-    assert [str(r.iri.value) for r in page.entities["BehavioralProtocol"].described_in] == ["https://example.org/protocol"]
-    with pytest.raises(ValueError, match="'described in' takes DOI or URL"):  # a citation is not dropped silently
-        _builder(make_doc({"Behavioral Protocol": {"described in": "Author et al., 2026"}})).build_all()
+    assert [r.identifier for r in protocol.described_in] == ["https://doi.org/10.1234/x"]  # a DOI node
     assert sorted(n.identifier for n in collection.nodes.values() if isinstance(n, fgcore.DOI)) == [
         "https://doi.org/10.1000/abc", "https://doi.org/10.1000/def", "https://doi.org/10.1234/abc",
         "https://doi.org/10.1234/x"]  # the last: the protocol's `described in`
@@ -417,4 +412,3 @@ def test_openminds_term_map():
     registry["schemas"]["DatasetVersion"]["fields"]["accessibility"]["term_class"] = "controlled_terms.NoSuchTerm"
     with pytest.raises(ValueError, match="'controlled_terms.NoSuchTerm' does not resolve"):
         enrichment_openminds._build_term_map(registry)
-
