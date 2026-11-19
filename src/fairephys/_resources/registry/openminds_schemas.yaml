@@ -17,6 +17,11 @@
 #                 session or subject instead; attribute: the linked entities'
 #                 values of that attribute, not the entities)
 #   match_link  - link by matching field value (match_field + match_attrs)
+#   kg_nodes    - existing KG nodes of `class` by lookup label (`labels`,
+#                 `labels_by_extension` for the file extensions the dataset
+#                 folder holds, or the property `odml`) in search_space:
+#                 referenced as they are, never built; a label the KG lacks
+#                 is a warning
 #   performers  - match_link for every name in match_field, else for the
 #                 contributors with the `role`
 #   literal     - hardcoded value
@@ -879,6 +884,36 @@ schemas:
         odml_field: "repository type"   # e.g. "git-annex repository" (GIN)
         term_class: controlled_terms.FileRepositoryType
       hosted_by: { type: nested_ref, target: HostingOrg }
+      # the layout fairephys writes is a BIDS dataset
+      format: { type: term, value: "application/vnd.bids", term_class: core.ContentType }
+      # EBRAINS' shared patterns (space controlled) for the file extensions
+      # the dataset folder holds (`labels_by_extension`). `labels`: the three
+      # files this export itself writes after the collection is built
+      # (the JSON-LD, README.md, datacite.yml), which every dataset has
+      content_type_patterns:
+        type: kg_nodes
+        class: core.ContentTypePattern
+        search_space: controlled
+        list: true
+        labels:
+          - "all *.jsonld equal application/ld+json"
+          - "all *.md equal text/markdown"
+          - "all *.yml equal application/yaml"
+        labels_by_extension:
+          nwb: "all *.nwb equal application/vnd.nwb.nwbn+hdf"
+          json: "all *.json equal application/json"
+          tsv: "all *.tsv equal text/tab-separated-values"
+          edf: "all *.edf equal application/vnd.edf"
+          gz: "all *.gz equal application/gzip"
+          nii.gz: "all *.nii.gz equal application/vnd.nifti.1"
+          yaml: "all *.yaml equal application/yaml"
+          xml: "all *.xml equal application/xml"
+          html: "all *.html equal text/html"
+          png: "all *.png equal image/png"
+          txt: "all *.txt equal text/plain"
+      # an existing structure of the KG, named by its label in the collection
+      # metadata ('repository structure'); empty: none
+      structure_pattern: { type: kg_nodes, class: core.FileRepositoryStructure, odml: "repository structure", search_space: files }
     nested:
       HostingOrg:
         fairgraph_class: core.Organization

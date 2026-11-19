@@ -7,6 +7,7 @@
 - Knowledge Graph: an organization built from the metadata carries its ROR identifier and short name (`funder identifier`; new fields for institutions, funders and manufacturers; collection schema 1.1, hardware schema 1.2).
 - The metadata record holds the versions of ProbeInterface and odML; a statement can name them.
 - Knowledge Graph: a dataset version links its recording protocol; an array usage links the subject state it was used in; a recording activity names who performed it (as the NWB experimenter) and its study targets (the regions of its placements); a setup is an acquisition system.
+- Knowledge Graph: a repository has the BIDS format, the shared content type patterns of EBRAINS for its kinds of file, and an existing structure pattern when `repository structure` names one.
 
 ## 0.1.2 (2026-11-19)
 

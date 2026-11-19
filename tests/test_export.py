@@ -438,3 +438,20 @@ def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monk
     assert builder.build_schema("Funding")[0].funder is shared
     assert not [n for n in builder.collection.nodes.values() if isinstance(n, fgcore.RORID)]
 
+
+
+def test_repository_format_and_shared_kg_nodes(make_doc, tmp_path, monkeypatch):
+    """A repository has the BIDS format and references the KG's content type patterns by label: those of every
+    dataset, and those of the extensions its folder holds. A label the KG lacks is a warning; nothing is built."""
+    (tmp_path / "a_emg.edf").touch()
+    doc = make_doc(Dataset={"repository url": "https://example.org/repo", "repository structure": "S"})
+    builder = SchemaBuilder(doc, _load_yaml(SCHEMAS_PATH), data_dir=tmp_path)
+    builder.kg.client, asked = object(), []  # a client: lookups are made
+    shared = fgcore.ContentTypePattern(lookup_label="x", regex="y", id="https://kg.ebrains.eu/api/instances/p-1")
+    monkeypatch.setattr(builder.kg, "lookup_kg", lambda cls, fields, kwargs, **k: (
+        asked.append(kwargs.get("lookup_label")), shared if cls is fgcore.ContentTypePattern else None)[1])
+    repository = builder.build_schema("FileRepository")
+    assert repository.format.name == "application/vnd.bids" and repository.structure_pattern is None
+    assert "all *.edf equal application/vnd.edf" in asked and not [a for a in asked if a and "*.nwb" in a]
+    assert set(map(id, repository.content_type_patterns)) == {id(shared)} and len(builder.warnings) == 1
+    assert _builder(doc).build_schema("FileRepository").content_type_patterns is None  # offline: no lookup
