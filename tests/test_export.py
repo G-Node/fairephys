@@ -419,12 +419,6 @@ def test_openminds_term_map():
         enrichment_openminds._build_term_map(registry)
 
 
-def test_identifier_type_without_a_value_builds_no_node(make_doc):
-    person = {"given name": "Jane", "family name": "Doe", "digital identifier": {"type": "ORCID", "value": ""}}
-    nodes = _builder(make_doc(Dataset={"Contributors": [person]})).build_all().nodes.values()
-    assert not [o for o in nodes if isinstance(o, fgcore.ORCID)]
-
-
 def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monkeypatch):
     """A funder, institution or manufacturer built from the metadata carries its ROR and short name; an
     organization the KG holds is referenced as it is, without a ROR node of ours."""

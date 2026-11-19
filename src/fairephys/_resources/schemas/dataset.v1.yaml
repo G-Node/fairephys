@@ -131,11 +131,23 @@ $defs:
       given name: {type: string}
       family name: {type: string}
       email: {type: string}
-      digital identifier: {type: object}
+      digital identifier: {$ref: "#/$defs/PersonIdentifier"}
       affiliation: {$ref: "#/$defs/Affiliation"}
       # true: the person is a member of the shared Consortium
       # (collection/metadata) -> Affiliation.member_of on the Person
       consortium member: {type: boolean}
+
+  # A person's identifier: an ORCID in its own form (0000-0002-1825-0097), or
+  # type and value both empty when the person has none. A type without its
+  # value is incomplete and fails here, before any Knowledge Graph node is built.
+  PersonIdentifier:
+    type: object
+    properties:
+      type: {enum: [ORCID, ""]}
+      value: {type: string}
+    if: {properties: {type: {const: ORCID}}, required: [type]}
+    then: {properties: {value: {pattern: "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"}}, required: [value]}
+    else: {properties: {value: {const: ""}}}
 
   # The README prints "lab, department, institution, city, country" (the
   # EBRAINS data descriptor's "Institute (working group) department,
@@ -159,7 +171,7 @@ $defs:
     properties:
       given name: {type: string}
       family name: {type: string}
-      digital identifier: {type: object}
+      digital identifier: {$ref: "#/$defs/PersonIdentifier"}
       affiliation: {$ref: "#/$defs/Affiliation"}
       roles: {type: array, items: {type: string}}
       role: {type: string}

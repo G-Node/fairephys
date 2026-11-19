@@ -189,6 +189,9 @@ def test_template_schemas():
         ("dataset.yaml", {"Dataset": {"Related Publications": [
             {"identifier": "10.1234/x", "relation": "IsSupplement", "citation": "Doe, J. (2024)."}]}},
          "Dataset.Related Publications.0.relation: 'IsSupplement' is not one of"),
+        ("dataset.yaml", {"Dataset": {"Contributors": [{  # a type without its value
+            "given name": "J", "family name": "D", "digital identifier": {"type": "ORCID", "value": ""}}]}},
+         "digital identifier.value: '' does not match"),
         ("dataset.yaml", {"Dataset": {"Fundings": [{"funder identifier": "grid.4372.2"}]}},  # a ROR address only
          "funder identifier: 'grid.4372.2' does not match"),
         ("nothing.yaml", {"_schema": "nothing.v9"}, "no schema 'nothing.v9'"),

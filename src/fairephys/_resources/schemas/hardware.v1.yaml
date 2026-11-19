@@ -202,7 +202,13 @@ properties:
             model: {type: string}
             serial number: {type: string, description: This device's own serial number}
             # digital identifier: DOI or RRID for the probe -> ElectrodeArray.digital_identifier
-            digital identifier: {type: object, properties: {type: {type: string}, value: {type: string}}}
+            # a type needs its value; both empty when the probe has no identifier
+            digital identifier:
+              type: object
+              properties: {type: {enum: [RRID, DOI, ""]}, value: {type: string}}
+              if: {properties: {type: {enum: [RRID, DOI]}}, required: [type]}
+              then: {properties: {value: {minLength: 1}}, required: [value]}
+              else: {properties: {value: {const: ""}}}
             device type: {type: string}
             # the device class (the product name goes in 'model'); empty when unknown
             probe type:
