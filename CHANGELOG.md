@@ -6,6 +6,7 @@
 - A person's digital identifier with a type needs its value, an ORCID in its own form; both are empty otherwise (dataset schema 1.1).
 - Knowledge Graph: an organization built from the metadata carries its ROR identifier and short name (`funder identifier`; new fields for institutions, funders and manufacturers; collection schema 1.1, hardware schema 1.2).
 - The metadata record holds the versions of ProbeInterface and odML; a statement can name them.
+- `codemeta.json` describes the latest release; a workflow writes the version into it when a release is tagged.
 
 ## 0.1.2 (2026-11-19)
 
