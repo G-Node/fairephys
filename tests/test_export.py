@@ -440,7 +440,7 @@ def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monk
 
 
 def test_quantity_from_text_with_a_range():
-    """"<min>-<max> <unit>" is a range, "<value> <unit>" a value (a probe's contact impedance range)."""
+    """A text "<min>-<max> <unit>" is a range; a value with its unit stays a value (a probe's contact impedance range)."""
     probe = compile_to_odml({"Hardware": {"Probes": [{"name": "P", "contact impedance range": "1-3 megaohm"},
                                                      {"name": "Q", "contact impedance range": "0.25 megaohm"}]}})
     low, single = (SchemaBuilder._quantity(s, "contact impedance range") for s in probe["Hardware"]["Probes"].sections)

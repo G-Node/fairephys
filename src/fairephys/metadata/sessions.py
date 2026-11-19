@@ -10,6 +10,7 @@ one entry (its 'runs').
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
@@ -18,6 +19,8 @@ import odml
 from ..odml import prop, props, section_at
 from .subjects import session_subject
 
+
+logger = logging.getLogger(__name__)
 
 def session_identity(doc: odml.Document, session: odml.Section) -> dict[str, str]:
     """What identifies a session entry (BIDS sub, ses, task), as text:
@@ -30,21 +33,24 @@ def session_identity(doc: odml.Document, session: odml.Section) -> dict[str, str
             "task": str(prop(session, "task") or "")}
 
 
-def performers(doc: odml.Document, performed_by) -> list[dict]:
+def performers(doc: odml.Document, performed_by, where: str = "") -> list[dict]:
     """Who performed a recording, as the properties of Dataset/Contributors
     entries: the session's 'performed by' (family names; a name that is no
-    contributor is kept as a family name alone), else the contributors with
-    a 'data collection' role; never the curators."""
+    contributor is kept as a family name alone, with a warning), else the
+    contributors with a 'data collection' role; never the curators."""
     contributors = section_at(doc, "Dataset/Contributors")
     people = [props(c) for c in contributors.sections] if contributors is not None else []
-    if performed_by in (None, "", []):
-        return [p for p in people if "data collection" in _as_list(p.get("roles"))]
-    return [next((p for p in people if p.get("family name") == name), {"family name": name})
-            for name in _as_list(performed_by)]
-
-
-def _as_list(value) -> list:
-    return value if isinstance(value, list) else [] if value in (None, "") else [value]
+    names = performed_by if isinstance(performed_by, list) else [] if performed_by in (None, "") else [performed_by]
+    if not names:
+        return [p for p in people if "data collection" in (p.get("roles") if isinstance(p.get("roles"), list)
+                                                           else [p.get("roles")])]
+    chosen = []
+    for name in names:
+        person = next((p for p in people if p.get("family name") == name), None)
+        if person is None:
+            logger.warning(f"{where}'performed by' {name!r} is no family name of Dataset/Contributors")
+        chosen.append(person or {"family name": name})
+    return chosen
 
 
 def find_sessions(doc: odml.Document, session_id: str, subject: str = None,

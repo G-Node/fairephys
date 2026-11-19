@@ -8,13 +8,18 @@
 #
 # ─── Field types ───────────────────────────────────────────────────────────
 #   odml        - simple property from odML section (default)
-#   term        - controlled term (term_class, resolved via fairgraph by_name)
+#   term        - controlled term (term_class, resolved via fairgraph by_name;
+#                 value: a fixed term instead of the property)
 #   multi_term  - try multiple vocabularies (term_classes[], first match wins)
 #                 merge_fields: collect values from multiple odML fields
 #   link        - reference to previously built entity (index-matched when list;
 #                 match: session | subject picks per-session entities of that
-#                 session or subject instead)
+#                 session or subject instead; attribute: the linked entities'
+#                 values of that attribute, not the entities)
 #   match_link  - link by matching field value (match_field + match_attrs)
+#   performers  - the persons who performed a session: the names in
+#                 match_field, else the contributors who collected the data
+#                 (metadata.sessions.performers), matched by match_attrs
 #   literal     - hardcoded value
 #   iri         - IRI value (wraps in fairgraph.IRI)
 #   date        - the odML property as a date (ISO), none when empty
@@ -29,7 +34,8 @@
 #                 first such node. Entries of a type `classes` does not name
 #                 are listed in the collection warnings (by the list field
 #                 only), never dropped silently
-#   quantity    - odML property with value + unit -> core.QuantitativeValue
+#   quantity    - odML property with value + unit -> core.QuantitativeValue;
+#                 a text "<min>-<max> <unit>" -> core.QuantitativeValueRange
 #   nested_ref  - reference to nested entity built in same schema context
 #   nested_list - list of nested entity references (target: name or [name, ...])
 #   link        - inside nested entities: reference to an already built
@@ -83,7 +89,8 @@
 #                         session's Electrode Placements, else the subject's
 #                         Implanted Probes: fairephys.placements.matched_probes)
 #                         fields: match_link links the placement's device by
-#                         its exact name, custom_anatomy the region's entity,
+#                         its exact name, link (with match: session) an
+#                         entity of the session, custom_anatomy the region's entity,
 #                         other fields read the placement's properties
 #                         supports: lookup_label_template (template tokens:
 #                         {dataset}, {session_id}, {subject_id}, {task},
@@ -821,7 +828,7 @@ schemas:
       study_targets: { type: link, target: ElectrodeArrayUsage, list: true, attribute: anatomical_locations_of_arrays }
       # the session's 'performed by', else the contributors who collected the
       # data: the rule of the NWB experimenter (metadata.sessions.performers)
-      performed_by: { type: performers, target: Person }
+      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name] }
       start_time: { type: datetime, odml: "start time" }
       end_time: { type: datetime, odml: "end time" }
       preparation_design:

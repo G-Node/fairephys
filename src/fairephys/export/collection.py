@@ -47,8 +47,8 @@ _DOI_RE = re.compile(r"^(https?://doi\.org/)?10\.\d{4,}/")
 # A bare DOI (no resolver prefix)
 _BARE_DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$")
 _HTTP_URL_RE = re.compile(r"^https?://\S+$")
-# "<min>-<max> <unit>" or "<value> <unit>" given as text ("1-3 megaohm")
-_RANGE_RE = re.compile(r"^(\d+(?:\.\d+)?)(?:\s*-\s*(\d+(?:\.\d+)?))?\s+([A-Za-z]+)$")
+# "<min>-<max> <unit>" given as text ("1-3 megaohm")
+_RANGE_RE = re.compile(r"^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s+([A-Za-z]+)$")
 
 SCHEMAS_NAME = "openminds_schemas.yaml"
 SCHEMAS_PATH = REGISTRY_DIR / SCHEMAS_NAME
@@ -702,16 +702,14 @@ class SchemaBuilder:
     @staticmethod
     def _quantity(section: odml.Section | None, name: str) -> Any:
         """The property's first value with its unit, None when empty; a text
-        "<min>-<max> <unit>" is a range, "<value> <unit>" a value."""
+        "<min>-<max> <unit>" is a range."""
         values = _as_list(prop(section, name))
         if not values or not values[0]:
             return None
         if m := _RANGE_RE.match(str(values[0])):
-            low, high, unit_term = float(m[1]), float(m[2] or m[1]), fgct.UnitOfMeasurement.by_name(m[3])
-            if not m[2]:
-                return fgcore.QuantitativeValue(value=low, unit=unit_term)
-            return fgcore.QuantitativeValueRange(min_value=low, max_value=high, min_value_unit=unit_term,
-                                                 max_value_unit=unit_term)
+            unit_term = fgct.UnitOfMeasurement.by_name(m[3])
+            return fgcore.QuantitativeValueRange(min_value=float(m[1]), max_value=float(m[2]),
+                                                 min_value_unit=unit_term, max_value_unit=unit_term)
         unit_name = unit(section, name)
         return fgcore.QuantitativeValue(
             value=values[0], unit=fgct.UnitOfMeasurement.by_name(unit_name) if unit_name else None)
@@ -746,8 +744,8 @@ class SchemaBuilder:
         array usages)."""
         ftype = fdef["type"]
         if ftype == "performers":
-            names = [p.get("family name") for p in performers(self.doc, prop(section, "performed by"))]
-            return [e for n in names if (e := self._matched_entity({**fdef, "match_attrs": ["family_name"]}, n))] or None
+            names = [p.get("family name") for p in performers(self.doc, prop(section, fdef["match_field"]))]
+            return [e for n in names if (e := self._matched_entity(fdef, n))] or None
         if attribute := fdef.get("attribute"):
             linked = self._link_field({k: v for k, v in fdef.items() if k != "attribute"}, section) or []
             values = [v for e in _as_list(linked) for v in _as_list(getattr(e, attribute, None))]

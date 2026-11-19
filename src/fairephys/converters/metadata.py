@@ -111,17 +111,10 @@ def _extract_session_start_time(doc: odml.Document, session, sources, _args) -> 
 def _extract_experimenters(doc: odml.Document, _session, sources, _args) -> list[str] | None:
     """Who performed the recording, as 'Family, Given' (DANDI): see
     metadata.sessions.performers."""
-    chosen = performers(doc, sources["session"].get("performed by"))
-    for person in chosen:
-        if set(person) == {"family name"}:
-            logger.warning(f"Session {sources['session'].get('session id')}: 'performed by' "
-                           f"{person['family name']!r} is no family name of Dataset/Contributors")
+    chosen = performers(doc, sources["session"].get("performed by"),
+                        where=f"Session {sources['session'].get('session id')}: ")
     names = [", ".join(filter(None, [p.get("family name"), p.get("given name")])) for p in chosen]
     return [n for n in names if n] or None
-
-
-def _as_list(value) -> list:
-    return value if isinstance(value, list) else [] if value in (None, "") else [value]
 
 
 def _extract_affiliation(doc: odml.Document, _session, _sources, args) -> str | None:
