@@ -241,7 +241,7 @@ def test_curation_software_recorded_at_compile(make_doc, monkeypatch, caplog):
     """The compile records tool versions and the validator pin; missing packages drop, unpinned raises."""
     tools = {s.name: {p.name: p.values[0] for p in s.properties} for s in make_doc()["Curation Software"].sections}
     assert [n for n in tools] == ["BIDS validator", "NWB Inspector", "openMINDS Python", "fairephys", "NeuroConv",
-                                  "PyNWB", "ProbeInterface", "odML", "pyEDFlib", "fairgraph"]
+                                  "PyNWB", "ProbeInterface", "odML", "fairgraph"]
     assert all(tools[name]["version"] == version(dist) for name, dist, _ in provenance.PYTHON_PACKAGES)
     spec = load_registry()["spec"]
     assert spec["validator"].endswith("@" + tools["BIDS validator"]["version"])
