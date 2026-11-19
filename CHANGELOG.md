@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.2 (unreleased)
+## 0.1.2 (2026-11-19)
 
 - openMINDS Python 0.6 and fairgraph 0.14: contribution roles such as design, supervision and funding are found.
 - Dataset card in the Knowledge Graph without the usage statement.
