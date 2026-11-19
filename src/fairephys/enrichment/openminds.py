@@ -172,7 +172,7 @@ def _lookup_term(value: str, term_classes: list, where: str) -> Any | None:
         except AttributeError as exc:
             logger.warning(f"{where}: {cls.__name__} has no instance lookup for {value!r}: {exc}")
             continue
-        except TypeError:  # openminds 0.4.0 by_name fails on len(None) when no instance matches
+        except TypeError:  # fairgraph's by_name fails on len(None) when no instance matches
             continue
         if result:
             return result

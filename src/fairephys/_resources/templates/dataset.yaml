@@ -43,7 +43,7 @@ Dataset:
   # Ethics details (documented in odML, not pushed to openMINDS entities)
   ethics authority: ""               # e.g., "IACUC" or local ethics committee
   ethics approval id: ""             # protocol/authorization number
-  licensed institution: ""           # institution license code
+  licensed institution: ""           # the licensed establishment: its name, its licence number, or both
   ethics directive: ""               # e.g., "Directive 2010/63/EU"
   authorizing body: ""               # ministry or regulatory body
   ethics statement: ""               # full ethics declaration text
