@@ -66,6 +66,7 @@ Subject:
 | `literal` | `{ type: literal, value: "..." }` | Hardcoded value |
 | `date` | `{ type: date, odml: "release date" }` | The property as a date (ISO); none when empty |
 | `iri` | `{ type: iri, value: "..." }` | IRI/URL value |
+| `identifier` | `type: identifier, odml: "property", classes: {DOI: {class: core.DOI, identifier: "https://doi.org/{}"}, URL: {class: core.WebResource, iri: "{}"}}` | The node of the identifier in one property, of the class named for its form (a DOI, another URL); a value of another form is an error. `list: true` for a list property |
 | `identifier_list` | `type: identifier_list, odml_section, classes: {DOI: {class: core.DOI, identifier: "https://doi.org/{}"}}` | One identifier node per entry of the subsection (each with its `identifier`, typed by `fairephys.metadata.identifiers`) whose type `classes` names; `relation:` keeps the entries of one relation, `single: true` the first node. Entries of another type (a URL, an arXiv id or a PMID among the related publications) are listed in `collection.warnings` and the openMINDS validation output |
 
 Common modifiers: `list: true` (wrap in list), `default: "..."` (fallback), `prefix: "https://..."` (prepend to value), `fallback: {field definition}` (in schemas with `nested`: built when the field builds nothing; `DatasetVersion.full_documentation` is the documentation url, else the first related publication described as `IsDescribedBy` with a DOI).

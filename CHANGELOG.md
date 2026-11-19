@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 (unreleased)
+
+- Knowledge Graph: a protocol `described in` a DOI is a DOI node; another URL stays a web resource.
+- Knowledge Graph: an identifier type without a value builds no node.
+
 ## 0.1.2 (2026-11-19)
 
 - openMINDS Python 0.6 and fairgraph 0.14: contribution roles such as design, supervision and funding are found.

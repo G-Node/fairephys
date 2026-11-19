@@ -24,8 +24,8 @@ properties:
       description: {type: string}
       # described in: DOI (10.xxxx/...) or http(s) URL of a publication or
       # protocol that describes the paradigm; becomes
-      # BehavioralProtocol.described_in (a web resource, a DOI as its
-      # https://doi.org/ URL), never part of the name
+      # BehavioralProtocol.described_in (a DOI node for a DOI, a web resource
+      # for another URL), never part of the name
       described in: {type: string, pattern: "^(|10\\.\\d{4,9}/\\S+|https?://\\S+)$"}
 
       # Task
