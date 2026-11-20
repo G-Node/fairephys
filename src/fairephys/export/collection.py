@@ -14,6 +14,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import re
 from datetime import date, datetime
 from pathlib import Path
@@ -27,6 +28,7 @@ import fairgraph.openminds.controlled_terms as fgct
 import fairgraph.openminds.ephys as fgephys
 import fairgraph.openminds.sands as fgsands
 
+from ..bids.structure import METADATA_DIRNAME
 from ..metadata.identifiers import related_publications
 from ..metadata.sessions import session_identity
 from ..metadata.subjects import session_subject, subject_sections
@@ -60,7 +62,7 @@ _DAYS_PER_UNIT = {"day": 1, "week": 7}
 DATASET_CITATION = "dataset citation"
 # Registry field types by how build_field resolves them
 _TERM_TYPES = ("term", "multi_term")
-_LINK_TYPES = ("link", "match_link", "identifier_list", "custom_anatomy")
+_LINK_TYPES = ("link", "match_link", "performers", "identifier_list", "custom_anatomy", "kg_nodes")
 
 
 def _iri(val: Any) -> IRI:
@@ -72,6 +74,18 @@ def _iri(val: Any) -> IRI:
     if not _HTTP_URL_RE.match(val):  # openminds 0.6 no longer checks the value of an IRI
         raise ValueError(f"Not an IRI (an http(s) URL or a DOI): '{val}'")
     return IRI(val)
+
+
+def _extensions(folder: Path | None) -> set[str]:
+    """The extensions of the files under `folder` ("nii.gz" and "gz" for
+    a.nii.gz); hidden files and folders are left out."""
+    found = set()
+    for _, dirs, names in os.walk(folder) if folder else ():
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+        for name in names:
+            if not name.startswith("."):
+                found.update(name.split(".", i)[-1] for i in range(1, name.count(".") + 1))
+    return found
 
 
 def _load_yaml(path: Path) -> dict:
@@ -179,8 +193,9 @@ class SchemaBuilder:
     """
 
     def __init__(self, doc: odml.Document, registry: dict, kg_client: KGClient | None = None,
-                 target_space: str | None = None, atlas: dict | None = None):
+                 target_space: str | None = None, atlas: dict | None = None, data_dir: Path | None = None):
         self.doc = doc
+        self.extensions = _extensions(data_dir)
         self.schemas = registry.get("schemas", {})
         self.build_order = registry.get("build_order", [])
         self.entities = {}
@@ -730,8 +745,22 @@ class SchemaBuilder:
 
     def _link_field(self, fdef: dict, section: odml.Section | None) -> Any:
         """A field linking other entities: link (built earlier), match_link
-        (by a property's value), identifier_list, custom_anatomy."""
+        (by a property's value), performers (as match_link for every name of
+        the property, else for the contributors with the `role`),
+        identifier_list, custom_anatomy. `attribute` on a link gives the
+        linked entities' values of that attribute instead."""
         ftype = fdef["type"]
+        if ftype == "kg_nodes":
+            return self._kg_nodes(fdef, section)
+        if ftype == "performers":
+            names = _as_list(prop(section, fdef["match_field"])) or [
+                prop(c, "family name") for c in self.get_section("Dataset/Contributors").sections
+                if fdef["role"] in _as_list(prop(c, "roles"))]
+            return [e for n in names if (e := self._matched_entity(fdef, n))] or None
+        if attribute := fdef.get("attribute"):
+            linked = self._link_field({k: v for k, v in fdef.items() if k != "attribute"}, section) or []
+            values = [v for e in _as_list(linked) for v in _as_list(getattr(e, attribute, None))]
+            return list({id(v): v for v in values}.values()) or None
         if ftype == "identifier_list":
             return self._identifier_list(fdef, section)
         if ftype == "custom_anatomy":
@@ -775,6 +804,26 @@ class SchemaBuilder:
                     return entity
         logger.warning("  No %s matching %s='%s'", target_name, fdef.get("match_field"), match_value)
         return None
+
+    def _kg_nodes(self, fdef: dict, section: odml.Section | None) -> Any:
+        """Existing KG nodes of `class` by lookup label (`labels`,
+        `labels_by_extension` for the extensions the dataset folder holds,
+        or the property `odml`), referenced as they are and never built; a
+        label the KG does not hold is a warning. Nothing without a client."""
+        labels = _as_list(prop(section, fdef["odml"])) if "odml" in fdef else [
+            *fdef.get("labels", []),
+            *(label for ext, label in fdef.get("labels_by_extension", {}).items() if ext in self.extensions)]
+        nodes = []
+        for label in labels:
+            node = self.kg.lookup_kg(_resolve_fg_class(fdef["class"]), ["lookup_label"], {"lookup_label": label},
+                                     search_space=fdef.get("search_space"))
+            if node is not None:
+                self.collection.add(node)
+                nodes.append(node)
+            elif self.kg.client is not None:
+                self.warnings.append(f"no {fdef['class']} labelled '{label}' in the Knowledge Graph")
+                logger.warning("  %s", self.warnings[-1])
+        return (nodes or None) if fdef.get("list") else (nodes[0] if nodes else None)
 
     def _identifier_list(self, fdef: dict, section: odml.Section | None) -> Any:
         """The identifier nodes of the entries of fdef's odml_section (see
@@ -977,11 +1026,15 @@ class SchemaBuilder:
         self._entity_keys[schema_name] = keys
         return entities or None
 
-    def _placement_field(self, field: str, fdef: dict, device: odml.Section, values: dict) -> Any:
+    def _placement_field(self, field: str, fdef: dict, device: odml.Section, values: dict,
+                         session: odml.Section) -> Any:
         """A field of a placement's entity: match_link links the device (by
-        its exact name), custom_anatomy builds the region's entity, other
-        fields read the placement's properties."""
+        its exact name), link an entity of the session (match: session),
+        custom_anatomy builds the region's entity, other fields read the
+        placement's properties."""
         ftype = fdef.get("type", "odml")
+        if ftype == "link":
+            return self._link_field(fdef, session)
         if ftype == "match_link":
             return self._matched_entity(fdef, prop(device, "name"))
         if ftype == "custom_anatomy":
@@ -1015,7 +1068,7 @@ class SchemaBuilder:
                 values = {k: v for k, v in placement.items() if not isinstance(v, dict)}
                 values["probe"] = prop(device, "name")
                 kwargs = {f: v for f, fdef in schema.get("fields", {}).items() if isinstance(fdef, dict)
-                          and (v := self._placement_field(f, fdef, device, values)) is not None}
+                          and (v := self._placement_field(f, fdef, device, values, session)) is not None}
                 if not kwargs:
                     continue
                 if label_tpl and (label := fill_template(label_tpl, {**identity, "dataset": dataset, **values}.get)):
@@ -1115,7 +1168,8 @@ def build_collection(odml_path: Path, kg_client: KGClient | None,
         if not target_space:
             raise ValueError(f"No KG space to look up entities in: {NO_SPACE_HELP}")
     atlas = load_atlas(Path(atlas) if atlas else atlas_path(doc, odml_path))
-    collection = SchemaBuilder(doc, load_registry(SCHEMAS_NAME), kg_client, target_space, atlas).build_all()
+    data_dir = odml_path.parent.parent if odml_path.parent.name == METADATA_DIRNAME else None
+    collection = SchemaBuilder(doc, load_registry(SCHEMAS_NAME), kg_client, target_space, atlas, data_dir).build_all()
     collection.output_dir = odml_path.parent
     return collection
 

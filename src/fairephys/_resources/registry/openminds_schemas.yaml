@@ -8,13 +8,22 @@
 #
 # ─── Field types ───────────────────────────────────────────────────────────
 #   odml        - simple property from odML section (default)
-#   term        - controlled term (term_class, resolved via fairgraph by_name)
+#   term        - controlled term (term_class, resolved via fairgraph by_name;
+#                 value: a fixed term instead of the property)
 #   multi_term  - try multiple vocabularies (term_classes[], first match wins)
 #                 merge_fields: collect values from multiple odML fields
 #   link        - reference to previously built entity (index-matched when list;
 #                 match: session | subject picks per-session entities of that
-#                 session or subject instead)
+#                 session or subject instead; attribute: the linked entities'
+#                 values of that attribute, not the entities)
 #   match_link  - link by matching field value (match_field + match_attrs)
+#   kg_nodes    - existing KG nodes of `class` by lookup label (`labels`,
+#                 `labels_by_extension` for the file extensions the dataset
+#                 folder holds, or the property `odml`) in search_space:
+#                 referenced as they are, never built; a label the KG lacks
+#                 is a warning
+#   performers  - match_link for every name in match_field, else for the
+#                 contributors with the `role`
 #   literal     - hardcoded value
 #   iri         - IRI value (wraps in fairgraph.IRI)
 #   date        - the odML property as a date (ISO), none when empty
@@ -83,7 +92,8 @@
 #                         session's Electrode Placements, else the subject's
 #                         Implanted Probes: fairephys.placements.matched_probes)
 #                         fields: match_link links the placement's device by
-#                         its exact name, custom_anatomy the region's entity,
+#                         its exact name, link (with match: session) an
+#                         entity of the session, custom_anatomy the region's entity,
 #                         other fields read the placement's properties
 #                         supports: lookup_label_template (template tokens:
 #                         {dataset}, {session_id}, {subject_id}, {task},
@@ -517,6 +527,7 @@ schemas:
       studied_specimens: { type: link, target: Subject, list: true }
       funding: { type: link, target: Funding, list: true }
       behavioral_protocols: { type: link, target: BehavioralProtocol, list: true }
+      protocols: { type: link, target: Protocol, list: true }
       # every Related Publications entry whose identifier openMINDS takes
       # (DatasetVersion.related_publications: DOI, HANDLE, ISBN, ...); a URL,
       # an arXiv id or a PMID has no openMINDS node and is listed in the
@@ -755,6 +766,7 @@ schemas:
       description: { odml: "system model" }
       manufacturers: { type: nested_list, target: SetupManufacturer }
       has_parts: { type: link, target: ElectrodeArray, list: true }
+      types: { type: term, value: "acquisition system", term_class: controlled_terms.SetupType, list: true }
     nested:
       ManufacturerROR: *manufacturer_ror
       SetupManufacturer: *manufacturer_org
@@ -789,6 +801,8 @@ schemas:
         area_field: "atlas area"        # atlas area name of this placement
         uberon_field: "uberon term"      # UBERONParcellation attribute name
         hemisphere_field: "hemisphere"
+      # the state of the subject in this session
+      used_specimen: { type: link, target: SubjectState, match: session }
 
   # --- RecordingActivity (per-session) ---
   # Neo-derived fields (sampling rate, duration, streams) are populated by
@@ -811,16 +825,12 @@ schemas:
       protocols: { type: link, target: Protocol, list: true }
       devices: { type: link, target: ElectrodeArrayUsage, list: true }
       inputs: { type: link, target: SubjectState, list: true, match: session }
-      study_targets:
-        type: term
-        odml_field: "brain regions"
-        term_class: controlled_terms.UBERONParcellation
-        list: true
-      performed_by:
-        type: match_link
-        target: Person
-        match_field: "performed by"
-        match_attrs: [family_name]
+      # the regions of the session's placements (the anatomical locations of
+      # its array usages)
+      study_targets: { type: link, target: ElectrodeArrayUsage, list: true, attribute: anatomical_locations_of_arrays }
+      # the session's 'performed by', else the contributors who collected the
+      # data, as the NWB experimenter (nwb_mappings.yaml)
+      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name], role: "data collection" }
       start_time: { type: datetime, odml: "start time" }
       end_time: { type: datetime, odml: "end time" }
       preparation_design:
@@ -874,6 +884,36 @@ schemas:
         odml_field: "repository type"   # e.g. "git-annex repository" (GIN)
         term_class: controlled_terms.FileRepositoryType
       hosted_by: { type: nested_ref, target: HostingOrg }
+      # the layout fairephys writes is a BIDS dataset
+      format: { type: term, value: "application/vnd.bids", term_class: core.ContentType }
+      # EBRAINS' shared patterns (space controlled) for the file extensions
+      # the dataset folder holds (`labels_by_extension`). `labels`: the three
+      # files this export itself writes after the collection is built
+      # (the JSON-LD, README.md, datacite.yml), which every dataset has
+      content_type_patterns:
+        type: kg_nodes
+        class: core.ContentTypePattern
+        search_space: controlled
+        list: true
+        labels:
+          - "all *.jsonld equal application/ld+json"
+          - "all *.md equal text/markdown"
+          - "all *.yml equal application/yaml"
+        labels_by_extension:
+          nwb: "all *.nwb equal application/vnd.nwb.nwbn+hdf"
+          json: "all *.json equal application/json"
+          tsv: "all *.tsv equal text/tab-separated-values"
+          edf: "all *.edf equal application/vnd.edf"
+          gz: "all *.gz equal application/gzip"
+          nii.gz: "all *.nii.gz equal application/vnd.nifti.1"
+          yaml: "all *.yaml equal application/yaml"
+          xml: "all *.xml equal application/xml"
+          html: "all *.html equal text/html"
+          png: "all *.png equal image/png"
+          txt: "all *.txt equal text/plain"
+      # an existing structure of the KG, named by its label in the collection
+      # metadata ('repository structure'); empty: none
+      structure_pattern: { type: kg_nodes, class: core.FileRepositoryStructure, odml: "repository structure", search_space: files }
     nested:
       HostingOrg:
         fairgraph_class: core.Organization

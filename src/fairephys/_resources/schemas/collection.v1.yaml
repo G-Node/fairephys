@@ -21,6 +21,13 @@ properties:
   Dataset:
     type: object
     properties:
+      # Where the curated data are deposited -> core.FileRepository: the host
+      # (full name of a KG Organization), the kind of repository (an openMINDS
+      # FileRepositoryType term) and, optionally, the lookup label of an
+      # existing KG FileRepositoryStructure
+      repository host: {type: string}
+      repository type: {type: string}
+      repository structure: {type: string}
       # Umbrella project -> core.Project (short_name, full_name, description)
       Project:
         type: object
