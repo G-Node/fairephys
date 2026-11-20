@@ -1,0 +1,32 @@
+name: codemeta
+
+# codemeta.json describes the latest release: a release tag writes its version into it.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  codemeta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: write the release into codemeta.json
+        run: |
+          jq --arg version "${GITHUB_REF_NAME#v}" --arg date "$(date -I)" '
+            .version = $version
+            | .dateModified = $date
+            | .downloadUrl = "\(.codeRepository)/archive/refs/tags/v\($version).tar.gz"
+            | .releaseNotes = "\(.codeRepository)/blob/v\($version)/CHANGELOG.md"
+          ' codemeta.json > codemeta.new
+          mv codemeta.new codemeta.json
+      - name: commit it to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || git commit -m "codemeta.json for ${GITHUB_REF_NAME}" codemeta.json
+          git push

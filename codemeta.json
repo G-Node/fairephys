@@ -1,0 +1,72 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "fairephys",
+  "description": "FAIR curation of extracellular electrophysiology: NWB in a BIDS (BEP032) layout with openMINDS and DataCite metadata, from one odML record",
+  "version": "0.1.2",
+  "dateModified": "2026-11-19",
+  "downloadUrl": "https://github.com/G-Node/fairephys/archive/refs/tags/v0.1.2.tar.gz",
+  "releaseNotes": "https://github.com/G-Node/fairephys/blob/v0.1.2/CHANGELOG.md",
+  "license": "https://spdx.org/licenses/MIT",
+  "codeRepository": "https://github.com/G-Node/fairephys",
+  "issueTracker": "https://github.com/G-Node/fairephys/issues",
+  "contIntegration": "https://github.com/G-Node/fairephys/actions",
+  "developmentStatus": "wip",
+  "applicationCategory": "neuroscience",
+  "funding": [
+    "https://cordis.europa.eu/project/id/101147319",
+    "https://cordis.europa.eu/project/id/956669"
+  ],
+  "funder": {
+    "@type": "Organization",
+    "name": "European Commission"
+  },
+  "keywords": [
+    "electrophysiology",
+    "NWB",
+    "BIDS",
+    "openMINDS",
+    "odML",
+    "EBRAINS",
+    "FAIR",
+    "curation"
+  ],
+  "programmingLanguage": [
+    "Python"
+  ],
+  "softwareRequirements": [
+    "Python >=3.11",
+    "pyyaml",
+    "odml",
+    "openminds>=0.6,<0.7",
+    "jsonschema",
+    "probeinterface",
+    "neo>=0.14.6",
+    "numpy",
+    "pandas",
+    "pynwb",
+    "h5py",
+    "lxml",
+    "matplotlib>=3.10.8",
+    "neuroconv>=0.10.2",
+    "spikeinterface>=0.104.7,<0.105",
+    "nwbinspector>=0.7.2",
+    "fairgraph>=0.14,<0.15",
+    "pyedflib>=0.1.38"
+  ],
+  "softwareSuggestions": [
+    "zugbruecke>=0.2.1"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0000-0003-4509-6969",
+      "givenName": "Reema",
+      "familyName": "Gupta",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Ludwig-Maximilians-Universität München"
+      }
+    }
+  ]
+}
