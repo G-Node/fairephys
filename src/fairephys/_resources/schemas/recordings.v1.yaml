@@ -1,7 +1,7 @@
 # Recordings Template Schema v1
 $schema: https://json-schema.org/draft-07/schema#
 title: Recordings Template
-version: 1
+version: 1.1
 
 type: object
 required: [Recordings]
@@ -35,7 +35,7 @@ properties:
             hemisphere: {enum: [left, right, ""]}
             # the recording stream of the placement (e.g. SpikeGLX imec0)
             stream: {type: string}
-            atlas area: {type: string}
+            atlas area: {oneOf: [{type: string}, {type: array, items: {type: string}}]}
             uberon term: {type: string}
 
   Recordings:
@@ -87,7 +87,7 @@ properties:
               # contact ids of the device recorded in this session (e.g. from a Neuropixels IMRO table)
               electrode identifiers: {type: array, items: {type: string}}
               # openMINDS annotation overrides (optional)
-              atlas area: {type: string}  # name of the region in the anatomy atlas, when it differs (e.g. "4a")
+              atlas area: {oneOf: [{type: string}, {type: array, items: {type: string}}]}  # exact name of the atlas area's entity in the Knowledge Graph (e.g. "Area 4a (MEBRAINS Atlas)"), or a list of such names
               uberon term: {type: string}    # UBERON attr override (e.g. "primary_motor_cortex")
               # Coordinates: value with expanded unit name, e.g. "3 millimeter", "-4.5 millimeter"
               AP: {type: string, pattern: "^(-?\\d+(\\.\\d+)?\\s+(millimeter|micrometer|centimeter))?$"}

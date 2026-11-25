@@ -1,13 +1,17 @@
-"""Anatomical entities of the electrode placements (sands.CustomAnatomicalEntity).
+"""Anatomical locations of the electrode placements.
 
-A placement's brain region becomes one entity per (area, UBERON term,
-hemisphere), named after the area of an optional brain atlas, else after the
-region label. The atlas is a registry file named by the collection metadata
-(Dataset/anatomy atlas, a file next to collection.yaml): region label ->
-{area: <atlas area name or null>, uberon term: <UBERONParcellation attribute
-or null>}. Without an atlas the UBERON term is the region label itself when
-the vocabulary has it. A placement can give its own area and UBERON term
-(the fields named by the registry); they take precedence over the atlas.
+A placement's brain region is linked to what exists: its UBERON term
+(UBERONParcellation) and, where an area of a brain atlas is named, the
+entity of that area in the Knowledge Graph, looked up by its name and
+referenced, never built. A custom entity (sands.CustomAnatomicalEntity) is
+built only for a region label with neither, named after the label, one per
+name. The hemisphere is not part of any of them. The atlas is a registry
+file named by the collection metadata (Dataset/anatomy atlas, a file next to
+collection.yaml): region label -> {area: <name of the area's entity in the
+Knowledge Graph, a list of names, or null>, uberon term: <UBERONParcellation attribute or
+null>}. Without an atlas the UBERON term is the region label itself when the
+vocabulary has it. A placement can give its own area and UBERON term (the
+fields named by the registry); they take precedence over the atlas.
 """
 
 from __future__ import annotations
@@ -54,14 +58,14 @@ def load_atlas(path: Path | None) -> dict:
 
 
 class Anatomy:
-    """Builds the CustomAnatomicalEntity of placements into a collection, one
-    node per (area, UBERON term, hemisphere)."""
+    """The anatomical locations of placements: UBERON terms, atlas areas of
+    the Knowledge Graph and, built into the collection, custom entities."""
 
     def __init__(self, collection, resolver: KGResolver, atlas: dict | None = None):
         self.collection = collection
         self.resolver = resolver
         self.atlas = atlas or {}
-        self._cache: dict[tuple, Any] = {}
+        self._cache: dict[str, Any] = {}
 
     def uberon_term(self, label: str, attr: str | None):
         """The UBERONParcellation instance: of the attribute name (a placement
@@ -73,30 +77,42 @@ class Anatomy:
             return term
         return self.resolver.lookup_instance(fgct.UBERONParcellation, label)
 
+    def custom(self, name: str):
+        """The CustomAnatomicalEntity of that name, built once."""
+        if name not in self._cache:
+            self._cache[name] = fgsands.CustomAnatomicalEntity(name=name)
+            self.collection.add(self._cache[name])
+            logger.info("  CustomAnatomicalEntity: %s", name)
+        return self._cache[name]
+
+    def area(self, name: str, space: str | None):
+        """The atlas area's entity of that name in the Knowledge Graph space,
+        referenced as it is; a name the space does not hold is an error.
+        Without a client (offline) a custom entity of that name stands in."""
+        entity = self.resolver.lookup_kg(fgsands.CustomAnatomicalEntity, ["name"], {"name": name}, search_space=space)
+        if entity is None and self.resolver.client is not None:
+            raise ValueError(f"Atlas area '{name}' is not in the Knowledge Graph space '{space}': "
+                             f"give the exact name of its entity, or no area")
+        if entity is None:
+            return self.custom(name)
+        self.collection.add(entity)
+        return entity
+
     def build(self, fdef: dict, values: dict) -> list | None:
-        """[entity] for the region of a placement (`values`: its properties),
-        None without a region. fdef names the placement fields: odml_field
-        (region), area_field, uberon_field and hemisphere_field."""
+        """The locations of a placement's region (`values`: its properties):
+        its UBERON term and its atlas areas (one name or a list), each where
+        there is one; a custom
+        entity named after the region when there is neither; None without a
+        region. fdef names the placement fields: odml_field (region),
+        area_field and uberon_field, and the space of the atlas areas
+        (area_space)."""
         label = values.get(fdef.get("odml_field", "brain region"))
         if not label:
             return None
         entry = self.atlas.get(label) or {}
         area = values.get(fdef.get("area_field", "")) or entry.get("area")
-        uberon = values.get(fdef.get("uberon_field", "")) or entry.get("uberon term")
-        hemisphere = values.get(fdef.get("hemisphere_field", "hemisphere"))
-        key = (area or label, uberon, hemisphere)
-        if key in self._cache:
-            return [self._cache[key]]
-
-        kwargs: dict[str, Any] = {"name": area or label}
-        if term := self.uberon_term(label, uberon):
-            kwargs["related_uberon_term"] = term
-        if hemisphere and (lat := self.resolver.lookup_instance(fgct.Laterality, hemisphere)):
-            # CustomAnnotation is embedded metadata, not a node of the collection
-            kwargs["has_annotations"] = [fgsands.CustomAnnotation(lateralities=[lat])]
-        entity = fgsands.CustomAnatomicalEntity(**kwargs)
-        self.collection.add(entity)
-        self._cache[key] = entity
-        logger.info("  CustomAnatomicalEntity: %s (uberon=%s, hemisphere=%s)",
-                    kwargs["name"], getattr(term, "name", None), hemisphere)
-        return [entity]
+        term = self.uberon_term(label, values.get(fdef.get("uberon_field", "")) or entry.get("uberon term"))
+        located = [term] if term is not None else []
+        for name in [area] if isinstance(area, str) else area or []:
+            located.append(self.area(name, fdef.get("area_space")))
+        return located or [self.custom(label)]

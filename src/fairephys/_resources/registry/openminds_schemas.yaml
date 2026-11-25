@@ -97,7 +97,7 @@
 #                         Implanted Probes: fairephys.placements.matched_probes)
 #                         fields: match_link links the placement's device by
 #                         its exact name, link (with match: session) an
-#                         entity of the session, custom_anatomy the region's entity,
+#                         entity of the session, custom_anatomy the region's term or entity,
 #                         other fields read the placement's properties
 #                         supports: lookup_label_template (template tokens:
 #                         {dataset}, {session_id}, {subject_id}, {task},
@@ -809,15 +809,18 @@ schemas:
         target: ElectrodeArray
         match_field: probe
         match_attrs: [name, lookup_label]
-      # The region's CustomAnatomicalEntity, named after the area of the
-      # collection's atlas registry (collection.yaml: anatomy atlas), else
-      # the region label; the placement's own fields override the atlas
+      # The region's UBERON term and, where the collection's atlas registry
+      # (collection.yaml: anatomy atlas) names an area, that area's entity,
+      # looked up by its name in `area_space` and referenced; a
+      # CustomAnatomicalEntity only for a region label with neither. The
+      # placement's own fields override the atlas. The hemisphere is not
+      # exported
       anatomical_locations_of_arrays:
         type: custom_anatomy
         odml_field: "brain region"
         area_field: "atlas area"        # atlas area name of this placement
         uberon_field: "uberon term"      # UBERONParcellation attribute name
-        hemisphere_field: "hemisphere"
+        area_space: spatial              # the atlas areas EBRAINS holds
       # the state of the subject in this session
       used_specimen: { type: link, target: SubjectState, match: session }
 
