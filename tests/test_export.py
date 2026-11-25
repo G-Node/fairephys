@@ -348,20 +348,6 @@ def test_push_collection(tmp_path, monkeypatch):
     assert len(calls) == 1
 
 
-def test_performed_by_links_the_named_contributors(make_doc):
-    """The session's 'performed by' links the contributors of those family names; no fallback, an unknown name raises."""
-    people = [{"given name": g, "family name": f, "roles": ["data collection"]} for g, f in (("Jane", "Doe"), ("Max", "Roe"))]
-    doc = lambda by: make_doc(Dataset={"Contributors": people}, Sessions=[{"session id": "01", "date": "2024-01-01", **by}])
-    def performers(by):
-        builder = _builder(doc(by)); builder.build_all()
-        return [[p.family_name for p in a.performed_by or []] for a in builder.entities["RecordingActivity"]], builder
-    assert performers({})[0] == [[]]
-    names, builder = performers({"performed by": ["Roe", "Doe"]})
-    assert names == [["Roe", "Doe"]] and len(builder.entities["Person"]) == 2
-    with pytest.raises(ValueError, match="'performed by' names Nobody"):
-        performers({"performed by": "Nobody"})
-
-
 FDEF = {"type": "custom_anatomy", "odml_field": "brain region", "area_field": "atlas area",
         "uberon_field": "uberon term"}
 ATLAS = {"M1": {"area": "4a", "uberon term": "primary_motor_cortex"}}

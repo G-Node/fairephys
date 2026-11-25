@@ -26,7 +26,7 @@ properties:
           name: {type: string}            # Human-readable setup name -> openMINDS Setup.name, NWB Device
           manufacturer: {type: string}
           manufacturer short name: {type: string}
-          manufacturer website: {type: string}
+          manufacturer website: {type: string, pattern: "^(|https?://\\S+)$"}
           manufacturer identifier: {type: string, pattern: "^(|https://ror\\.org/0[0-9a-z]{6}[0-9]{2})$"}  # the manufacturer's ROR address
           manufacturer location: {type: string}
           system model: {type: string}
@@ -198,7 +198,7 @@ properties:
             # from the lab's manufacturer name (e.g. "sinaps-research-platform")
             library manufacturer: {type: string}
             manufacturer short name: {type: string}
-            manufacturer website: {type: string}
+            manufacturer website: {type: string, pattern: "^(|https?://\\S+)$"}
             manufacturer identifier: {type: string, pattern: "^(|https://ror\\.org/0[0-9a-z]{6}[0-9]{2})$"}
             manufacturer location: {type: string}
             model: {type: string}
@@ -209,7 +209,7 @@ properties:
               type: object
               properties: {type: {enum: [RRID, ""]}, value: {type: string}}
               if: {properties: {type: {const: RRID}}, required: [type]}
-              then: {properties: {value: {minLength: 1}}, required: [value]}
+              then: {properties: {value: {pattern: "^RRID:\\S+$"}}, required: [value]}
               else: {properties: {value: {const: ""}}}
             device type: {type: string}
             # the device class (the product name goes in 'model'); empty when unknown

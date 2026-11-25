@@ -755,7 +755,7 @@ class SchemaBuilder:
     def _link_field(self, fdef: dict, section: odml.Section | None) -> Any:
         """A field linking other entities: link (built earlier), match_link
         (by a property's value), performers (as match_link for every name of
-        the property, else for the contributors with the `role`),
+        the property; a name without a match is an error),
         identifier_list, custom_anatomy. `attribute` on a link gives the
         linked entities' values of that attribute instead."""
         ftype = fdef["type"]

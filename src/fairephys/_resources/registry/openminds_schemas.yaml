@@ -744,7 +744,8 @@ schemas:
         condition: "digital identifier.type == RRID"
         add_to_collection: true
         fields:
-          identifier: { odml: "digital identifier.value" }
+          # openMINDS writes an RRID as its resolver address
+          identifier: { odml: "digital identifier.value", prefix: "https://scicrunch.org/resolver/" }
       ManufacturerROR: &manufacturer_ror  # as InstitutionROR: only with a manufacturer built here
         fairgraph_class: core.RORID
         condition: "manufacturer identifier"
