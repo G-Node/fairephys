@@ -214,7 +214,7 @@ def test_unconnected_contacts_left_out_of_a_generated_grid(placed):
 
 
 def test_parametric_probe_errors():
-    """Geometry the builder cannot honour is an error, never a guess."""
+    """Geometry the builder cannot honor is an error, never a guess."""
     for cfg, error in [
         ({"first contact": "middle"}, "neither 'tip' nor 'top'"),
         ({"first contact": "top", "contact arrangement": "matrix", "number of columns": 1}, "linear probes only"),

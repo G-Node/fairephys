@@ -39,7 +39,7 @@ YAML templates (the lab's description)        raw recordings
                    (BEP032)                  README     across all of them
 ```
 
-1. **Capture the metadata.** The researcher or curator describes the experiment in YAML templates, one per concern: the dataset, the subject, the hardware, the behavioural protocol, the recording sessions, the electrode placements and the processing. What stays the same across sessions is written once; each session entry holds only what differs. JSON schemas check every template before it is used, so a missing required field or a value of the wrong type is caught at entry, not in a finished output.
+1. **Capture the metadata.** The researcher or curator describes the experiment in YAML templates, one per concern: the dataset, the subject, the hardware, the behavioral protocol, the recording sessions, the electrode placements and the processing. What stays the same across sessions is written once; each session entry holds only what differs. JSON schemas check every template before it is used, so a missing required field or a value of the wrong type is caught at entry, not in a finished output.
 2. **Build one canonical record.** The compiler merges the templates into a single odML document and adds what the recordings already say about themselves (channel names, sampling rates, durations, read with Neo), so that this information is not typed by hand. Plain-text terms such as species and brain regions are resolved to controlled terms (openMINDS, UBERON). Every value keeps its origin: the sources named in the template it was written in, or the file header it was read from.
 3. **Translate it for each standard.** Declarative registries, written in YAML, state how the properties of the record appear in NWB, BIDS and openMINDS, including the change of unit, type, structure or vocabulary each standard needs; only the electrode structures of the NWB file are assembled in code, from the probes and their placements. From the record, fairephys converts the recordings to NWB (NeuroConv, with the probe geometry from ProbeInterface), writes the BIDS layout with its tables and sidecars, builds the openMINDS metadata for the EBRAINS Knowledge Graph (fairgraph) and adds a DataCite record and a dataset README.
 4. **Check across all outputs.** fairephys compares the outputs with the raw data and with each other: raw samples against the NWB, the probe geometry of ProbeInterface against the BIDS electrodes table and the NWB electrode table, channel counts and names across BIDS and NWB. The BIDS validator, the NWB Inspector and fairgraph then check each output against its own standard.
@@ -68,7 +68,7 @@ How each of these steps works in the code (the modules behind it, the templates 
 
 ## Scope
 
-fairephys covers extracellular electrophysiology, both acute recordings with probes placed anew in each session and chronic recordings from implanted arrays. It converts the raw broadband recordings of Blackrock, SpikeGLX, TDT (tanks and SEV files) and Plexon (.pl2) systems; for other formats, the dataset's `curate.py` writes the NWB with the shared helpers of `fairephys.converters`. Beside the recording, the NWB can hold trials, time intervals, sorted units and behavioural series, and auxiliary signals (eye tracking, EMG, motion) become BIDS files of their own.
+fairephys covers extracellular electrophysiology, both acute recordings with probes placed anew in each session and chronic recordings from implanted arrays. It converts the raw broadband recordings of Blackrock, SpikeGLX, TDT (tanks and SEV files) and Plexon (.pl2) systems; for other formats, the dataset's `curate.py` writes the NWB with the shared helpers of `fairephys.converters`. Beside the recording, the NWB can hold trials, time intervals, sorted units and behavioral series, and auxiliary signals (eye tracking, EMG, motion) become BIDS files of their own.
 
 ## Installation
 
@@ -109,7 +109,7 @@ uv run pytest
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Third-party files shipped with the package (the BIDS schema, the Creative Commons licence texts) are listed in [NOTICE.md](NOTICE.md).
+MIT, see [LICENSE](LICENSE). Third-party files shipped with the package (the BIDS schema, the Creative Commons license texts) are listed in [NOTICE.md](NOTICE.md).
 
 ## Citation
 

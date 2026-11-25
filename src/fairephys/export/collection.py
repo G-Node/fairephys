@@ -821,7 +821,7 @@ class SchemaBuilder:
                 self.collection.add(node)
                 nodes.append(node)
             elif self.kg.client is not None:
-                self.warnings.append(f"no {fdef['class']} labelled '{label}' in the Knowledge Graph")
+                self.warnings.append(f"no {fdef['class']} labeled '{label}' in the Knowledge Graph")
                 logger.warning("  %s", self.warnings[-1])
         return (nodes or None) if fdef.get("list") else (nodes[0] if nodes else None)
 

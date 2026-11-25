@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Descriptor: the license sentence gives the official name of the license with its short form.
+- American spelling in generated text, messages and documentation.
+
 ## 0.1.3 (2026-11-20)
 
 - A behavioural protocol's `described in` is a DOI and becomes a DOI node (protocol schema 1.2).

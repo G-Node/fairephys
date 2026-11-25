@@ -35,8 +35,8 @@ first use:
 # {bids version}, bids_mappings.yaml spec), with ecephys files the sentence on
 # where the content of the files is defined, and with a metadata folder the
 # part beyond BIDS
-layout standard: "The data are organised following the BIDS extension proposal {bids extension}, a draft extension of BIDS {bids version}."
-layout standard without ecephys: "The data are organised following BIDS {bids version}."
+layout standard: "The data are organized following the BIDS extension proposal {bids extension}, a draft extension of BIDS {bids version}."
+layout standard without ecephys: "The data are organized following BIDS {bids version}."
 layout definitions: "The content of the BIDS files is defined in the [BEP032 specification]({bids extension specification})."
 layout metadata folder: >-
   Beyond BIDS, the layout holds the folder `{metadata dir}/` with the odML record,
@@ -57,7 +57,7 @@ file name keys:
 data type folders sentence: "The files of a session are in one folder per data type: {folders}."
 data type folders:
   ecephys: extracellular electrophysiology
-  beh: behaviour
+  beh: behavior
   emg: electromyography
   motion: motion tracking
   anat: anatomical MRI
@@ -214,10 +214,10 @@ files:
     content: Video recording
     device type: video camera
   - pattern: dataset_description.json
-    tree: "name, BIDS version, licence, authors, funding and references of the dataset"
+    tree: "name, BIDS version, license, authors, funding and references of the dataset"
     format: JSON
     content: >-
-      Name, BIDS version, licence, authors, funding, references and the
+      Name, BIDS version, license, authors, funding, references and the
       software that generated the dataset
   - pattern: participants.tsv
     tree: "one row per subject"
@@ -278,11 +278,11 @@ files:
     format: YAML
     content: >-
       Citation metadata for the DOI registration on GIN: title, authors,
-      description, keywords, licence, funding and references
+      description, keywords, license, funding and references
   - pattern: LICENSE
-    tree: "licence of the dataset with its legal code"
+    tree: "license of the dataset with its legal code"
     format: Text
-    content: Licence of the dataset with its legal code
+    content: License of the dataset with its legal code
   - pattern: "probes/*.json"
     tree: "contact geometry of one probe and the wiring of its contacts to the recording channels"
     format: JSON (ProbeInterface)

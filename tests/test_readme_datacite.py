@@ -150,7 +150,7 @@ def test_datacite_golden(frozen, make_doc, tmp_path, golden):
 
 def test_datacite_references(make_doc, tmp_path, caplog):
     """Each Related Publications entry is a reference with GIN's id prefix of its type and the entry's relation;
-    an ISBN (no GIN prefix) is left out with a warning; an identifier of no recognised form raises."""
+    an ISBN (no GIN prefix) is left out with a warning; an identifier of no recognized form raises."""
     def references(*entries):
         doc = make_doc(Dataset={"Related Publications": [
             {"identifier": i, "relation": r, "citation": f"Citation {n}."} for n, (i, r, *_) in enumerate(entries)]})
@@ -169,7 +169,7 @@ def test_datacite_references(make_doc, tmp_path, caplog):
         assert references(*entries) == [{"id": gin_id, "reftype": relation, "citation": f"Citation {n}."}
                                         for n, (_, relation, gin_id) in enumerate(entries) if gin_id]
     assert any("not in datacite.yml: Citation 6." in r.getMessage() for r in caplog.records)
-    with pytest.raises(ValueError, match="no recognised form"):
+    with pytest.raises(ValueError, match="no recognized form"):
         references(("Doe 2024", "IsSupplementTo"))
 
 
@@ -205,21 +205,21 @@ def test_how_to_cite_generated_unless_given(make_doc):
         assert doc["Dataset"].properties["how to cite"].values == [expected.replace("YEAR", str(date.today().year))]
 
 
-def test_licence_text_and_label(make_doc, tmp_path):
-    """LICENSE starts with the registry name and URL; the README links the CC label; unknown licences raise."""
+def test_license_text_and_label(make_doc, tmp_path):
+    """LICENSE starts with the registry name and URL; the README links the CC label; unknown licenses raise."""
     name, url, blank, title, *_ = license_text("CC-BY-4.0").splitlines()
     assert (name, url, blank, title) == ("Creative Commons Attribution 4.0 International",
                                          "https://creativecommons.org/licenses/by/4.0/", "",
                                          "Attribution 4.0 International")
     for spdx, label in (("CC-BY-NC-SA-4.0", "CC BY-NC-SA 4.0"), ("CC0-1.0", "CC0 1.0")):
-        assert f"shared under the [{label}](https://" in odml_to_readme(make_doc(Dataset={"license": spdx}), tmp_path)
-    with pytest.raises(ValueError, match="Unknown licence 'Some-Licence-1.0'"):
-        license_text("Some-Licence-1.0")
+        assert f"([{label}](https://" in odml_to_readme(make_doc(Dataset={"license": spdx}), tmp_path)
+    with pytest.raises(ValueError, match="Unknown license 'Some-License-1.0'"):
+        license_text("Some-License-1.0")
 
 
 def test_author_contributions(make_doc, tmp_path):
     """Each contributor's description followed, after a comma, by the role terms it does not name
-    (whole words, any case), or the terms alone, capitalised (the EBRAINS curators' edits, 2026-11-04)."""
+    (whole words, any case), or the terms alone, capitalized (the EBRAINS curators' edits, 2026-11-04)."""
     contributions = [
         ({"roles": ["coordination", "data management"],
           "contribution description": "Project coordination and supervision of data curation"},
@@ -293,7 +293,7 @@ def test_pipeline_commit_from_a_git_checkout(tmp_path, monkeypatch):
 
 
 def test_datacite_files_next_to_the_record(make_doc, tmp_path):
-    """LICENSE from the licence id next to datacite.yml; .bidsignore lists both once and keeps its entries,
+    """LICENSE from the license id next to datacite.yml; .bidsignore lists both once and keeps its entries,
     the same whether the datacite record or the BIDS layout writes it last."""
     yaml_path, _ = save_odml(make_doc(), tmp_path / "odml" / "t")
     out = tmp_path / "out"

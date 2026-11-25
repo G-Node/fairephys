@@ -1,4 +1,4 @@
-"""Identifiers of related publications: their type and normalised value.
+"""Identifiers of related publications: their type and normalized value.
 
 The types are those of DataCite's relatedIdentifierType that an entry of
 dataset.yaml 'Related Publications' can name, read from the form of the
@@ -54,7 +54,7 @@ class Identifier(NamedTuple):
 
 
 def parse_identifier(text: str) -> Identifier:
-    """Type and normalised value of an identifier; one of no recognised form raises."""
+    """Type and normalized value of an identifier; one of no recognized form raises."""
     text = str(text or "").strip()
     for kind, pattern in (("DOI", _DOI_RE), ("Handle", _HANDLE_RE), ("arXiv", _ARXIV_RE), ("PMID", _PMID_RE),
                           ("ISBN", _ISBN_RE), ("URL", _URL_RE)):
@@ -63,7 +63,7 @@ def parse_identifier(text: str) -> Identifier:
     if text.lower().startswith("isbn:"):
         raise ValueError(f"ISBN '{text}' is not in the form openMINDS requires: {ISBN_PATTERN} "
                          "(hyphenated, e.g. 978-3-161-48410-0 or 3-161-48410-0)")
-    raise ValueError(f"Identifier '{text}' has no recognised form: give {FORMS}")
+    raise ValueError(f"Identifier '{text}' has no recognized form: give {FORMS}")
 
 
 class Publication(NamedTuple):
@@ -91,7 +91,7 @@ class Publication(NamedTuple):
 
 def related_publications(dataset: odml.Section | None, name: str = SECTION) -> list[Publication]:
     """The Dataset's Related Publications (the subsection `name`) in their
-    order; an identifier of no recognised form, or an entry with neither
+    order; an identifier of no recognized form, or an entry with neither
     identifier nor citation, raises."""
     entries = subsection(dataset, name)
     publications = []

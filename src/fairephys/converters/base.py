@@ -162,7 +162,7 @@ class RecordingConverter:
                        add_to_nwbfile=None):
         """Write the NWB (a test file holds the first samples only, see
         stub_recording). `add_to_nwbfile(nwbfile)` adds a dataset's further
-        content (behavioural series, intervals) to the file before it is
+        content (behavioral series, intervals) to the file before it is
         written; nothing reopens a written file."""
         from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
         from neuroconv.tools.spikeinterface import add_recording_to_nwbfile
@@ -230,7 +230,7 @@ class EphysConverter(NWBConverter):
         """Write the NWB (see prepare_recording for the first-sample anchoring;
         a test file holds the first samples of every stream, see
         stub_recording). `add_to_nwbfile(nwbfile)` adds a dataset's further
-        content (behavioural series, intervals, units) to the file after the
+        content (behavioral series, intervals, units) to the file after the
         recording and before it is written; nothing reopens a written file."""
         metadata = prepare_recording(self.recording, metadata)
         for interface in self.recording_interfaces[1:]:

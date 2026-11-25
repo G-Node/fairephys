@@ -2,8 +2,8 @@
 
 This is the GIN exporter: datacite.yml follows GIN's DataCite template
 (_resources/schemas/datacite.v1.yaml: its fields, reference types and
-licence names), and the LICENSE file next to it names the same licence,
-as GIN's DOI service checks. The licences a dataset can be shared under
+license names), and the LICENSE file next to it names the same license,
+as GIN's DOI service checks. The licenses a dataset can be shared under
 are the registry licenses.yaml (SPDX id, name, URL).
 """
 
@@ -23,8 +23,8 @@ from ..odml import subsection
 from ..registry import RESOURCES, load as load_registry
 
 SCHEMA_PATH = RESOURCES / "schemas" / "datacite.v1.yaml"
-# Official plain-text legal code of each licence of the registry (<SPDX id>.txt,
-# downloaded from creativecommons.org/<licence path>/legalcode.txt)
+# Official plain-text legal code of each license of the registry (<SPDX id>.txt,
+# downloaded from creativecommons.org/<license path>/legalcode.txt)
 LICENSES_DIR = RESOURCES / "licenses"
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Handle as its URL); an ISBN has none
 GIN_ID_PREFIXES = {"DOI": "doi:", "arXiv": "arxiv:", "PMID": "pmid:", "URL": "url:", "Handle": "url:"}
 
-# SPDX id -> {name, url} (the dataset template's licence ids)
+# SPDX id -> {name, url} (the dataset template's license ids)
 LICENSES: dict[str, dict] = load_registry("licenses.yaml")
 
 
@@ -43,9 +43,9 @@ def _load_schema() -> dict:
 
 
 def license_entry(license_id: str) -> dict:
-    """{name, url} of a licence id of the registry; an unknown id is an error."""
+    """{name, url} of a license id of the registry; an unknown id is an error."""
     if license_id not in LICENSES:
-        raise ValueError(f"Unknown licence '{license_id}'; the licences registry (licenses.yaml) "
+        raise ValueError(f"Unknown license '{license_id}'; the licenses registry (licenses.yaml) "
                          f"has: {', '.join(LICENSES)}")
     return LICENSES[license_id]
 
@@ -119,7 +119,7 @@ def odml_to_datacite(odml_path: Path) -> dict:
     if v := _prop(ds, "full name"): dc["title"] = v
     if v := _prop(ds, "description"): dc["description"] = v.strip() if isinstance(v, str) else v
     if v := _prop(ds, "keywords"): dc["keywords"] = v if isinstance(v, list) else [v]
-    if v := _prop(ds, "license"): dc["license"] = dict(license_entry(str(v)))
+    if v := _prop(ds, "license"): dc["license"] = {k: license_entry(str(v))[k] for k in ("name", "url")}
     if f := _sec(ds, "Fundings"):
         if items := [x for s in f.get("sections", []) if s.get("name", "").startswith("Fundings_") and (x := _funding(s))]:
             dc["funding"] = items
@@ -145,26 +145,26 @@ def write_datacite(odml_path: Path, output_dir: Path, validate_output: bool = Tr
         raise ValueError("DataCite validation failed:\n" + "\n".join(f"  - {e}" for e in errs))
 
     (out := output_dir / "datacite.yml").write_text(yaml.dump(dc, default_flow_style=False, allow_unicode=True, sort_keys=False))
-    # LICENSE next to datacite.yml: GIN's DOI service checks that both name the same licence
+    # LICENSE next to datacite.yml: GIN's DOI service checks that both name the same license
     if license_id := _prop(_dataset_section(odml_path), "license"):
         (license_file := output_dir / "LICENSE").unlink(missing_ok=True)  # may be an annexed release
         license_file.write_text(license_text(str(license_id)), encoding="utf-8")
     else:
-        logger.warning("No licence in the odML, no LICENSE file written")
+        logger.warning("No license in the odML, no LICENSE file written")
     write_bidsignore(output_dir)
     return out
 
 
 def license_text(license_id: str) -> str:
-    """LICENSE content: licence name and URL, then the official plain-text legal code.
+    """LICENSE content: license name and URL, then the official plain-text legal code.
 
-    The first line is the datacite.yml licence name (GIN's DOI service matches
+    The first line is the datacite.yml license name (GIN's DOI service matches
     it). A registry id without a stored legal code gives name and URL only.
     """
     lic = license_entry(license_id)
     head = f"{lic['name']}\n{lic['url']}\n"
     legal_code = LICENSES_DIR / f"{license_id}.txt"
     if not legal_code.is_file():
-        logger.warning("No legal code for licence '%s': LICENSE holds its name and URL only", license_id)
+        logger.warning("No legal code for license '%s': LICENSE holds its name and URL only", license_id)
         return head
     return f"{head}\n{legal_code.read_text(encoding='utf-8')}"
