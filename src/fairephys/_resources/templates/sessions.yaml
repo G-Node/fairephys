@@ -34,7 +34,7 @@ Sessions:
     # Cross-references (link to protocol, hardware, and experimenter)
     behavioral protocol: ""  # References Behavioral Protocol.name
     recording system: ""     # References Hardware.Recording System
-    performed by: ""         # Family name of experimenter (must match Contributors) -> RecordingActivity.performed_by
+    performed by: ""         # Family name of the experimenter, or a list of family names (each must match a contributor) -> RecordingActivity.performed_by
 
     # Recording metadata (fallback, filled by the Neo enrichment when available)
     # continuity: continuous | discontinuous | epoched (one or several

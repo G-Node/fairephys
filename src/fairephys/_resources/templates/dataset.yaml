@@ -165,6 +165,7 @@ Dataset:
     affiliation:
       institution: ""
       institution short name: ""     # e.g., "INSERM"; empty when there is none
+      institution website: ""  # the organization's website, https://...
       institution identifier: ""     # the institution's ROR address, https://ror.org/...
       lab: ""
       department: ""
@@ -190,6 +191,7 @@ Dataset:
       affiliation:
         institution: ""
         institution short name: ""
+        institution website: ""  # the organization's website, https://...
         institution identifier: ""
         lab: ""
         department: ""
@@ -206,6 +208,7 @@ Dataset:
   Fundings:
     - funder: ""                     # organization name (must resolve in KG)
       funder short name: ""         # e.g., "DFG"; empty when there is none
+      funder website: ""  # the organization's website, https://...
       funder identifier: ""         # the funder's ROR address, https://ror.org/...
       award number: ""
       award title: ""

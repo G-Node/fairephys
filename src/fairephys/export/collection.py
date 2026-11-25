@@ -762,10 +762,11 @@ class SchemaBuilder:
         if ftype == "kg_nodes":
             return self._kg_nodes(fdef, section)
         if ftype == "performers":
-            names = _as_list(prop(section, fdef["match_field"])) or [
-                prop(c, "family name") for c in self.get_section("Dataset/Contributors").sections
-                if fdef["role"] in _as_list(prop(c, "roles"))]
-            return [e for n in names if (e := self._matched_entity(fdef, n))] or None
+            names = _as_list(prop(section, fdef["match_field"]))
+            if unknown := [n for n in names if self._matched_entity(fdef, n) is None]:
+                raise ValueError(f"'{fdef['match_field']}' names {', '.join(map(str, unknown))}: "
+                                 f"no {fdef['target']} of the metadata has that {fdef['match_attrs'][0].replace('_', ' ')}")
+            return [self._matched_entity(fdef, n) for n in names] or None
         if attribute := fdef.get("attribute"):
             linked = self._link_field({k: v for k, v in fdef.items() if k != "attribute"}, section) or []
             values = [v for e in _as_list(linked) for v in _as_list(getattr(e, attribute, None))]

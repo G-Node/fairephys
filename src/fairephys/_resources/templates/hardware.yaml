@@ -19,6 +19,7 @@ Hardware:
     name: ""                   # e.g., "Blackrock Cerebus" -> openMINDS Setup.name
     manufacturer: ""
     manufacturer short name: ""  # empty when there is none
+    manufacturer website: ""  # the organization's website, https://...
     manufacturer identifier: ""  # the manufacturer's ROR address, https://ror.org/...; empty when it has none
     manufacturer location: ""
     system model: ""
@@ -157,14 +158,15 @@ Hardware:
       # library manufacturer: the ProbeInterface library's manufacturer key when it differs from the lab's name (e.g. "sinaps-research-platform")
       # library manufacturer: ""
       manufacturer short name: ""
+      manufacturer website: ""  # the organization's website, https://...
       manufacturer identifier: ""
       manufacturer location: ""
       model: ""
       serial number: ""           # this device's own serial, not the connector or pedestal
-      # digital identifier: DOI or RRID for the probe -> ElectrodeArray.digital_identifier
+      # digital identifier: the probe's RRID -> ElectrodeArray.digital_identifier
       # digital identifier:
-      #   type: ""               # DOI | RRID
-      #   value: ""              # e.g., "10.xxxx/..." or "RRID:SCR_..."
+      #   type: ""               # RRID
+      #   value: ""              # e.g., "RRID:SCR_..."
 
       # Classification
       device type: ""

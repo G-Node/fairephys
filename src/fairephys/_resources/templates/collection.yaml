@@ -54,6 +54,7 @@ Dataset:
   Fundings: []
   # - funder: ""
   #   funder short name: ""
+  #   funder website: ""  # the organization's website, https://...
   #   funder identifier: ""          # the funder's ROR address, https://ror.org/...
   #   award number: ""
   #   award title: ""

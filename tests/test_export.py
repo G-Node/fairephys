@@ -43,7 +43,7 @@ SNAPSHOT = [
     ("Person", "full_name=Jane Doe", (("affiliations", 1), ("contact_information", 1))),
     ("Protocol", f"name=Recording protocol (Doe, {date.today().year})", ()),  # no technique in the test metadata
     ("RecordingActivity", "lookup_label=test-ds_sub-MonkeyA_ses-ses01",
-     (("devices", 1), ("inputs", 1), ("is_part_of", 1), ("performed_by", 1), ("protocols", 1), ("study_targets", 1))),
+     (("devices", 1), ("inputs", 1), ("is_part_of", 1), ("protocols", 1), ("study_targets", 1))),
     ("Setup", f"name=MySystem (Doe, {date.today().year})", (("has_parts", 1), ("manufacturers", 1), ("types", 1))),
     ("SetupType", "name=acquisition system", ()),
     ("Species", "name=Macaca mulatta", ()),
@@ -348,6 +348,20 @@ def test_push_collection(tmp_path, monkeypatch):
     assert len(calls) == 1
 
 
+def test_performed_by_links_the_named_contributors(make_doc):
+    """The session's 'performed by' links the contributors of those family names; no fallback, an unknown name raises."""
+    people = [{"given name": g, "family name": f, "roles": ["data collection"]} for g, f in (("Jane", "Doe"), ("Max", "Roe"))]
+    doc = lambda by: make_doc(Dataset={"Contributors": people}, Sessions=[{"session id": "01", "date": "2024-01-01", **by}])
+    def performers(by):
+        builder = _builder(doc(by)); builder.build_all()
+        return [[p.family_name for p in a.performed_by or []] for a in builder.entities["RecordingActivity"]], builder
+    assert performers({})[0] == [[]]
+    names, builder = performers({"performed by": ["Roe", "Doe"]})
+    assert names == [["Roe", "Doe"]] and len(builder.entities["Person"]) == 2
+    with pytest.raises(ValueError, match="'performed by' names Nobody"):
+        performers({"performed by": "Nobody"})
+
+
 FDEF = {"type": "custom_anatomy", "odml_field": "brain region", "area_field": "atlas area",
         "uberon_field": "uberon term"}
 ATLAS = {"M1": {"area": "4a", "uberon term": "primary_motor_cortex"}}
@@ -417,19 +431,22 @@ def test_openminds_term_map():
 
 
 def test_organizations_built_here_carry_identifier_and_short_name(make_doc, monkeypatch):
-    """A funder, institution or manufacturer built from the metadata carries its ROR and short name; an
+    """A funder, institution or manufacturer built from the metadata carries its ROR, short name and website; an
     organization the KG holds is referenced as it is, without a ROR node of ours."""
-    funding = {"funder": "Foundation", "funder short name": "TF", "funder identifier": "https://ror.org/00k4n6c32"}
+    funding = {"funder": "Foundation", "funder short name": "TF", "funder identifier": "https://ror.org/00k4n6c32",
+               "funder website": "https://foundation.example/"}
     person = {"given name": "Jane", "family name": "Doe", "affiliation": {
-        "institution": "Uni", "institution short name": "TU", "institution identifier": "https://ror.org/05591te55"}}
+        "institution": "Uni", "institution short name": "TU", "institution identifier": "https://ror.org/05591te55",
+        "institution website": "https://uni.example/"}}
     system = {"name": "Rig", "manufacturer": "Maker", "manufacturer short name": "MK",
-              "manufacturer identifier": "https://ror.org/018mejw64"}
+              "manufacturer identifier": "https://ror.org/018mejw64", "manufacturer website": "https://maker.example/"}
     doc = make_doc({"Hardware": {"Recording System": system}}, Dataset={"Fundings": [funding], "Contributors": [person]})
-    built = {o.full_name: (o.short_name, o.digital_identifiers[0].identifier)
+    built = {o.full_name: (o.short_name, o.digital_identifiers[0].identifier, str(o.homepage))
              for o in _builder(doc).build_all().nodes.values()
              if isinstance(o, fgcore.Organization) and o.digital_identifiers}
-    assert built == {"Foundation": ("TF", funding["funder identifier"]), "Uni": ("TU", "https://ror.org/05591te55"),
-                     "Maker": ("MK", "https://ror.org/018mejw64")}
+    assert built == {"Foundation": ("TF", funding["funder identifier"], "https://foundation.example/"),
+                     "Uni": ("TU", "https://ror.org/05591te55", "https://uni.example/"),
+                     "Maker": ("MK", "https://ror.org/018mejw64", "https://maker.example/")}
 
     shared = fgcore.Organization(full_name="Foundation", id="https://kg.ebrains.eu/api/instances/org-1")
     shared._space = "common"

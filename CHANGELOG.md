@@ -6,6 +6,9 @@
 - American spelling in generated text, messages and documentation.
 - Knowledge Graph: a setup is named by the lab's name of the system, else manufacturer and model, with the dataset's citation; the recording protocol by its first technique with the citation.
 - Knowledge Graph: a placement's brain region is its UBERON term; an atlas area named in the atlas registry or by a placement (`atlas area`, one name or a list; recordings schema 1.1, hardware schema 1.3) is the existing entity of the Knowledge Graph, referenced; a custom anatomical entity only for a region with neither, one per name. A region label narrower than its UBERON term is named by that term until an atlas area is given; the hemisphere is not exported. Both stay in the metadata record, BIDS and NWB.
+- Knowledge Graph: an organization built from the metadata carries its website (`institution website`, `funder website`, `manufacturer website`; dataset schema 1.2, collection schema 1.2, hardware schema 1.3).
+- Knowledge Graph: a recording is performed by the persons its session names in `performed by` (one family name or a list; sessions schema 1.1), linked as the existing contributors. Without it no performer is linked: the contributors who collected the data are no longer taken instead. A name that is no contributor is an error.
+- A probe's digital identifier is an RRID and needs its value; type and value are both empty otherwise (hardware schema 1.3).
 
 ## 0.1.3 (2026-11-20)
 

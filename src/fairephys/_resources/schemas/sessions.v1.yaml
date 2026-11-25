@@ -1,7 +1,7 @@
 # Sessions Template Schema v1
 $schema: https://json-schema.org/draft-07/schema#
 title: Sessions Template
-version: 1
+version: 1.1
 
 type: object
 required: [Sessions]
@@ -43,7 +43,8 @@ properties:
         # Cross-references (link sessions to protocol, hardware, and experimenter)
         behavioral protocol: {type: string}  # References Behavioral Protocol.name
         recording system: {type: string}      # References Hardware.Recording System
-        performed by: {type: string}          # Full name -> RecordingActivity.performed_by
+        # family name of the experimenter, or a list of family names (each a contributor) -> RecordingActivity.performed_by
+        performed by: {oneOf: [{type: string}, {type: array, items: {type: string}}]}
         # Recording metadata (fallback, filled by the Neo enrichment when available)
         # continuity: one segment (continuous) or several (discontinuous),
         # the BIDS RecordingType; not the acute/chronic 'recording type'
