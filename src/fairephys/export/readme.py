@@ -975,7 +975,7 @@ def _first_mentions(doc: odml.Document, text: str) -> str:
         if f"[{name}](" not in text and (m := _first_plain_mention(text, name)):
             text = text[:m.start()] + f"[{name}]({url})" + text[m.end():]
     for name, rrid in registry["rrids"].items():
-        text = _with_rrid(text, name, rrid)
+        text = _with_rrid(text, name, f"[{rrid}](https://scicrunch.org/resolver/{rrid})")
     return text
 
 

@@ -91,7 +91,7 @@ software links:
 
 # Research Resource Identifiers (RRID) of the software, standards and resources
 # above, from the SciCrunch registry: written at the first link of the name in
-# the descriptor, after its version when one follows, as data papers do
+# the descriptor, linked to its resolver address, after its version when one follows, as data papers do
 # ("NWB Inspector 0.7.2 (RRID:SCR_025465)", "(BIDS; RRID:SCR_016124)").
 rrids:
   BIDS validator: "RRID:SCR_017255"

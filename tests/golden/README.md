@@ -93,17 +93,17 @@ Resting state in the dark.
 
 Channel 7 is noisy.
 
-Read with [PyNWB](https://pynwb.readthedocs.io/) (RRID:SCR_017452).
+Read with [PyNWB](https://pynwb.readthedocs.io/) ([RRID:SCR_017452](https://scicrunch.org/resolver/RRID:SCR_017452)).
 
 The data are shared under the Creative Commons Attribution 4.0 International Public License ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
 
 ## Data Records
 
-The data are organized following the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/); RRID:SCR_016124) extension proposal BEP032 Microelectrode Electrophysiology ([bids-specification pull request #2307](https://github.com/bids-standard/bids-specification/pull/2307)), a draft extension of BIDS 1.11.2. The content of the BIDS files is defined in the [BEP032 specification](https://bids-specification--2307.org.readthedocs.build/en/2307/). Beyond BIDS, the layout holds the folder `metadata/` with the open metadata Markup Language ([odML](https://g-node.github.io/python-odml/); RRID:SCR_001376) record, the canonical record of all metadata of the dataset, and the [openMINDS](https://openminds.om-i.org/) (RRID:SCR_023173) metadata; the file table below names every file type.
+The data are organized following the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/); [RRID:SCR_016124](https://scicrunch.org/resolver/RRID:SCR_016124)) extension proposal BEP032 Microelectrode Electrophysiology ([bids-specification pull request #2307](https://github.com/bids-standard/bids-specification/pull/2307)), a draft extension of BIDS 1.11.2. The content of the BIDS files is defined in the [BEP032 specification](https://bids-specification--2307.org.readthedocs.build/en/2307/). Beyond BIDS, the layout holds the folder `metadata/` with the open metadata Markup Language ([odML](https://g-node.github.io/python-odml/); [RRID:SCR_001376](https://scicrunch.org/resolver/RRID:SCR_001376)) record, the canonical record of all metadata of the dataset, and the [openMINDS](https://openminds.om-i.org/) ([RRID:SCR_023173](https://scicrunch.org/resolver/RRID:SCR_023173)) metadata; the file table below names every file type.
 
 The recordings, provided as Blackrock NSx (.ns5) and Video (.MTS), were converted.
 
-Validation: [BIDS validator](https://github.com/bids-standard/bids-validator) 2.2.6 (RRID:SCR_017255) with the BEP032 schema (commit 508cfc7b) and [NWB Inspector](https://nwbinspector.readthedocs.io/) 0.7.2 (RRID:SCR_025465). Conversion: fairephys 0.1.0 and [NeuroConv](https://neuroconv.readthedocs.io/) 0.10.2.
+Validation: [BIDS validator](https://github.com/bids-standard/bids-validator) 2.2.6 ([RRID:SCR_017255](https://scicrunch.org/resolver/RRID:SCR_017255)) with the BEP032 schema (commit 508cfc7b) and [NWB Inspector](https://nwbinspector.readthedocs.io/) 0.7.2 ([RRID:SCR_025465](https://scicrunch.org/resolver/RRID:SCR_025465)). Conversion: fairephys 0.1.0 and [NeuroConv](https://neuroconv.readthedocs.io/) 0.10.2.
 
 File names are made of key-value pairs and end with the file type: `sub` (subject), `ses` (session), `task` (task, or rest) and `recording` (recorded signal). The files of a session are in one folder per data type: `beh` (behavior) and `ecephys` (extracellular electrophysiology).
 
@@ -137,7 +137,7 @@ Test/
 
 | File | Format | Content |
 |------|--------|---------|
-| `*_ecephys.nwb` | Neurodata Without Borders ([NWB](https://nwb.org/); RRID:SCR_015242) (HDF5) | Continuous neural recording with its electrode table, devices and subject metadata |
+| `*_ecephys.nwb` | Neurodata Without Borders ([NWB](https://nwb.org/); [RRID:SCR_015242](https://scicrunch.org/resolver/RRID:SCR_015242)) (HDF5) | Continuous neural recording with its electrode table, devices and subject metadata |
 | `ecephys/*_channels.tsv` | tab-separated values (TSV) | One row per recorded channel: its electrode contact, signal type, unit, sampling frequency, reference, gain and status |
 | `*_electrodes.tsv` | TSV | One row per electrode contact: its probe, position within the probe, hemisphere and brain region |
 | `*_probes.tsv` | TSV | One row per probe placed in the session: its type, placement coordinates and angles, brain region, manufacturer and model |
