@@ -9,6 +9,7 @@
 - Knowledge Graph: an organization built from the metadata carries its website (`institution website`, `funder website`, `manufacturer website`; dataset schema 1.2, collection schema 1.2, hardware schema 1.3).
 - Knowledge Graph: a recording is performed by the persons its session names in `performed by` (one family name or a list; sessions schema 1.1), linked as the existing contributors. Without it no performer is linked: the contributors who collected the data are no longer taken instead (the NWB experimenter keeps them). A name that is no contributor is an error.
 - A probe's digital identifier is an RRID in its own form (`RRID:...`), exported as its resolver address; type and value are both empty otherwise (hardware schema 1.3).
+- Descriptor: software, standards and resources are named with their Research Resource Identifier (RRID) at the first link, where they have one.
 
 ## 0.1.3 (2026-11-20)
 

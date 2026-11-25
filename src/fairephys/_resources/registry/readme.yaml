@@ -89,6 +89,23 @@ software links:
   odML: "https://g-node.github.io/python-odml/"
   EBRAINS: "https://ebrains.eu/"
 
+# Research Resource Identifiers (RRID) of the software, standards and resources
+# above, from the SciCrunch registry: written at the first link of the name in
+# the descriptor, after its version when one follows, as data papers do
+# ("NWB Inspector 0.7.2 (RRID:SCR_025465)", "(BIDS; RRID:SCR_016124)").
+rrids:
+  BIDS validator: "RRID:SCR_017255"
+  NWB Inspector: "RRID:SCR_025465"
+  PyNWB: "RRID:SCR_017452"
+  MatNWB: "RRID:SCR_021156"
+  fairgraph: "RRID:SCR_025843"
+  DataLad: "RRID:SCR_003931"
+  NWB: "RRID:SCR_015242"
+  BIDS: "RRID:SCR_016124"
+  openMINDS: "RRID:SCR_023173"
+  odML: "RRID:SCR_001376"
+  EBRAINS: "RRID:SCR_019260"
+
 # The file types of the Data Records, in the order of the file table; the file
 # tree gives the one-sentence description (tree) in square brackets after
 # every file of the type (the EBRAINS data descriptor template); the files of
