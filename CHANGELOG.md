@@ -4,6 +4,7 @@
 
 - Descriptor: the license sentence gives the official name of the license with its short form.
 - American spelling in generated text, messages and documentation.
+- Knowledge Graph: a setup is named by the lab's name of the system, else manufacturer and model, with the dataset's citation; the recording protocol by its first technique with the citation.
 
 ## 0.1.3 (2026-11-20)
 

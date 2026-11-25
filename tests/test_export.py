@@ -42,10 +42,10 @@ SNAPSHOT = [
     ("Organization", "name=Test Foundation", ()),
     ("Organization", "name=Test Uni", ()),
     ("Person", "full_name=Jane Doe", (("affiliations", 1), ("contact_information", 1))),
-    ("Protocol", "name=test-ds", ()),
+    ("Protocol", f"name=Recording protocol (Doe, {date.today().year})", ()),  # no technique in the test metadata
     ("RecordingActivity", "lookup_label=test-ds_sub-MonkeyA_ses-ses01",
      (("devices", 1), ("inputs", 1), ("is_part_of", 1), ("performed_by", 1), ("protocols", 1), ("study_targets", 1))),
-    ("Setup", "name=MySystem", (("has_parts", 1), ("manufacturers", 1), ("types", 1))),
+    ("Setup", f"name=MySystem (Doe, {date.today().year})", (("has_parts", 1), ("manufacturers", 1), ("types", 1))),
     ("SetupType", "name=acquisition system", ()),
     ("Species", "name=Macaca mulatta", ()),
     ("Subject", "lookup_label=test-ds_sub-MonkeyA", (("biological_sex", 1), ("species", 1), ("studied_states", 1))),
