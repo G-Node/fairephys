@@ -452,6 +452,7 @@ class SchemaBuilder:
         (spec_tokens), an absolute odML path when the token contains
         "/" ("{Dataset/short name}"; a text value, such as a shared
         statement, with its specification tokens filled, fill_statement),
+        "{first <property>}" the first value of a property of `section`,
         else a property of `section` ("{subject id}"). A missing, empty or multi-valued token makes the
         whole result None so the field is skipped; optional "{?token}"s
         render as empty text (see fill_template).
@@ -463,6 +464,9 @@ class SchemaBuilder:
                 return self.dataset_citation()
             if name in (tokens := spec_tokens()):
                 return tokens[name]
+            if name.startswith("first "):
+                values = prop(section, name.removeprefix("first "))
+                return values[0] if isinstance(values, list) and values else values
             if "/" in name:
                 sec_path, name = name.rsplit("/", 1)
                 value = prop(self.get_section(sec_path), name)
@@ -689,9 +693,14 @@ class SchemaBuilder:
         if ftype == "literal":
             return fdef.get("value")
         if ftype == "template":
-            text = self.render_template(fdef.get("value", ""), section, self._session_context(section))
+            templates = fdef.get("value", "")
+            context = self._session_context(section)
+            text = next(filter(None, (self.render_template(t, section, context) for t in
+                                      ([templates] if isinstance(templates, str) else templates))), None)
             if text and fdef.get("first_use"):
                 text = first_use(text)
+            if text and fdef.get("capitalize"):
+                text = text[:1].upper() + text[1:]
             return machine_label(text) if text and field == "lookup_label" else text
         if ftype == "iri":
             val = fdef.get("value") or prop(section, fdef.get("odml", ""))

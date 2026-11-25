@@ -58,6 +58,10 @@
 #                 the whitespace before it is dropped, with parentheses that
 #                 hold nothing else. {?words {token} words} is an optional
 #                 group: the words around one token, left out with it.
+#                 {first <property>} is the first value of a list property.
+#                 `value` may be a list of templates: the first that fills
+#                 is taken. `capitalize: true` puts the first letter in
+#                 upper case.
 #                 Used for EBRAINS lookup labels / ids, composed names and
 #                 descriptions.
 #
@@ -665,7 +669,15 @@ schemas:
       fields: [name]
       search_space: target
     fields:
-      name: { odml: "short name", default: "Recording protocol" }
+      # A push finds a protocol by its name. The templates have no field for
+      # a protocol's own name, so it is named by its first technique (an
+      # openMINDS term), else "Recording protocol", with the dataset's
+      # citation, e.g. "Multi-electrode extracellular electrophysiology
+      # (Author et al., 2026)". A stated name would come first
+      name:
+        type: template
+        value: ["{first techniques} ({?dataset citation})", "Recording protocol ({?dataset citation})"]
+        capitalize: true
       description: { odml: "description" }
       described_in: { type: nested_list, target: ProtocolRef }
       # techniques: recording techniques and analysis techniques (e.g. spike sorting)
@@ -762,7 +774,12 @@ schemas:
       search_space: target
     condition: "manufacturer"
     fields:
-      name: { odml: "name" }
+      # A push finds a setup by its name: the lab's name of the system, else
+      # manufacturer and model, with the dataset's citation, so that every
+      # dataset has one setup of its own
+      name:
+        type: template
+        value: ["{name} ({?dataset citation})", "{manufacturer} {?system model} ({?dataset citation})"]
       description: { odml: "system model" }
       manufacturers: { type: nested_list, target: SetupManufacturer }
       has_parts: { type: link, target: ElectrodeArray, list: true }
