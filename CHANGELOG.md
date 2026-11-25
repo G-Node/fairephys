@@ -3,9 +3,14 @@
 ## Unreleased
 
 - Descriptor: the license sentence gives the official name of the license with its short form.
-- American spelling in generated text, messages and documentation.
-- Knowledge Graph: a setup is named by the lab's name of the system, else manufacturer and model, with the dataset's citation; the recording protocol by its first technique with the citation.
-- Knowledge Graph: a placement's brain region is its UBERON term; an atlas area named in the atlas registry or by a placement (`atlas area`, one name or a list; recordings schema 1.1, hardware schema 1.3) is the existing entity of the Knowledge Graph, referenced; a custom anatomical entity only for a region with neither, one per name. A region label narrower than its UBERON term is named by that term until an atlas area is given; the hemisphere is not exported. Both stay in the metadata record, BIDS and NWB.
+- Descriptor: software, standards and resources carry their RRID at the first link.
+- American spelling throughout.
+- Knowledge Graph: a setup is named by the lab's name of the system, else manufacturer and model, and the recording protocol by its first technique, each with the dataset's citation.
+- Knowledge Graph: a brain region links its UBERON term and the atlas areas named for it (`atlas area`, a name or a list); a custom entity only for a region with neither. A label narrower than its UBERON term and the hemisphere are not exported.
+- Knowledge Graph: an organization carries its website (`institution website`, `funder website`, `manufacturer website`).
+- Knowledge Graph: a recording's performers are the contributors its session names in `performed by` (a name or a list); none without it. The NWB experimenter is unchanged.
+- A probe's digital identifier is an RRID with its value, or empty.
+- Schemas: dataset 1.2, collection 1.2, sessions 1.1, recordings 1.1, hardware 1.3.
 
 ## 0.1.3 (2026-11-20)
 

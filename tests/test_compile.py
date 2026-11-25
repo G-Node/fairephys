@@ -182,6 +182,8 @@ def test_template_schemas():
          "Hardware.Probes.1: electrode identifiers count (1) != number of contacts (2)"),
         ("hardware.yaml", {"Hardware": {"Recording System": {**system, "gain unit": "V per count"}}}, None),
         ("hardware.yaml", {"Hardware": {"Recording System": {**system, "gain unit": "uV"}}}, "'uV' is not one of"),
+        ("hardware.yaml", {"Hardware": {"Probes": [{"digital identifier": {"type": "RRID", "value": ""}}]}},  # a type without its value
+         "digital identifier.value"),
         ("dataset.yaml", {"Dataset": {"release date": "15.09.2025"}}, "Dataset.release date: '15.09.2025' does not match"),
         ("dataset.yaml", {"Dataset": {"related publications": ["Doe, J. (2024)."]}},
          "Dataset: 'related publications' should not"),

@@ -66,7 +66,7 @@ Subject:
 | `literal` | `{ type: literal, value: "..." }` | Hardcoded value |
 | `date` | `{ type: date, odml: "release date" }` | The property as a date (ISO); none when empty |
 | `iri` | `{ type: iri, value: "..." }` | IRI/URL value |
-| `performers` | `{ type: performers, target: Person, match_field: "performed by", match_attrs: [family_name], role: "data collection" }` | `match_link` for every name in `match_field`, else for the contributors with the `role` |
+| `performers` | `{ type: performers, target: Person, match_field: "performed by", match_attrs: [family_name] }` | `match_link` for every name in `match_field`: the existing entities are linked, none is built; a name without a match is an error |
 | `quantity` | `{ type: quantity, odml_field: "weight" }` | The property with its unit as a quantitative value |
 | `kg_nodes` | `{ type: kg_nodes, class: core.ContentTypePattern, search_space: controlled, list: true, labels: [...] }` or `odml: "property"` | Existing KG nodes by lookup label, referenced as they are and never built; a label the KG lacks is a warning |
 | `identifier_list` | `type: identifier_list, odml_section, classes: {DOI: {class: core.DOI, identifier: "https://doi.org/{}"}}` | One identifier node per entry of the subsection (each with its `identifier`, typed by `fairephys.metadata.identifiers`) whose type `classes` names; `relation:` keeps the entries of one relation, `single: true` the first node. Entries of another type (a URL, an arXiv id or a PMID among the related publications) are listed in `collection.warnings` and the openMINDS validation output |

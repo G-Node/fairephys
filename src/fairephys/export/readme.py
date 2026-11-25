@@ -964,7 +964,8 @@ def _first_mentions(doc: odml.Document, text: str) -> str:
     """The first plain mention of each readme registry 'first use' term
     written out (first_use), and of each software the registry 'software
     links' or the Curation Software section (code url) links, linked (unless
-    the text already links it)."""
+    the text already links it); the first link of a name carries its RRID
+    where the registry 'rrids' gives one (_with_rrid)."""
     registry = load_registry("readme.yaml")
     tools = subsection(doc, CURATION_SOFTWARE)
     links = {**registry["software links"], **{str(prop(t, "name")): str(prop(t, "code url"))
@@ -973,7 +974,24 @@ def _first_mentions(doc: odml.Document, text: str) -> str:
     for name, url in links.items():
         if f"[{name}](" not in text and (m := _first_plain_mention(text, name)):
             text = text[:m.start()] + f"[{name}]({url})" + text[m.end():]
+    for name, rrid in registry["rrids"].items():
+        text = _with_rrid(text, name, f"[{rrid}](https://scicrunch.org/resolver/{rrid})")
     return text
+
+
+def _with_rrid(text: str, name: str, rrid: str) -> str:
+    """The RRID at the first link of a name, after its version when one
+    follows: "[N](url) 1.2 (RRID)". A bracket the link closes or one that
+    follows takes it instead: "([N](url); RRID)", "[N](url) (RRID; words)"."""
+    m = re.search(rf"\[{re.escape(name)}\]\([^)]*\)( \d+(\.\d+)+)?", text)
+    if not m:
+        return text
+    head, rest = text[:m.end()], text[m.end():]
+    if rest.startswith(")"):
+        return f"{head}; {rrid}{rest}"
+    if rest.startswith(" ("):
+        return f"{head} ({rrid}; {rest[2:]}"
+    return f"{head} ({rrid}){rest}"
 
 
 # ---------------------------------------------------------------------------

@@ -22,8 +22,9 @@
 #                 folder holds, or the property `odml`) in search_space:
 #                 referenced as they are, never built; a label the KG lacks
 #                 is a warning
-#   performers  - match_link for every name in match_field, else for the
-#                 contributors with the `role`
+#   performers  - match_link for every name in match_field: the existing
+#                 entities are linked, none is built; a name without a
+#                 match is an error
 #   literal     - hardcoded value
 #   iri         - IRI value (wraps in fairgraph.IRI)
 #   date        - the odML property as a date (ISO), none when empty
@@ -255,6 +256,7 @@ schemas:
         fields:
           full_name: { odml: "affiliation.institution" }
           short_name: { odml: "affiliation.institution short name" }
+          homepage: { type: iri, odml: "affiliation.institution website" }
           digital_identifiers: { type: nested_list, target: InstitutionROR }
       ORCID: &person_orcid
         fairgraph_class: core.ORCID
@@ -337,6 +339,7 @@ schemas:
         fields:
           full_name: { odml: "funder" }
           short_name: { odml: "funder short name" }
+          homepage: { type: iri, odml: "funder website" }
           digital_identifiers: { type: nested_list, target: FunderROR }
 
   # --- SubjectState (per-session) ---
@@ -732,9 +735,8 @@ schemas:
         type: term
         odml_field: "insulator material"
         term_class: controlled_terms.MolecularEntity
-      # digital_identifier: DOI or RRID (from template "digital identifier" subsection)
-      # Uses RRID (most common for probes). DOI support can be added via a second
-      # nested entity with condition "digital identifier.type == DOI".
+      # digital_identifier: the probe's RRID (template "digital identifier"
+      # subsection; the schema takes no other type)
       digital_identifier: { type: nested_ref, target: ProbeRRID }
     nested:
       ProbeRRID:
@@ -742,7 +744,8 @@ schemas:
         condition: "digital identifier.type == RRID"
         add_to_collection: true
         fields:
-          identifier: { odml: "digital identifier.value" }
+          # openMINDS writes an RRID as its resolver address
+          identifier: { odml: "digital identifier.value", prefix: "https://scicrunch.org/resolver/" }
       ManufacturerROR: &manufacturer_ror  # as InstitutionROR: only with a manufacturer built here
         fairgraph_class: core.RORID
         condition: "manufacturer identifier"
@@ -758,6 +761,7 @@ schemas:
         fields:
           full_name: { odml: "manufacturer" }
           short_name: { odml: "manufacturer short name" }
+          homepage: { type: iri, odml: "manufacturer website" }
           digital_identifiers: { type: nested_list, target: ManufacturerROR }
 
   # --- Setup (recording system hardware) ---
@@ -848,9 +852,9 @@ schemas:
       # the regions of the session's placements (the anatomical locations of
       # its array usages)
       study_targets: { type: link, target: ElectrodeArrayUsage, list: true, attribute: anatomical_locations_of_arrays }
-      # the session's 'performed by', else the contributors who collected the
-      # data, as the NWB experimenter (nwb_mappings.yaml)
-      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name], role: "data collection" }
+      # the persons the session's 'performed by' names (family names of
+      # contributors), linked; none without it
+      performed_by: { type: performers, target: Person, match_field: "performed by", match_attrs: [family_name] }
       start_time: { type: datetime, odml: "start time" }
       end_time: { type: datetime, odml: "end time" }
       preparation_design:
