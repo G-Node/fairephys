@@ -33,7 +33,7 @@ def spec_tokens() -> dict[str, str]:
 def fill_statement(text: str, dataset=None) -> str:
     """A shared statement (collection metadata) with its specification tokens
     (spec_tokens) and the dataset's {repository url} and {repository path}
-    ("organisation/repository"; both empty without a url) filled; any other token raises."""
+    ("organization/repository"; both empty without a url) filled; any other token raises."""
     url = str(prop(dataset, "repository url") or "").strip()
     tokens = {**spec_tokens(), "repository url": url, "repository path": urlparse(url).path.strip("/")}
 

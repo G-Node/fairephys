@@ -270,7 +270,7 @@ def _methods_one_subject(subj: odml.Section, several: bool) -> str:
 
 
 def _nested_bullets(sec: odml.Section) -> list[str]:
-    """One bullet per filled property of a nested section, labelled with the
+    """One bullet per filled property of a nested section, labeled with the
     section and the property ("- **Head post material:** titanium"); a
     description is the section's own text ("- **Head post:** ..."); the readme
     registry's subject labels name a pair whose words repeat ("- **Dura:** intact")."""
@@ -473,7 +473,7 @@ def _states_table(states: list[dict], events_files: bool = False) -> str:
             "Label": ("the label in the events tables (`*_events.tsv`, column `trial_type`)" if events_files
                       else "the label"),
             "Description": "a short description"}
-    caption = f"{_TABLE} Behavioural states of this annotation: {_prose_list(held[c] for c in columns)}."
+    caption = f"{_TABLE} Behavioral states of this annotation: {_prose_list(held[c] for c in columns)}."
     rows = [caption, "", "| " + " | ".join(columns) + " |", "|" + "|".join("-" * (len(c) + 2) for c in columns) + "|"]
     rows += ["| " + " | ".join(str(s.get(c.lower(), "")).strip() for c in columns) + " |" for s in states]
     return "\n".join(rows)
@@ -617,14 +617,13 @@ def _methods_anatomy(doc: odml.Document) -> str:
 
 
 def _usage_notes(ds: odml.Section) -> str:
-    """Format USAGE NOTES: dataset notes, shared usage statement, licence."""
+    """Format USAGE NOTES: dataset notes, shared usage statement, license."""
     parts = [_with_statement(ds, "usage notes", "usage statement")]
     license_id = str(prop(ds, "license") or "")
     if license_id:
-        url = load_registry("licenses.yaml").get(license_id, {}).get("url")
-        label = _license_label(license_id)
-        name = f"[{label}]({url})" if url else label
-        parts.append(f"The data are shared under the {name} licence.")
+        entry = load_registry("licenses.yaml")[license_id]
+        parts.append(f"The data are shared under the {entry['official name']} "
+                     f"([{_license_label(license_id)}]({entry['url']})).")
     text = "\n\n".join(p for p in parts if p)
     if not text:
         return ""
@@ -911,7 +910,7 @@ def _author_contributions(ds: odml.Section) -> str:
             continue
         name = f"{given} {family}".strip()
         # the description and, after a comma, the role terms it does not name itself
-        # (whole words, any case); the terms alone, capitalised, without a description
+        # (whole words, any case); the terms alone, capitalized, without a description
         roles = _values(sub, "roles") or _values(sub, "role")
         desc = str(prop(sub, "contribution description") or "").strip().rstrip(".;, ")
         unnamed = [str(r) for r in roles if _nonempty(r) and not re.search(

@@ -366,7 +366,7 @@ def test_extras_write_the_hooks_content_cut_to_the_test_file(make_doc, tmp_path)
             assert recording_span(nwb) == (0.25, 0.349 if stub_test else 1.249)
             add_trials(nwb, trials, {"condition": "the condition number"}, stub_test=stub_test)
             add_time_intervals(nwb, "states", trials.rename(columns={"condition": "state"}), {"state": "the state"},
-                               "behavioural states", stub_test=stub_test)
+                               "behavioral states", stub_test=stub_test)
             if stub_test:  # no spike of any unit in the span: no table at all
                 outside = [{"spike_times": [5.0], "obs_intervals": [[0.0, 10.0]]}]
                 assert add_units(nwb, outside, {}, "units", resolution=1e-4, stub_test=True) == 0 and nwb.units is None

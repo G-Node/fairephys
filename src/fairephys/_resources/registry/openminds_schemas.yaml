@@ -862,7 +862,7 @@ schemas:
 
   # --- FileRepository (the repository of the curated data) ---
   # Created per dataset from its repository url (the DOI archive URL when
-  # published, the repository URL during curation). The hosting organisation
+  # published, the repository URL during curation). The hosting organization
   # and the kind of repository come from the collection metadata
   # (collection.yaml: repository host, repository type), which a dataset
   # deposited elsewhere overrides in its dataset.yaml.

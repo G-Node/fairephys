@@ -1,4 +1,4 @@
-"""Events of a recording and of its behaviour file, as the datasets read them:
+"""Events of a recording and of its behavior file, as the datasets read them:
 one Neo event or epoch channel, the epocs of a TDT tank, the trials of a
 MonkeyLogic BHV2 file, and the alignment of two code sequences. What the codes
 mean and how a lab synchronizes its clocks stay in the datasets."""
@@ -90,7 +90,7 @@ def read_tdt_epocs(tank_dir: str | Path, store: str, seg_index: int = 0) -> tupl
 
 def match_codes(a: Sequence, b: Sequence) -> list[tuple[int, int]]:
     """Index pairs (i, j) with a[i] == b[j] that align two code sequences (a
-    recording's and a behaviour file's), increasing in both: no code is used
+    recording's and a behavior file's), increasing in both: no code is used
     twice and no pair crosses another.
 
     The rule is difflib.SequenceMatcher's without its junk heuristics

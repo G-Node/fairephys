@@ -46,10 +46,10 @@ A dataset is described in YAML files under `metadata/curated/`, in the vocabular
 
 | File | Describes |
 |------|-----------|
-| `dataset.yaml` | Name, description, licence, custodian, contributors, funding, related publications, related projects |
+| `dataset.yaml` | Name, description, license, custodian, contributors, funding, related publications, related projects |
 | `subject.yaml` | Species, sex, age, surgical preparation, and the implanted probes of a chronic recording |
 | `hardware.yaml` | Recording system, hardware filters, probes, auxiliary devices (eye tracker, EMG, motion) |
-| `protocol.yaml` | The behavioural protocol and stimulus presentation |
+| `protocol.yaml` | The behavioral protocol and stimulus presentation |
 | `recordings.yaml` | Per-session recording configuration of an acute recording: techniques and electrode placements |
 | `sessions.yaml` | Session ids, dates, start times, tasks, subjects |
 | `processing.yaml` | Processing steps actually performed (optional) |
@@ -214,22 +214,22 @@ Every script takes `--verbose` (debug logging), `--shared-metadata <dir>` (the c
 
 ## Adding Content to the NWB
 
-Besides the recording, a dataset can write what it already holds (trials, time intervals, sorted units, sampled behavioural series) into the same NWB file. `run_conversion` takes a function that receives the NWB file after the recording is added and before it is written; nothing reopens a written file:
+Besides the recording, a dataset can write what it already holds (trials, time intervals, sorted units, sampled behavioral series) into the same NWB file. `run_conversion` takes a function that receives the NWB file after the recording is added and before it is written; nothing reopens a written file:
 
 ```python
 from fairephys.converters import add_trials, add_units
 
-def add_behaviour(nwbfile):
+def add_behavior(nwbfile):
     add_trials(nwbfile, trials, TRIAL_COLUMNS, stub_test=stub_test)   # DataFrame: start_time, stop_time, ...
     add_units(nwbfile, units, UNIT_COLUMNS, description="Units sorted by the lab",
               resolution=1 / sampling_rate, stub_test=stub_test)
 
-converter.run_conversion(paths["nwb"], meta, stub_test=stub_test, add_to_nwbfile=add_behaviour)
+converter.run_conversion(paths["nwb"], meta, stub_test=stub_test, add_to_nwbfile=add_behavior)
 ```
 
 Each helper takes plain data and the dataset's own column descriptions. With `stub_test`, a helper cuts its content to the span of the stub recording (a table keeps the rows that overlap it, a unit its spikes inside it), so a stub stays a consistent short file.
 
-`fairephys.events` reads the events these tables are built from: a Neo event channel, the epocs of a TDT tank, the trials of a MonkeyLogic BHV2 file, and `match_codes` to align two code sequences (for example the codes in the recording with those of the behaviour file). What the codes mean, and how a lab synchronizes its clocks, stays in the dataset's `curate.py`. The BIDS events files are written with `fairephys.bids.generate_events_tsv`.
+`fairephys.events` reads the events these tables are built from: a Neo event channel, the epocs of a TDT tank, the trials of a MonkeyLogic BHV2 file, and `match_codes` to align two code sequences (for example the codes in the recording with those of the behavior file). What the codes mean, and how a lab synchronizes its clocks, stays in the dataset's `curate.py`. The BIDS events files are written with `fairephys.bids.generate_events_tsv`.
 
 ## Auxiliary Signals
 
@@ -275,7 +275,7 @@ The device channel indices of a session's `probe_group.json` are positions among
 
 ## ProbeInterface Integration
 
-`probes/builder.py` creates ProbeInterface objects from odML (see `probes/README.md`): identity (name, manufacturer, model_name, serial_number), the other fields as annotations with their units, contact ids `01`, `02`, ... numbered from the tip, or from the top with `first contact: top` (library probes keep theirs), device channel indices from the placement or the channel mapping, and an `x_offset` annotation per probe for the side-by-side group layout. The PNG files, one per probe of more than one contact, show `contact id:device channel` per contact; `zoom=<um>` draws a dense probe whole beside its lowest `zoom` micrometers, labelled.
+`probes/builder.py` creates ProbeInterface objects from odML (see `probes/README.md`): identity (name, manufacturer, model_name, serial_number), the other fields as annotations with their units, contact ids `01`, `02`, ... numbered from the tip, or from the top with `first contact: top` (library probes keep theirs), device channel indices from the placement or the channel mapping, and an `x_offset` annotation per probe for the side-by-side group layout. The PNG files, one per probe of more than one contact, show `contact id:device channel` per contact; `zoom=<um>` draws a dense probe whole beside its lowest `zoom` micrometers, labeled.
 
 ```python
 from fairephys.probes import build_probe_group, build_session_probe_group, save_probe_group

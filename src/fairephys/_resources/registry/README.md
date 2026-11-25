@@ -9,7 +9,7 @@ Declarative mapping files that drive the metadata pipeline. Code reads these reg
 | `openminds_schemas.yaml` | openMINDS entity definitions, odML type assignments | `export/collection.py`, `enrichment/openminds.py`, `metadata/compiler.py` |
 | `bids_mappings.yaml` | odML property paths to BIDS sidecar fields and TSV columns, the target BIDS spec | `bids/builder.py`, `bids/aux.py`, `bids/ecephys.py`, `bids/dataset.py`, `converters/metadata.py`, `validation/bids.py`, `export/readme.py` |
 | `nwb_mappings.yaml` | odML property paths to NWBFile and Subject fields, unit transforms | `converters/metadata.py` |
-| `licenses.yaml` | licences by SPDX id: name and URL (texts in `_resources/licenses`) | `export/datacite.py`, `export/readme.py` |
+| `licenses.yaml` | licenses by SPDX id: name and URL (texts in `_resources/licenses`) | `export/datacite.py`, `export/readme.py` |
 | `readme.yaml` | text blocks of the generated dataset README | `export/readme.py` |
 
 The anatomy atlas (brain region names and UBERON terms) is not a registry: a project names its own table in the collection YAML (`anatomy atlas`).

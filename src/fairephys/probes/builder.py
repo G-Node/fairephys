@@ -488,8 +488,8 @@ def write_session_probe_group(doc, session, output_dir: Path, **figure) -> Path:
 
 
 def _plot_probe(probe, path: Path, zoom: float = None, figsize=(8, 10), fontsize: float = 9, **plot_probe_kwargs):
-    """Draw a probe with ProbeInterface's plot_probe at true scale, each contact labelled contact id:device
-    channel; with zoom (um) the whole probe beside the labelled lowest zoom um of its contacts."""
+    """Draw a probe with ProbeInterface's plot_probe at true scale, each contact labeled contact id:device
+    channel; with zoom (um) the whole probe beside the labeled lowest zoom um of its contacts."""
     fig, axes = plt.subplots(1, 1 + bool(zoom), figsize=figsize, layout="constrained", squeeze=False)
     if zoom:
         plot_probe(probe, ax=axes[0, 0], title=False, **plot_probe_kwargs)

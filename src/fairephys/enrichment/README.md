@@ -67,7 +67,7 @@ python -m fairephys.enrichment.neo recording.ns5 -f blackrock --json
 
 ## fairephys.events
 
-`fairephys/events.py` reads the events of a recording and of its behaviour file as the datasets need them; what the codes mean and how a lab synchronizes its clocks stay in the datasets.
+`fairephys/events.py` reads the events of a recording and of its behavior file as the datasets need them; what the codes mean and how a lab synchronizes its clocks stay in the datasets.
 
 - `event_times(rawio, channel, block_index=0, seg_index=0)`: times (s) and labels of one event or epoch channel of a parsed Neo RawIO (the Blackrock .nev digital codes, the TDT epocs, the Plexon events), by name or index, through Neo's `get_event_timestamps` and `rescale_event_timestamp`.
 - `read_tdt_epocs(tank_dir, store, seg_index=0)`: onsets (s from the start of the block) and float64 values of one TDT epoc store, read from the block's TSQ index in Neo's record layout (`tsq_dtype`, the store's event records of channel 0, as `TdtRawIO`'s event channel returns them; the Tbk header must list the store as an epoc store). `TdtRawIO` itself is not opened: it indexes every channel of every stream of the block for one store (about a minute on a long block against well under a second) and rejects a block whose stream channels hold unequal chunk counts, a layout this reader accepts. `tank_dir` is a tank folder named as its files' prefix (the blocks in start-time order), or a block's .tsq for that block alone.

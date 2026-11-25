@@ -93,10 +93,10 @@ def test_bids_and_openminds_conventions(tmp_path):
     assert lookups and set(lookups) == {"common"}
 
 
-def test_licences_registry_matches_the_dataset_schema():
-    """Every licence the schema allows has name, https URL and legal code; one shared registry."""
+def test_licenses_registry_matches_the_dataset_schema():
+    """Every license the schema allows has name, https URL and legal code; one shared registry."""
     schema = yaml.safe_load((RESOURCES / "schemas" / "dataset.v1.yaml").read_text())
     allowed = schema["properties"]["Dataset"]["properties"]["license"]["enum"]
     assert sorted(allowed) == sorted(LICENSES) and load("licenses.yaml") is LICENSES
-    assert all(set(v) == {"name", "url"} and v["url"].startswith("https://") for v in LICENSES.values())
+    assert all(set(v) == {"name", "official name", "url"} and v["url"].startswith("https://") for v in LICENSES.values())
     assert all((LICENSES_DIR / f"{spdx}.txt").is_file() for spdx in allowed)

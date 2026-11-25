@@ -380,7 +380,7 @@ def compile_to_odml(metadata: dict, omit_empty: bool = False, author: str = None
 
     _set_dataset_citation(doc)
     _add_curation_software(doc)
-    # an identifier of no recognised form, or an entry with neither identifier
+    # an identifier of no recognized form, or an entry with neither identifier
     # nor citation, raises here rather than in an output step
     related_publications(subsection(doc, "Dataset"))
     validate_document(doc)

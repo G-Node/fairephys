@@ -128,7 +128,7 @@ def source_checkout(path: Path = PIPELINE_DIR) -> dict:
 
 def source_url(project_urls: list[str]) -> str | None:
     """The repository URL among a package's project URLs ("Label, URL" entries
-    of [project.urls]) labelled as its source; None without one."""
+    of [project.urls]) labeled as its source; None without one."""
     for entry in project_urls:
         label, _, url = entry.partition(",")
         if re.sub(r"[^a-z0-9]", "", label.lower()) in SOURCE_URL_LABELS and url.strip():

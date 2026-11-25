@@ -243,7 +243,7 @@ _VOLTS = np.random.default_rng(0).normal(0, 50e-6, (2000, 3)).astype("float32")
     (FakeRawIO(_int16(2, (2000, 2)), gain=[1.0, 2.0]),
      dict(data=_int16(2, (2000, 2)), channel_conversion=np.array([1e-6, 2e-6])),
      {"nwb_scale": "1e-06..2e-06 V"}, False),
-], ids=["volts labelled uV", "int16 with gain", "channel conversion"])
+], ids=["volts labeled uV", "int16 with gain", "channel conversion"])
 def test_samples_compared_on_the_nwb_scale(integrity_check, tmp_path, raw, nwb, info, note):
     """Equal samples pass whatever scale each side states; both scales are reported, a disagreement noted."""
     report = integrity_check(raw, _series_nwb(tmp_path / "t.nwb", **nwb))

@@ -10,6 +10,6 @@ fairephys is licensed under the MIT License (see `LICENSE`). The package also sh
 - Copyright (c) 2018, BIDS Contributors
 - License: Creative Commons Attribution 4.0 International (CC-BY-4.0), https://creativecommons.org/licenses/by/4.0/
 
-## Creative Commons licence texts
+## Creative Commons license texts
 
-`src/fairephys/_resources/licenses/*.txt` are the legal code of the Creative Commons licences, written as the `LICENSE` file of a curated dataset. Creative Commons dedicates the text of its public licences to the public domain under CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/).
+`src/fairephys/_resources/licenses/*.txt` are the legal code of the Creative Commons licenses, written as the `LICENSE` file of a curated dataset. Creative Commons dedicates the text of its public licenses to the public domain under CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/).
