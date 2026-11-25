@@ -1,7 +1,7 @@
 # Hardware Template Schema v1
 $schema: https://json-schema.org/draft-07/schema#
 title: Hardware Template
-version: 1.2
+version: 1.3
 
 type: object
 required: [Hardware]
@@ -254,5 +254,5 @@ properties:
             notes: {type: string}
             # Anatomical target -- optional; used for chronic probes with fixed target
             brain region: {type: string}      # e.g. "primary motor cortex"
-            atlas area: {type: string}     # name of the region in the anatomy atlas, when it differs (e.g. "4a")
+            atlas area: {oneOf: [{type: string}, {type: array, items: {type: string}}]}     # exact name of the atlas area's entity in the Knowledge Graph (e.g. "Area 4a (MEBRAINS Atlas)"), or a list of such names
             uberon term: {type: string}       # UBERON attr override (e.g. "primary_motor_cortex")

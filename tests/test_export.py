@@ -27,7 +27,7 @@ SNAPSHOT = [
     ("BiologicalSex", "name=female", ()),
     ("ContactInformation", "-", ()),
     ("ContributionType", "name=data collection", ()),
-    ("CustomAnatomicalEntity", "name=M1", (("has_annotations", 1),)),
+    ("CustomAnatomicalEntity", "name=M1", ()),
     ("Dataset", "name=Test dataset", (("authors", 1), ("custodians", 1), ("has_versions", 1))),
     ("DatasetVersion", "short_name=test-ds", (("behavioral_protocols", 1), ("funding", 1), ("keywords", 2),
                                               ("license", 1), ("other_contributions", 1), ("protocols", 1),
@@ -36,7 +36,6 @@ SNAPSHOT = [
     ("ElectrodeArrayUsage", "lookup_label=test-ds_sub-MonkeyA_ses-ses01_Utah-Array",
      (("anatomical_locations_of_arrays", 1), ("device", 1), ("used_specimen", 1))),
     ("Funding", "award_number=GRANT-001", (("funder", 1),)),
-    ("Laterality", "name=left", ()),
     ("License", "name=Creative Commons Attribution 4.0 International", ()),
     ("Organization", "name=Blackrock", ()),
     ("Organization", "name=Test Foundation", ()),
@@ -173,7 +172,7 @@ def test_chronic_implants_give_one_usage_per_session(make_doc):
         Sessions=[{"session id": "01", "date": "2024-01-01"}, {"session id": "02", "date": "2024-01-02"}])
     builder = _builder(doc)
     builder.build_all()
-    usages = [[(u.lookup_label, u.device.name, u.anatomical_locations_of_arrays[0].related_uberon_term.name)
+    usages = [[(u.lookup_label, u.device.name, u.anatomical_locations_of_arrays[0].name)
                for u in a.devices] for a in builder.entities["RecordingActivity"]]
     assert usages == [[("test-ds_sub-MonkeyA_ses-01_Utah-Array", "Utah Array", "primary motor cortex")],
                       [("test-ds_sub-MonkeyA_ses-02_Utah-Array", "Utah Array", "primary motor cortex")]]
@@ -350,26 +349,27 @@ def test_push_collection(tmp_path, monkeypatch):
 
 
 FDEF = {"type": "custom_anatomy", "odml_field": "brain region", "area_field": "atlas area",
-        "uberon_field": "uberon term", "hemisphere_field": "hemisphere"}
+        "uberon_field": "uberon term"}
 ATLAS = {"M1": {"area": "4a", "uberon term": "primary_motor_cortex"}}
 
 
 def test_anatomical_entities():
-    """One entity per (area, UBERON term, hemisphere): placement fields, then atlas, then the label."""
-    anatomy = Anatomy(Collection(), KGResolver(None))
-    entity, = anatomy.build(FDEF, {"brain region": "primary visual cortex", "hemisphere": "left"})
-    assert (entity.name, entity.related_uberon_term.name, entity.has_annotations[0].lateralities[0].name) == (
-        "primary visual cortex", "primary visual cortex", "left")
-    unknown, = anatomy.build(FDEF, {"brain region": "M1"})
-    assert unknown.related_uberon_term is None and unknown.has_annotations is None
+    """The UBERON term and the atlas area, each where there is one; a custom entity, one per name, with neither."""
+    anatomy = Anatomy(collection := Collection(), KGResolver(None))
+    term, = anatomy.build(FDEF, {"brain region": "primary visual cortex", "hemisphere": "left"})
+    assert (type(term).__name__, term.name, len(collection.nodes)) == ("UBERONParcellation", "primary visual cortex", 0)
+    unknown, = anatomy.build(FDEF, {"brain region": "M1", "hemisphere": "left"})
+    assert (type(unknown).__name__, unknown.related_uberon_term, unknown.has_annotations) == (
+        "CustomAnatomicalEntity", None, None)
     assert anatomy.build(FDEF, {"brain region": "M1"}) == [unknown]
     assert anatomy.build(FDEF, {"hemisphere": "left"}) is None
 
     atlas = Anatomy(Collection(), KGResolver(None), ATLAS)
-    entity, = atlas.build(FDEF, {"brain region": "M1"})
-    assert (entity.name, entity.related_uberon_term.name) == ("4a", "primary motor cortex")
-    entity, = atlas.build(FDEF, {"brain region": "M1", "atlas area": "F1", "uberon term": "premotor_cortex"})
-    assert (entity.name, entity.related_uberon_term.name) == ("F1", "premotor cortex")
+    assert [e.name for e in atlas.build(FDEF, {"brain region": "M1"})] == ["primary motor cortex", "4a"]
+    assert [e.name for e in atlas.build(FDEF, {"brain region": "M1", "atlas area": ["4a", "4p"]})] == [
+        "primary motor cortex", "4a", "4p"]
+    assert [e.name for e in atlas.build(FDEF, {"brain region": "M1", "atlas area": "F1", "uberon term": "premotor_cortex"})] == [
+        "premotor cortex", "F1"]
 
 
 def test_atlas_is_optional(doc, tmp_path):

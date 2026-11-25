@@ -1039,7 +1039,7 @@ class SchemaBuilder:
                          session: odml.Section) -> Any:
         """A field of a placement's entity: match_link links the device (by
         its exact name), link an entity of the session (match: session),
-        custom_anatomy builds the region's entity, other fields read the
+        custom_anatomy gives the region's term or entity, other fields read the
         placement's properties."""
         ftype = fdef.get("type", "odml")
         if ftype == "link":

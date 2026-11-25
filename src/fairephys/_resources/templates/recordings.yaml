@@ -46,7 +46,7 @@ Recordings:
         # stream: ""
         # electrode identifiers: the contact ids of the device recorded in this session (e.g. from a Neuropixels IMRO table)
         # electrode identifiers: []
-        # atlas area: ""       # name of the region in the anatomy atlas, when it differs (e.g. "4a")
+        # atlas area: ""       # exact name of the atlas area's entity in the Knowledge Graph (e.g. "Area 4a (MEBRAINS Atlas)"), or a list of such names
         # uberon term: ""      # UBERON term override (e.g. "primary_motor_cortex")
         AP: ""               # e.g., "3 millimeter", "-4.5 millimeter"
         ML: ""               # e.g., "1 millimeter", "2 millimeter"
