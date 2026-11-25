@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4 (2026-11-25)
 
 - Descriptor: the license sentence gives the official name of the license with its short form.
 - Descriptor: software, standards and resources carry their RRID at the first link.

@@ -26,5 +26,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --upgrade --python ${{ matrix.python }}
+      # fonttools 4.69.0 (2026-11-25) was published without files for Linux: taken out until a later release
+      - run: uv sync --upgrade --python ${{ matrix.python }} --exclude-newer-package fonttools=2026-11-25T00:00:00Z
       - run: uv run pytest -q

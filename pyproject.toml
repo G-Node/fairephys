@@ -1,6 +1,6 @@
 [project]
 name = "fairephys"
-version = "0.1.3"
+version = "0.1.4"
 description = "FAIR curation of extracellular electrophysiology: NWB in a BIDS (BEP032) layout with openMINDS and DataCite metadata, from one odML record"
 readme = "README.md"
 license = "MIT"
